@@ -80,3 +80,32 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 # ============================================================
 BASE_DIR = Path(__file__).resolve().parent.parent
 PROMPT_VERSION_DIR = Path(__file__).resolve().parent / "prompt_version"
+
+# ============================================================
+# 评测服务配置
+# ============================================================
+# 评测数据目录：评测集、单次评测原始结果、评测报告
+EVAL_DATA_DIR = BASE_DIR / "data" / "eval"
+EVAL_SET_DIR = EVAL_DATA_DIR / "sets"
+EVAL_REPORT_DIR = EVAL_DATA_DIR / "reports"
+EVAL_RAW_ITEM_DIR = EVAL_DATA_DIR / "raw"
+# 评测集三级配比：全局文档 / 章节大类 / 段落细节
+EVAL_LEVEL_RATIO = {"global": 0.2, "chapter": 0.3, "paragraph": 0.5}
+# 单次评测默认生成的评测条目总量（按三级配比分配）
+EVAL_DEFAULT_TARGET_COUNT = int(os.getenv("EVAL_DEFAULT_TARGET_COUNT", "80"))
+# 每个来源单元生成的问题数
+EVAL_QUESTION_SAMPLE_PER_UNIT = int(os.getenv("EVAL_QUESTION_SAMPLE_PER_UNIT", "1"))
+# 回归测试并发上限（LLM 调用并发数）
+EVAL_MAX_CONCURRENCY = int(os.getenv("EVAL_MAX_CONCURRENCY", "4"))
+# 红线：任务事实错误率上限（8%）
+EVAL_ERROR_RATE_REDLINE = float(os.getenv("EVAL_ERROR_RATE_REDLINE", "0.08"))
+# 关键信息覆盖率通过阈值（单条判定通过与整体预警）
+EVAL_COVERAGE_PASS_THRESHOLD = float(os.getenv("EVAL_COVERAGE_PASS_THRESHOLD", "0.5"))
+# 体验红线：95% 延迟上限（3 秒）
+EVAL_P95_LATENCY_REDLINE_MS = float(os.getenv("EVAL_P95_LATENCY_REDLINE_MS", "3000"))
+# 指标恶化告警阈值（与前次对比，变动幅度超过该值告警）
+EVAL_ALERT_DEGRADE_DELTA = float(os.getenv("EVAL_ALERT_DEGRADE_DELTA", "0.05"))
+# LLM 事实校验的最大采样条数（控制评测成本）
+EVAL_LLM_FACT_CHECK_SAMPLE = int(os.getenv("EVAL_LLM_FACT_CHECK_SAMPLE", "50"))
+# 评测集生成失败重试次数
+EVAL_GEN_RETRY_TIMES = int(os.getenv("EVAL_GEN_RETRY_TIMES", "1"))
