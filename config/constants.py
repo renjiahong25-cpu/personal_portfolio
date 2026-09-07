@@ -35,6 +35,20 @@ class TaskStatus(Enum):
     FAILED = "failed"
 
 
+class SpiderSiteStatus(Enum):
+    RUNNING = 1   # 运行中
+    PAUSED = 2    # 暂停
+    ERROR = 3     # 异常（连续 AI 修复超限）
+    PENDING = 4   # 待审核（AI 候选配置，需人工审核转正）
+
+
+# 爬虫"整文档变更 vs 单章节局部变更"类型标识
+class SpiderChangeType(Enum):
+    NONE = "none"       # 无变更
+    FULL = "full"       # 整文档变更
+    SECTION = "section" # 单章节局部变更
+
+
 # ============================================================
 # 全局阈值
 # ============================================================

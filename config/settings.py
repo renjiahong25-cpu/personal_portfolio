@@ -63,6 +63,38 @@ LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT", "15"))
 API_TIMEOUT = int(os.getenv("API_TIMEOUT", "20"))
 
 # ============================================================
+# 爬虫服务配置（AI爬虫） - 所有爬虫参数统一读取此处，禁止硬编码
+# ============================================================
+# 运行环境: test=测试环境(AI候选配置直接生效) / prod=生产环境(AI候选配置需人工审核转正)
+SPIDER_ENV = os.getenv("SPIDER_ENV", "test")
+# 请求 User-Agent（模拟正常浏览器，降低官方站点风控概率）
+SPIDER_USER_AGENT = os.getenv(
+    "SPIDER_USER_AGENT",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/120.0 Safari/537.36 CrossBorderPolicyAgent/1.0",
+)
+# 单次请求超时（秒）
+SPIDER_REQUEST_TIMEOUT = int(os.getenv("SPIDER_REQUEST_TIMEOUT", "30"))
+# 请求间隔延时（秒），两次请求之间最小间隔，避免高频抓取触发风控
+SPIDER_REQUEST_DELAY_SEC = float(os.getenv("SPIDER_REQUEST_DELAY_SEC", "2.0"))
+# 低频率抓取间隔（分钟），默认每 24 小时增量检测一次
+SPIDER_CRAWL_INTERVAL_MIN = int(os.getenv("SPIDER_CRAWL_INTERVAL_MIN", "1440"))
+# 单页 HTML 最大字节数，超出截断防止内存占满
+SPIDER_MAX_PAGE_BYTES = int(os.getenv("SPIDER_MAX_PAGE_BYTES", "3000000"))
+# 连续 AI 修复次数阈值，超过后站点标记为异常并告警
+SPIDER_MAX_AI_REPAIR_COUNT = int(os.getenv("SPIDER_MAX_AI_REPAIR_COUNT", "3"))
+# 德语页面自动翻译为中文开关
+SPIDER_TRANSLATE_ENABLE = os.getenv("SPIDER_TRANSLATE_ENABLE", "true").lower() == "true"
+# AI 自修复开关（传统 CSS 解析失败时触发 AI 修复）
+SPIDER_AI_REPAIR_ENABLE = os.getenv("SPIDER_AI_REPAIR_ENABLE", "true").lower() == "true"
+# AI 入参最大文本长度（超出截断，控制 LLM token 消耗）
+SPIDER_AI_TEXT_LIMIT = int(os.getenv("SPIDER_AI_TEXT_LIMIT", "8000"))
+# 变更检测"整文档变更"阈值：变更章节占比 >= 该值判定为整文档变更，否则为单章节局部变更
+SPIDER_CHANGE_FULL_THRESHOLD = float(os.getenv("SPIDER_CHANGE_FULL_THRESHOLD", "0.5"))
+# 爬虫状态/抓取结果持久化目录（变更检测基线、候选配置备份均存于此）
+SPIDER_STATE_DIR = Path(__file__).resolve().parent.parent / "logs" / "spider_state"
+
+# ============================================================
 # 降级开关
 # ============================================================
 HYDE_ENABLE = os.getenv("HYDE_ENABLE", "true").lower() == "true"

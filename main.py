@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from config.logging_config import setup_logging, get_logger
 from db.models.base import init_db
+from api import spider
 
 
 @asynccontextmanager
@@ -29,8 +30,8 @@ def health_check():
 
 
 # 路由注册（各模块完成后逐步挂载）
-# from api import chat, doc, spider, eval as eval_api
+# from api import chat, doc, eval as eval_api
 # app.include_router(chat.router, prefix="/api/chat", tags=["问答"])
 # app.include_router(doc.router, prefix="/api/doc", tags=["知识库"])
-# app.include_router(spider.router, prefix="/api/spider", tags=["爬虫"])
+app.include_router(spider.router, prefix="/api/spider", tags=["爬虫"])
 # app.include_router(eval_api.router, prefix="/api/eval", tags=["评测"])
