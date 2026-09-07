@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment & Secrets (SENSITIVE - NEVER COMMIT)
+.env
+.env.local
+.env.production
+*.env
+config/secrets.py
+
+# Logs
+logs/*.log
+logs/*.json
+logs/**/*.log
+
+# Database
+*.db
+*.sqlite3
+
+# MinIO local data
+minio_data/
+
+# Milvus local data
+milvus_data/
+
+# Redis dumps
+dump.rdb
+
+# Node (frontend)
+frontend/node_modules/
+frontend/dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
