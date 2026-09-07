@@ -54,3 +54,4 @@ class CommonResp(BaseModel):
 class EvalRunReq(BaseModel):
     version: str = "v1.0"
     sample_count: int = 50
+    eval_set_id: str = ""

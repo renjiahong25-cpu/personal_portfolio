@@ -34,4 +34,7 @@ def health_check():
 # app.include_router(chat.router, prefix="/api/chat", tags=["问答"])
 # app.include_router(doc.router, prefix="/api/doc", tags=["知识库"])
 app.include_router(spider.router, prefix="/api/spider", tags=["爬虫"])
-# app.include_router(eval_api.router, prefix="/api/eval", tags=["评测"])
+
+from api import eval as eval_api
+
+app.include_router(eval_api.router, prefix="/api/eval", tags=["评测"])
