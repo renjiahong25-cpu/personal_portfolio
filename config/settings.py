@@ -65,10 +65,13 @@ API_TIMEOUT = int(os.getenv("API_TIMEOUT", "20"))
 # ============================================================
 # 问答服务增强配置（HyDE/检索/Rerank/缓存/降级）
 # ============================================================
-# 向量库连接（Milvus Lite 本地 URI 或 server 地址）
-MILVUS_URI = os.getenv("MILVUS_URI", "http://localhost:19530")
+# 向量库连接（Milvus Lite 本地文件 URI 或 server 地址）
+# 注意：不用 MILVUS_URI 作为环境变量名，pymilvus 3.x import 时会读取同名变量并强校验为 http 形式
+MILVUS_URI = os.getenv("MILVUS_DB_URI", "logs/milvus.db")
 # 向量编码模型（SentenceTransformer 系列，用于文本转向量）
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L12-v2")
+# 向量维度（须与 EMBEDDING_MODEL 输出维度一致；MiniLM-L12-v2 为 384）
+EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "384"))
 # Rerank 精排模型（CrossEncoder 系列），开启时加载
 RERANK_MODEL = os.getenv("RERANK_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
 # Rerank 精排开关

@@ -226,11 +226,12 @@ class VectorStore:
         """获取 Collection 统计信息"""
         self.ensure_initialized()
         try:
-            collection = vector_client.get_collection()
-            collection.load()
+            client = vector_client.get_collection()
+            stats = client.get_collection_stats(vector_client.collection_name)
+            num_entities = stats.get("row_count", 0) if isinstance(stats, dict) else stats or 0
             return {
-                "name": collection.name,
-                "num_entities": collection.num_entities,
+                "name": vector_client.collection_name,
+                "num_entities": num_entities,
             }
         except Exception as e:
             logger.error(f"获取 Collection 统计失败 | error={e}", exc_info=True)
