@@ -15,6 +15,7 @@ from service.data_service.doc_processor import process_pdf, process_html, proces
 from service.data_service.chunk_manager import chunk_manager
 from service.data_service.vector_store import vector_store
 from service.data_service.bm25_index import bm25_index
+from service.data_service.embedder import embedder
 
 logger = get_logger("api_doc")
 
@@ -29,6 +30,46 @@ class DocServiceError(Exception):
     def __init__(self, code: int, msg: str):
         self.code = code
         self.msg = msg
+
+
+async def _rebuild_vectors(doc_uuid: str, db: Session):
+    """重建指定文档的向量与 BM25 索引（上传/整章节更新后调用）"""
+    paragraphs = chunk_manager.get_paragraphs_by_doc(doc_uuid, db)
+    chapters = {c["id"]: c for c in chunk_manager.get_chapters_by_doc(doc_uuid, db)}
+    doc_main = db.query(DocMain).filter(DocMain.doc_uuid == doc_uuid).first()
+    texts = [p["content_raw"] or p["content_summary"] or "" for p in paragraphs]
+
+    vec_ok = False
+    if texts and embedder.available():
+        try:
+            embeddings = await embedder.aencode(texts)
+            vector_data = [
+                {
+                    "doc_uuid": doc_uuid,
+                    "chapter_path": chapters.get(p["chapter_id"], {}).get("chapter_path", ""),
+                    "paragraph_id": p["id"],
+                    "content_type": "text",
+                    "content_text": texts[i],
+                    "embedding": embeddings[i],
+                    "source_url": (doc_main.source_url if doc_main else "") or "",
+                    "version": (doc_main.version if doc_main else "") or "",
+                    "is_draft": bool(doc_main.status == 0) if doc_main else True,
+                }
+                for i, p in enumerate(paragraphs)
+            ]
+            vector_ids = vector_store.write_paragraphs(vector_data)
+            vec_ok = len(vector_ids) == len(paragraphs)
+        except Exception as e:
+            logger.error(f"文档向量化失败（不影响 MySQL 入库，可稍后重建） | doc_uuid={doc_uuid} | error={e}")
+    if vec_ok:
+        logger.info(f"文档向量化完成 | doc_uuid={doc_uuid} | vectors={len(vector_ids)}")
+
+    try:
+        paragraph_ids = [p["id"] for p in paragraphs]
+        if paragraph_ids:
+            bm25_index.add_paragraphs(doc_uuid, paragraph_ids, db)
+    except Exception as e:
+        logger.error(f"BM25 索引更新失败（可使用重建接口） | doc_uuid={doc_uuid} | error={e}")
 
 
 # ------------------------------------------------------------------
@@ -116,15 +157,11 @@ async def upload_document(
         # 压缩超长段落
         chunk_manager.compress_oversized_paragraphs(doc_uuid, db)
 
-        # TODO: 向量化并写入 Milvus（需要 embedding 模型）
-        # paragraphs = chunk_manager.get_paragraphs_by_doc(doc_uuid, db)
-        # embeddings = embedding_model.encode([p["content_raw"] for p in paragraphs])
-        # vector_data = [...]
-        # vector_store.write_paragraphs(vector_data)
-
-        # TODO: 更新 BM25 索引
-        # paragraph_ids = [p["id"] for p in paragraphs]
-        # bm25_index.add_paragraphs(doc_uuid, paragraph_ids, db)
+        # 向量化 + BM25 索引
+        try:
+            await _rebuild_vectors(doc_uuid, db)
+        except Exception as e:
+            logger.error(f"文档向量/索引构建异常 | doc_uuid={doc_uuid} | error={e}")
 
         elapsed = round(time.time() - start, 3)
         logger.info(f"文档上传处理完成 | doc_uuid={doc_uuid} | elapsed={elapsed}s")
@@ -331,9 +368,16 @@ async def update_document(
             if not success:
                 raise DocServiceError(CODE_NOT_FOUND, f"章节未找到: {chapter_path}")
 
-            # TODO: 更新向量库和BM25索引
-            # vector_store.delete_by_doc_uuid(doc_uuid)
-            # bm25_index.remove_by_doc_uuid(doc_uuid)
+            # 重建该文档的向量与 BM25 索引（章节内容已整体替换）
+            try:
+                vector_store.delete_by_doc_uuid(doc_uuid)
+                bm25_index.remove_by_doc_uuid(doc_uuid)
+            except Exception as e:
+                logger.error(f"旧索引清理失败 | doc_uuid={doc_uuid} | error={e}")
+            try:
+                await _rebuild_vectors(doc_uuid, db)
+            except Exception as e:
+                logger.error(f"章节更新后索引重建异常 | doc_uuid={doc_uuid} | error={e}")
 
         elif update_type == "paragraph":
             if not paragraph_id:
@@ -345,8 +389,33 @@ async def update_document(
             if not success:
                 raise DocServiceError(CODE_NOT_FOUND, f"段落未找到: {paragraph_id}")
 
-            # TODO: 更新向量库和BM25索引
-            # bm25_index.update_paragraphs(doc_uuid, [paragraph_id], db)
+            # 同步更新 BM25 索引
+            try:
+                bm25_index.update_paragraphs(doc_uuid, [paragraph_id], db)
+            except Exception as e:
+                logger.error(f"段落 BM25 更新失败 | doc_uuid={doc_uuid} | error={e}")
+
+            # 同步更新向量（upsert 单段）
+            try:
+                paras = chunk_manager.get_paragraphs_by_doc(doc_uuid, db)
+                para = next((p for p in paras if p["id"] == paragraph_id), None)
+                chapters = {c["id"]: c for c in chunk_manager.get_chapters_by_doc(doc_uuid, db)}
+                if para and embedder.available():
+                    text = para["content_raw"] or para["content_summary"] or ""
+                    embedding = await embedder.aencode([text])
+                    vector_store.upsert_paragraphs([{
+                        "doc_uuid": doc_uuid,
+                        "chapter_path": chapters.get(para["chapter_id"], {}).get("chapter_path", ""),
+                        "paragraph_id": para["id"],
+                        "content_type": "text",
+                        "content_text": text,
+                        "embedding": embedding[0],
+                        "source_url": "",
+                        "version": "",
+                        "is_draft": True,
+                    }])
+            except Exception as e:
+                logger.error(f"段落向量更新失败 | doc_uuid={doc_uuid} | error={e}")
 
         else:
             raise DocServiceError(CODE_PARAM_ERROR, f"不支持的更新类型: {update_type}")
