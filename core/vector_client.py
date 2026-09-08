@@ -1,81 +1,81 @@
-"""Milvus Lite 统一客户端封装"""
+"""Milvus Lite 统一客户端封装（本地文件模式）"""
 
 import time
 from typing import Optional
-from pymilvus import (
-    connections,
-    Collection,
-    CollectionSchema,
-    FieldSchema,
-    DataType,
-    utility,
+from pathlib import Path
+
+from pymilvus import MilvusClient, CollectionSchema, FieldSchema, DataType
+from pymilvus.milvus_client.index import IndexParams
+from config.settings import (
+    MILVUS_URI,
+    MILVUS_COLLECTION,
+    MILVUS_CACHE_LIMIT,
+    EMBEDDING_DIM,
 )
-from config.settings import MILVUS_HOST, MILVUS_PORT, MILVUS_COLLECTION, MILVUS_CACHE_LIMIT
 from config.logging_config import get_logger
 
 logger = get_logger("vector_client")
 
-# 向量维度（与 sentence-transformers 默认模型一致）
-VECTOR_DIM = 1024
+# 向量维度（与 EMBEDDING_MODEL 输出维度一致）
+VECTOR_DIM = EMBEDDING_DIM
 
 
 class VectorClient:
-    """Milvus Lite 统一客户端：连接管理、Collection CRUD、健康检查"""
+    """Milvus Lite 统一客户端：本地文件模式，连接管理、Collection CRUD、健康检查"""
 
     def __init__(self):
         self._connected = False
-        self._collection: Optional[Collection] = None
+        self._collection: Optional[MilvusClient] = None
         self.collection_name = MILVUS_COLLECTION
         logger.info(
-            f"VectorClient 初始化 | host={MILVUS_HOST} | port={MILVUS_PORT} | "
-            f"collection={self.collection_name}"
+            f"VectorClient 初始化 | uri={MILVUS_URI} | "
+            f"collection={self.collection_name} | dim={VECTOR_DIM}"
         )
 
     # ------------------------------------------------------------------
     # 连接管理
     # ------------------------------------------------------------------
     def connect(self):
-        """建立到 Milvus 的连接"""
+        """建立到 Milvus Lite 本地文件的连接"""
         start = time.time()
         try:
-            connections.connect(
-                alias="default",
-                host=MILVUS_HOST,
-                port=MILVUS_PORT,
-            )
+            if not MILVUS_URI.startswith(("http://", "https://", "tcp://")):
+                Path(MILVUS_URI).parent.mkdir(parents=True, exist_ok=True)
+            self._collection = MilvusClient(uri=MILVUS_URI)
             self._connected = True
             elapsed = round(time.time() - start, 3)
-            logger.info(f"Milvus 连接成功 | elapsed={elapsed}s")
+            logger.info(f"Milvus Lite 连接成功 | uri={MILVUS_URI} | elapsed={elapsed}s")
         except Exception as e:
-            logger.error(f"Milvus 连接失败 | error={e}", exc_info=True)
+            logger.error(f"Milvus Lite 连接失败 | error={e}", exc_info=True)
             raise
 
     def disconnect(self):
         """断开 Milvus 连接"""
         try:
-            connections.disconnect("default")
+            self._collection.close()
             self._connected = False
-            logger.info("Milvus 连接已断开")
+            logger.info("Milvus Lite 连接已断开")
         except Exception as e:
             logger.error(f"Milvus 断开失败 | error={e}", exc_info=True)
 
     def health_check(self) -> bool:
-        """健康检查：能否正常 ping 到 Milvus"""
+        """健康检查：能否访问集合"""
         try:
             if not self._connected:
                 self.connect()
-            result = utility.get_server_version()
-            logger.info(f"Milvus 健康检查通过 | version={result}")
+            # 仅探测集合存在性，轻量无副作用
+            self._collection.has_collection(self.collection_name)
+            logger.info("Milvus Lite 健康检查通过")
             return True
         except Exception as e:
-            logger.error(f"Milvus 健康检查失败 | error={e}", exc_info=True)
+            logger.error(f"Milvus Lite 健康检查失败 | error={e}", exc_info=True)
             return False
 
     # ------------------------------------------------------------------
     # Collection CRUD
     # ------------------------------------------------------------------
     def _build_schema(self) -> CollectionSchema:
-        """构建 Collection Schema"""
+        """构建 Collection Schema（CollectionSchema 对象）"""
         fields = [
             FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=True),
             FieldSchema(name="doc_uuid", dtype=DataType.VARCHAR, max_length=64),
@@ -88,33 +88,33 @@ class VectorClient:
             FieldSchema(name="version", dtype=DataType.VARCHAR, max_length=32),
             FieldSchema(name="is_draft", dtype=DataType.BOOL),
         ]
-        schema = CollectionSchema(fields, description="跨境清关规则向量存储")
-        logger.debug("Collection Schema 构建完成")
-        return schema
+        return CollectionSchema(fields, description="跨境清关规则向量存储")
 
-    def create_collection(self, collection_name: str = "") -> Collection:
+    def create_collection(self, collection_name: str = ""):
         """创建 Collection，若已存在则直接返回"""
         name = collection_name or self.collection_name
+        if not self._collection:
+            self.connect()
         start = time.time()
         try:
-            if utility.has_collection(name):
+            if self._collection.has_collection(name):
                 logger.info(f"Collection 已存在 | name={name}")
-                self._collection = Collection(name)
-                return self._collection
-
+                return True
             schema = self._build_schema()
-            collection = Collection(name=name, schema=schema)
-            # 为 embedding 字段创建 IVF_FLAT 索引
-            index_params = {
-                "metric_type": "COSINE",
-                "index_type": "IVF_FLAT",
-                "params": {"nlist": 128},
-            }
-            collection.create_index(field_name="embedding", index_params=index_params)
-            self._collection = collection
+            index_params = IndexParams()
+            index_params.add_index(
+                field_name="embedding",
+                index_type="AUTOINDEX",
+                metric_type="COSINE",
+            )
+            self._collection.create_collection(
+                collection_name=name,
+                schema=schema,
+                index_params=index_params,
+            )
             elapsed = round(time.time() - start, 3)
             logger.info(f"Collection 创建完成 | name={name} | elapsed={elapsed}s")
-            return collection
+            return True
         except Exception as e:
             logger.error(f"Collection 创建失败 | name={name} | error={e}", exc_info=True)
             raise
@@ -123,19 +123,21 @@ class VectorClient:
         """删除 Collection"""
         name = collection_name or self.collection_name
         try:
-            utility.drop_collection(name)
-            self._collection = None
+            if not self._collection:
+                self.connect()
+            self._collection.drop_collection(name)
             logger.info(f"Collection 已删除 | name={name}")
         except Exception as e:
             logger.error(f"Collection 删除失败 | name={name} | error={e}", exc_info=True)
             raise
 
-    def get_collection(self, collection_name: str = "") -> Collection:
-        """获取已有 Collection，若不存在则创建"""
+    def get_collection(self, collection_name: str = "") -> MilvusClient:
+        """获取客户端；若 Collection 不存在则创建"""
         name = collection_name or self.collection_name
-        if self._collection is not None:
-            return self._collection
-        return self.create_collection(name)
+        if self._collection is None:
+            self.connect()
+        self.create_collection(name)
+        return self._collection
 
     # ------------------------------------------------------------------
     # 写入
@@ -145,13 +147,12 @@ class VectorClient:
         start = time.time()
         collection = self.get_collection(collection_name)
         try:
-            result = collection.insert(data)
-            collection.flush()
+            result = collection.insert(collection_name=collection_name or self.collection_name, data=data)
             elapsed = round(time.time() - start, 3)
-            ids = list(result.primary_keys)
+            ids = list(result.get("ids", [])) if isinstance(result, dict) else []
             logger.info(
                 f"向量写入完成 | count={len(ids)} | elapsed={elapsed}s | "
-                f"collection={collection.name}"
+                f"collection={collection_name or self.collection_name}"
             )
             return ids
         except Exception as e:
@@ -188,16 +189,15 @@ class VectorClient:
     ) -> list[list[dict]]:
         """向量检索，返回按相似度降序的结果列表"""
         start = time.time()
-        collection = self.get_collection(collection_name)
+        self.get_collection(collection_name)
+        name = collection_name or self.collection_name
         try:
-            collection.load()
-            search_params = {"metric_type": "COSINE", "params": {"nprobe": 16}}
-            results = collection.search(
+            results = self._collection.search(
+                collection_name=name,
                 data=query_vectors,
                 anns_field="embedding",
-                param=search_params,
                 limit=top_k,
-                expr=filter_expr if filter_expr else None,
+                filter=filter_expr if filter_expr else None,
                 output_fields=output_fields or [
                     "doc_uuid", "chapter_path", "paragraph_id",
                     "content_text", "source_url", "version", "is_draft",
@@ -209,17 +209,17 @@ class VectorClient:
                 f"向量检索完成 | query_count={len(query_vectors)} | top_k={top_k} | "
                 f"hits={total_hits} | elapsed={elapsed}s"
             )
-            # 转换为 dict 列表
+            # 转换为统一 dict 结构：id / distance / entity
             output = []
             for hits in results:
                 hit_list = []
                 for hit in hits:
-                    hit_dict = {
-                        "id": hit.id,
-                        "distance": hit.distance,
-                        "entity": hit.entity.to_dict() if hasattr(hit.entity, "to_dict") else {},
-                    }
-                    hit_list.append(hit_dict)
+                    entity = dict(hit.get("entity", {}) or {})
+                    hit_list.append({
+                        "id": hit.get("id"),
+                        "distance": hit.get("distance"),
+                        "entity": entity,
+                    })
                 output.append(hit_list)
             return output
         except Exception as e:
@@ -232,10 +232,10 @@ class VectorClient:
     def delete(self, expr: str, collection_name: str = ""):
         """按表达式删除向量"""
         start = time.time()
-        collection = self.get_collection(collection_name)
+        self.get_collection(collection_name)
+        name = collection_name or self.collection_name
         try:
-            collection.delete(expr)
-            collection.flush()
+            self._collection.delete(collection_name=name, filter=expr)
             elapsed = round(time.time() - start, 3)
             logger.info(f"向量删除完成 | expr={expr} | elapsed={elapsed}s")
         except Exception as e:
@@ -249,10 +249,10 @@ class VectorClient:
     def upsert(self, data: list[dict], collection_name: str = ""):
         """upsert 向量数据（需要数据中包含 id 字段）"""
         start = time.time()
-        collection = self.get_collection(collection_name)
+        self.get_collection(collection_name)
+        name = collection_name or self.collection_name
         try:
-            collection.upsert(data)
-            collection.flush()
+            self._collection.upsert(collection_name=name, data=data)
             elapsed = round(time.time() - start, 3)
             logger.info(
                 f"向量 upsert 完成 | count={len(data)} | elapsed={elapsed}s"
