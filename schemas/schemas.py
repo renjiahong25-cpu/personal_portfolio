@@ -5,6 +5,7 @@ from typing import Optional
 class ChatQueryReq(BaseModel):
     question: str
     session_id: str = ""
+    request_id: str = ""  # 幂等去重用，可选
 
 
 class ChatQueryResp(BaseModel):
@@ -54,3 +55,4 @@ class CommonResp(BaseModel):
 class EvalRunReq(BaseModel):
     version: str = "v1.0"
     sample_count: int = 50
+    eval_set_id: str = ""

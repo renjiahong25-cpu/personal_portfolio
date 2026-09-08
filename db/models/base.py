@@ -115,6 +115,26 @@ class EvalResult(Base):
     create_time = Column(DateTime, default=datetime.now)
 
 
+class BadCase(Base):
+    """BadCase 表：沉淀用户反馈与回归测试中的失败案例，用于评测集扩充"""
+    __tablename__ = "bad_case"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    # 来源: user_feedback / regression / manual
+    source = Column(String(32), nullable=False)
+    # 关联来源记录ID（feedback_id / evalrun_id-item_id）
+    source_id = Column(String(64), index=True)
+    query = Column(Text, nullable=False)
+    model_answer = Column(Text)
+    standard_answer = Column(Text)
+    # 分类: hallucination / missing_recall / format_error / wrong_refusal
+    category = Column(String(32), index=True, default="")
+    reason = Column(String(512))
+    eval_item_id = Column(String(64), index=True)
+    # 0=未处理 1=已扩充入评测集 2=已关闭
+    status = Column(Integer, default=0)
+    create_time = Column(DateTime, default=datetime.now)
+
+
 def init_db():
     """创建所有表"""
     Base.metadata.create_all(engine)

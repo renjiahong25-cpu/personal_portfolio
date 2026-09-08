@@ -40,6 +40,9 @@ minio_data/
 # Milvus local data
 milvus_data/
 
+# Eval runtime artifacts (eval sets / reports / raw results)
+data/
+
 # Redis dumps
 dump.rdb
 
