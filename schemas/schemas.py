@@ -5,6 +5,7 @@ from typing import Optional
 class ChatQueryReq(BaseModel):
     question: str
     session_id: str = ""
+    request_id: str = ""  # 幂等去重用，可选
 
 
 class ChatQueryResp(BaseModel):

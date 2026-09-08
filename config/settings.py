@@ -63,6 +63,34 @@ LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT", "15"))
 API_TIMEOUT = int(os.getenv("API_TIMEOUT", "20"))
 
 # ============================================================
+# 问答服务增强配置（HyDE/检索/Rerank/缓存/降级）
+# ============================================================
+# 向量库连接（Milvus Lite 本地 URI 或 server 地址）
+MILVUS_URI = os.getenv("MILVUS_URI", "http://localhost:19530")
+# 向量编码模型（SentenceTransformer 系列，用于文本转向量）
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L12-v2")
+# Rerank 精排模型（CrossEncoder 系列），开启时加载
+RERANK_MODEL = os.getenv("RERANK_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
+# Rerank 精排开关
+RERANK_ENABLE = os.getenv("RERANK_ENABLE", "true").lower() == "true"
+# Rerank 后保留条数
+RERANK_TOP_K = int(os.getenv("RERANK_TOP_K", "5"))
+# 二级兜底检索：相似度阈值放宽比例（SIMILARITY_THRESHOLD * ratio）
+LOOSE_THRESHOLD_RATIO = float(os.getenv("LOOSE_THRESHOLD_RATIO", "0.7"))
+# 二级兜底检索：TopK 放大倍数（RETRIEVE_TOP_K * multiplier）
+EXPANDED_TOP_K_MULTIPLIER = int(os.getenv("EXPANDED_TOP_K_MULTIPLIER", "3"))
+# 三级兜底：工作流自动追问补全参数开关
+FOLLOW_UP_ENABLE = os.getenv("FOLLOW_UP_ENABLE", "true").lower() == "true"
+# 用户问题最大长度（超出截断，防 Token 爆仓）
+MAX_QUESTION_LEN = int(os.getenv("MAX_QUESTION_LEN", "1000"))
+# 高频问题结果缓存 TTL（秒）
+CACHE_TTL_SECONDS = int(os.getenv("CACHE_TTL_SECONDS", "1800"))
+# 知识库快照内存缓存 TTL（秒）
+KB_CACHE_TTL_SECONDS = int(os.getenv("KB_CACHE_TTL_SECONDS", "300"))
+# 并发活跃请求数阈值，超过后自动进入降级模式（关闭 HyDE/校验等）
+DEGRADE_MAX_ACTIVE = int(os.getenv("DEGRADE_MAX_ACTIVE", "4"))
+
+# ============================================================
 # 爬虫服务配置（AI爬虫） - 所有爬虫参数统一读取此处，禁止硬编码
 # ============================================================
 # 运行环境: test=测试环境(AI候选配置直接生效) / prod=生产环境(AI候选配置需人工审核转正)

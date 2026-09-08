@@ -447,8 +447,9 @@ class ChatFlow:
         user_content = (
             f"用户问题：{question}\n"
             f"抽取实体：{json.dumps(entities, ensure_ascii=False)}\n"
-            f"{'补充追问信息：' + follow_question + '\n' if follow_question else ''}"
-            f"【检索资料】\n" + "\n\n".join(ctx_lines)
+            + ("补充追问信息：" + follow_question + "\n" if follow_question else "")
+            + "【检索资料】\n"
+            + "\n\n".join(ctx_lines)
         )
         return [
             {"role": "system", "content": _SYSTEM_PROMPT},
