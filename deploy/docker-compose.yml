@@ -105,6 +105,10 @@ services:
       MYSQL_DATABASE: cross_border_agent
       LLM_BASE_URL: ${LLM_BASE_URL:-http://127.0.0.1:8000/v1}
       LLM_MODEL_NAME: Qwen3.8-27B
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-local}
+      LLM_REASONING_EFFORT: ${LLM_REASONING_EFFORT:-}
+      LLM_CLOUD_MAX_TOKENS: ${LLM_CLOUD_MAX_TOKENS:-8192}
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       TARIFF_SYNC_ENABLE: "false"
@@ -136,6 +140,10 @@ services:
       MYSQL_DATABASE: cross_border_agent
       LLM_BASE_URL: ${LLM_BASE_URL:-http://127.0.0.1:8000/v1}
       LLM_MODEL_NAME: Qwen3.8-27B
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-local}
+      LLM_REASONING_EFFORT: ${LLM_REASONING_EFFORT:-}
+      LLM_CLOUD_MAX_TOKENS: ${LLM_CLOUD_MAX_TOKENS:-8192}
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       TARIFF_SYNC_ENABLE: "false"
@@ -162,6 +170,10 @@ services:
       MYSQL_DATABASE: cross_border_agent
       LLM_BASE_URL: ${LLM_BASE_URL:-http://127.0.0.1:8000/v1}
       LLM_MODEL_NAME: Qwen3.8-27B
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-local}
+      LLM_REASONING_EFFORT: ${LLM_REASONING_EFFORT:-}
+      LLM_CLOUD_MAX_TOKENS: ${LLM_CLOUD_MAX_TOKENS:-8192}
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       MILVUS_URI: http://milvus:19530

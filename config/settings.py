@@ -13,6 +13,16 @@ LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://127.0.0.1:8000/v1")
 LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME", "Qwen3.8-27B")
 LLM_API_KEY = os.getenv("LLM_API_KEY", "")
 
+# LLM 提供方：local=本地/自建 llama.cpp（默认，行为与原实现完全一致）；
+# 其他值（deepseek/doubao/openai/任意自定义）进入云端兼容分支（见 core/llm_client.apply_cloud_compat）
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "local").strip().lower()
+IS_CLOUD_LLM = LLM_PROVIDER != "local"
+# 思考强度（reasoning_effort）：空=不修改请求现有行为；非空=本地/云端请求统一携带该档位
+# 取值：llama.cpp minimal|low|medium|high|xhigh；OpenAI 推理模型 low|medium|high
+LLM_REASONING_EFFORT = os.getenv("LLM_REASONING_EFFORT", "").strip()
+# 云端输出预算封顶（仅云端分支生效）：DeepSeek/豆包最大 8192，OpenAI gpt-4o 16384
+LLM_CLOUD_MAX_TOKENS = int(os.getenv("LLM_CLOUD_MAX_TOKENS", "8192"))
+
 # ============================================================
 # MySQL 配置
 # ============================================================

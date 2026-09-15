@@ -83,6 +83,42 @@ MILVUS_DB_URI=logs/milvus.db
 MILVUS_COLLECTION=customs_rule_v1
 ```
 
+#### 切换云端 LLM API（可选：豆包 / DeepSeek / OpenAI）
+
+全部 LLM 调用走 OpenAI 兼容接口，接云端只需改 `.env`，无需改代码。默认 `LLM_PROVIDER=local`（本地/自建 llama.cpp）；接云端时把下面 4 行加入/修改 `.env`：
+
+```ini
+LLM_PROVIDER=deepseek          # 或 doubao / openai
+LLM_BASE_URL=...               # 见下表
+LLM_MODEL_NAME=...             # 见下表
+LLM_API_KEY=sk-...             # 云端密钥（本地可留空）
+```
+
+| 厂商 | LLM_PROVIDER | LLM_BASE_URL | LLM_MODEL_NAME |
+| --- | --- | --- | --- |
+| DeepSeek | `deepseek` | `https://api.deepseek.com/v1` | `deepseek-chat`（或 `deepseek-reasoner`） |
+| 豆包（火山方舟） | `doubao` | `https://ark.cn-beijing.volces.com/api/v3` | 接入点 ID `ep-xxxx`（或方舟模型名） |
+| OpenAI | `openai` | `https://api.openai.com/v1` | `gpt-4o`（或 `gpt-4o-mini`） |
+
+另有两个可选开关（默认值即可用，按需调整）：
+
+```ini
+# 思考强度：留空=保持默认行为。自建 llama.cpp 可设 minimal|low|medium|high|xhigh；
+# OpenAI 推理模型（o3/gpt-5）可设 low|medium|high；
+# 非推理模型（gpt-4o / DeepSeek / 豆包）请留空，不要填写。
+LLM_REASONING_EFFORT=
+
+# 云端输出预算封顶（仅 LLM_PROVIDER 非 local 时生效）：
+# DeepSeek/豆包 8192，OpenAI gpt-4o 16384，默认 8192 一般无需改
+LLM_CLOUD_MAX_TOKENS=8192
+```
+
+注意：
+
+- Embedding / Rerank（384 维 MiniLM + ms-marco CrossEncoder）始终由本项目内置模型服务提供，不随 LLM 切换，无需额外配置。
+- 云端 API 的延迟与计费按所用厂商计；问答主链路为多轮 LLM 调用（实体抽取→检索判定→流式生成→事实校验），调用量约为单次对话 3~6 次。
+- 各厂商端点/模型名以官方文档为准，如模型名变更只需改 `LLM_MODEL_NAME`。
+
 ### 2. 安装依赖
 
 ```bash

@@ -17,7 +17,7 @@ import time
 import httpx
 
 from config.logging_config import get_logger
-from config.settings import QUERY_TRANSLATE_ENABLE, LLM_BASE_URL, LLM_MODEL_NAME, LLM_API_KEY
+from config.settings import QUERY_TRANSLATE_ENABLE, LLM_BASE_URL, LLM_MODEL_NAME, LLM_API_KEY, IS_CLOUD_LLM
 from core.llm_client import llm_client
 
 logger = get_logger("query_translator")
@@ -105,6 +105,14 @@ class QueryTranslator:
                 "temperature": 0.2,
                 "max_tokens": _budget,
             }
+            # 云端兼容分支（provider=local 时 no-op）；/no_think 注入在云端分支内还原
+            from core.llm_client import apply_cloud_compat
+            payload = apply_cloud_compat(payload)
+            if IS_CLOUD_LLM:
+                for m in msgs:
+                    cc = m.get("content")
+                    if isinstance(cc, str) and cc.startswith("/no_think\n"):
+                        m["content"] = cc[len("/no_think\n"):]
             timeout = httpx.Timeout(connect=10.0, read=_TRANSLATE_TIMEOUT, write=60.0, pool=30.0)
             with httpx.Client(timeout=timeout) as client:
                 resp = client.post(url, json=payload, headers=headers)

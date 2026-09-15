@@ -1,10 +1,29 @@
 import json
 import time
 import httpx
-from config.settings import LLM_BASE_URL, LLM_MODEL_NAME, LLM_API_KEY, LLM_TIMEOUT
+from config.settings import (
+    LLM_BASE_URL, LLM_MODEL_NAME, LLM_API_KEY, LLM_TIMEOUT,
+    IS_CLOUD_LLM, LLM_REASONING_EFFORT, LLM_CLOUD_MAX_TOKENS,
+)
 from config.logging_config import get_logger
 
 logger = get_logger("llm_client")
+
+
+def apply_cloud_compat(payload: dict) -> dict:
+    """云端兼容收口（本地 provider=local 时全 no-op，原行为不变）：
+    1) 云端分支：去掉本地 llama.cpp 专属的 reasoning_effort 硬编码，输出预算封顶
+       （DeepSeek/豆包最大 8192，OpenAI gpt-4o 16384，超限直接 400）；
+    2) LLM_REASONING_EFFORT 非空时，本地/云端统一以 env 档位为准。"""
+    if IS_CLOUD_LLM:
+        payload.pop("reasoning_effort", None)
+        try:
+            payload["max_tokens"] = min(int(payload.get("max_tokens", 0)), LLM_CLOUD_MAX_TOKENS)
+        except (TypeError, ValueError):
+            pass
+    if LLM_REASONING_EFFORT:
+        payload["reasoning_effort"] = LLM_REASONING_EFFORT
+    return payload
 
 
 def _extract_last_json(text: str):
@@ -66,7 +85,8 @@ class LLMClient:
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
-        if no_think:
+        if no_think and not IS_CLOUD_LLM:
+            # /no_think 是 Qwen3 文本开关，云端不注入
             messages = self._apply_no_think(messages)
 
         payload = {
@@ -79,6 +99,7 @@ class LLMClient:
             # Qwen3.8 llama.cpp 默认 xhigh：reasoning 无限蔓延吃光预算 → content 空/截断。
             # 生成类任务传 medium 让思维收敛（实测 5.4k 上下文 29.6s 输出 1040 字完整）。
             payload["reasoning_effort"] = reasoning_effort
+        payload = apply_cloud_compat(payload)
 
         try:
             # xhigh 长任务：read 必须放宽（实测严格重生成 60-125s），connect 保持短
@@ -123,7 +144,7 @@ class LLMClient:
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
-        if no_think:
+        if no_think and not IS_CLOUD_LLM:
             messages = self._apply_no_think(messages)
         attempts = 0
         budget = max(512, int(max_tokens))
@@ -141,6 +162,7 @@ class LLMClient:
             }
             if reasoning_effort:
                 payload["reasoning_effort"] = reasoning_effort
+            payload = apply_cloud_compat(payload)
             start = time.time()
             try:
                 with httpx.Client(timeout=httpx.Timeout(connect=10.0, read=read_timeout, write=60.0, pool=30.0)) as client:

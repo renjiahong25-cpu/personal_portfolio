@@ -796,6 +796,9 @@ class ChatFlow:
                 "reasoning_effort": "medium",
                 "stream": True,
             }
+            # 云端兼容分支（provider=local 时 no-op）：去掉本地专属 reasoning_effort、输出预算封顶
+            from core.llm_client import apply_cloud_compat
+            payload = apply_cloud_compat(payload)
             timeout = httpx.Timeout(connect=settings.LLM_TIMEOUT, read=300.0, write=60.0, pool=30.0)
             async with httpx.AsyncClient(timeout=timeout) as client:
                 async with client.stream("POST", url, json=payload, headers=headers) as resp:
