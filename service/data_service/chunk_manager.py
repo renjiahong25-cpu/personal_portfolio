@@ -14,7 +14,6 @@ from core.llm_client import llm_client
 from service.data_service.doc_processor import (
     DocumentSlice,
     ChapterSlice,
-    ParagraphSlice,
     _estimate_token_count,
 )
 
@@ -55,6 +54,7 @@ class ChunkManager:
                 publish_time=self._parse_datetime(doc_slice.publish_time),
                 version=doc_slice.version,
                 category=doc_slice.doc_type,
+                country=getattr(doc_slice, "country", "") or "",
             )
             db.add(doc_main)
             db.flush()

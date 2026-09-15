@@ -18,7 +18,7 @@ from config.settings import (
     EVAL_LEVEL_RATIO,
 )
 from core.llm_client import llm_client as _default_llm
-from db.models.base import SessionLocal, EvalResult, DocParagraph, DocMain, DocChapter
+from db.models.base import SessionLocal, EvalResult, DocParagraph, DocMain
 
 from ._text_utils import extract_keywords, is_refusal, truncate
 from .metrics_calculator import MetricsCalculator

@@ -1,0 +1,40 @@
+services:
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_dev}
+      MYSQL_DATABASE: cross_border_agent
+      MYSQL_USER: agent
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-agent_dev}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./deploy/mysql-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  web:
+    build: .
+    environment:
+      QUOTE_ONLY: "1"
+      MYSQL_HOST: db
+      MYSQL_PORT: "3306"
+      MYSQL_USER: agent
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-agent_dev}
+      MYSQL_DATABASE: cross_border_agent
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://127.0.0.1:8000/v1}
+      LLM_MODEL_NAME: Qwen3.8-27B
+      TARIFF_SYNC_ENABLE: "false"
+      LANG: C.UTF-8
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  mysql_data:

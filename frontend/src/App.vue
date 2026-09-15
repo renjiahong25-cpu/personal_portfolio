@@ -34,6 +34,14 @@
           <el-icon><DataAnalysis /></el-icon>
           <span>评测监控</span>
         </el-menu-item>
+        <el-menu-item index="/tariff">
+          <el-icon><Goods /></el-icon>
+          <span>关税与HS编码</span>
+        </el-menu-item>
+        <el-menu-item index="/quote">
+          <el-icon><Money /></el-icon>
+          <span>对美报价重算</span>
+        </el-menu-item>
       </el-menu>
 
       <div class="sidebar-footer">

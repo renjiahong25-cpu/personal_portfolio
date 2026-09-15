@@ -1,0 +1,16 @@
+.git
+scripts
+backups
+logs
+data/eval
+frontend/src
+frontend/node_modules
+frontend/tests
+frontend/playwright*
+frontend/vite.config.js
+frontend/*.json
+__pycache__
+*.pyc
+*.log
+.venv
+.env

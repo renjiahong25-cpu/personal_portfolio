@@ -131,6 +131,24 @@ async def run_spider(
 
 
 # ============================================================
+# POST /api/spider/run_all - 手动触发全量巡检（所有 RUNNING 站点，后台异步）
+# 每日巡检调度器的调试/补跑入口：抓取 + 变更增量入库 一条龙
+# ============================================================
+@router.post("/run_all", response_model=CommonResp)
+async def run_all_sites(background_tasks: BackgroundTasks) -> CommonResp:
+    start = time.time()
+    logger.info("手动触发全量巡检接口开始")
+    try:
+        from service.spider_service.scheduler import spider_scheduler
+        background_tasks.add_task(spider_scheduler.run_once)
+        elapsed = round(time.time() - start, 3)
+        logger.info(f"手动触发全量巡检接口完成 | task=已提交后台 | elapsed={elapsed}s")
+        return _ok({"task_status": "submitted", "message": "全量巡检（抓取+增量入库）已提交后台执行"})
+    except Exception as e:
+        return _raise_exc(e)
+
+
+# ============================================================
 # GET /api/spider/candidate - 获取 AI 候选配置（待审核）
 # ============================================================
 @router.get("/candidate", response_model=CommonResp)

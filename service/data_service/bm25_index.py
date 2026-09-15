@@ -1,12 +1,11 @@
 """BM25 索引构建和检索：支持中英文分词、增量更新、与向量检索融合打分"""
 
 import time
-from typing import Optional
 from sqlalchemy.orm import Session
 
 from config.settings import RETRIEVE_TOP_K
 from config.logging_config import get_logger
-from db.models.base import DocParagraph, DocChapter, get_db
+from db.models.base import DocParagraph, get_db
 from core.bm25_engine import bm25_engine
 from service.data_service.vector_store import vector_store
 

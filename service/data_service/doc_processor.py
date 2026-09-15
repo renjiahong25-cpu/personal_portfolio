@@ -4,7 +4,7 @@ import time
 import re
 import uuid
 from pathlib import Path
-from typing import Optional
+from collections import defaultdict
 from dataclasses import dataclass, field
 
 import fitz  # PyMuPDF
@@ -50,6 +50,7 @@ class DocumentSlice:
     publish_time: str = ""
     version: str = ""
     is_draft: bool = False
+    country: str = ""  # 文档管辖国家（入库时标注，供检索国家分区）
     chapters: list[ChapterSlice] = field(default_factory=list)
 
 
@@ -83,12 +84,17 @@ def _clean_html(html_content: str) -> str:
 # ------------------------------------------------------------------
 # PDF 解析
 # ------------------------------------------------------------------
-def _parse_pdf(file_path: str) -> list[dict]:
-    """使用 PyMuPDF 解析 PDF，返回按页分段的文本列表"""
+def _parse_pdf(file_path: str) -> tuple[list[dict], list[list]]:
+    """使用 PyMuPDF 解析 PDF，返回按页分段的文本列表及书签目录(如果存在)"""
     start = time.time()
     pages = []
+    toc = []
     try:
         doc = fitz.open(file_path)
+        try:
+            toc = doc.get_toc()  # [[level, title, page], ...]
+        except Exception:
+            toc = []
         for page_num in range(len(doc)):
             page = doc[page_num]
             text = page.get_text("text")
@@ -99,11 +105,143 @@ def _parse_pdf(file_path: str) -> list[dict]:
                 })
         doc.close()
         elapsed = round(time.time() - start, 3)
-        logger.info(f"PDF 解析完成 | file={file_path} | pages={len(pages)} | elapsed={elapsed}s")
+        logger.info(
+            f"PDF 解析完成 | file={file_path} | pages={len(pages)} | "
+            f"toc_entries={len(toc)} | elapsed={elapsed}s"
+        )
     except Exception as e:
         logger.error(f"PDF 解析失败 | file={file_path} | error={e}", exc_info=True)
         raise
-    return pages
+    return pages, toc
+
+
+def _clean_pdf_noise(pages: list[dict]) -> list[dict]:
+    """去除 PDF 每页重复出现的页眉/页脚噪声行，以及孤立页码行"""
+    if not pages:
+        return pages
+    # 统计每行进全文出现频率（用于识别跨页重复的页眉/页脚）
+    line_count: dict[str, int] = defaultdict(int)
+    for p in pages:
+        for line in p["text"].splitlines():
+            s = line.strip()
+            if s:
+                line_count[s] += 1
+    # 出现次数达页面数一半以上视为页眉页脚
+    threshold = max(1, len(pages) // 2)
+    noise_lines = {s for s, c in line_count.items() if c >= threshold}
+    # 孤立页码行（纯数字或 "Seite N"/"Page N"）
+    page_num_re = re.compile(r'^\d{1,4}$')
+    seite_re = re.compile(r'^(?:Seite|Page|第\s*\d+\s*页)\s*:?\s*\d{1,4}$', re.IGNORECASE)
+
+    cleaned = []
+    for p in pages:
+        keep = []
+        for line in p["text"].splitlines():
+            s = line.strip()
+            if not s:
+                continue
+            if s in noise_lines:
+                continue
+            if page_num_re.match(s) or seite_re.match(s):
+                continue
+            keep.append(line)
+        if keep:
+            cleaned.append({"page_num": p["page_num"], "text": "\n".join(keep)})
+    return cleaned
+
+
+def _is_toc_bookmark(title: str) -> bool:
+    """判断书签是否为目录类（PDF 自带目录页，不应作为正文章节）"""
+    s = re.sub(r'[\s\d\.\-–_]+', '', title.strip().lower())
+    return (
+        "inhaltsverzeichnis" in s
+        or "tableofcontents" in s
+        or s in ("inhalt", "inhaltsübersicht", "目录", "contents", "index")
+    )
+
+
+def _slice_by_toc(pages: list[dict], toc: list[list]) -> list[ChapterSlice]:
+    """
+    按 PDF 书签目录切分章节。
+    toc = [[level, title, page], ...]，page 为书中页码（1 起）。
+    思路：将各书签按其 page 映射到实际页，并按层级归属章节；
+    无书签归属的页（如封面、目录页）丢弃。
+    """
+    if not toc:
+        return []
+    # 书签页码 --> 该书签归属的章节（按层级取最近的父级）
+    # 先将书签按页码排序，再记录每页属于哪个章节
+    page_to_title: dict[int, list[list]] = defaultdict(list)  # page -> [(level, title)]
+    max_page = max((t[1] for t in toc if len(t) >= 2 and isinstance(t[1], int)), default=0)
+    for entry in toc:
+        if len(entry) >= 3:
+            level, title, page = entry[0], entry[1], entry[2]
+        elif len(entry) == 2:
+            title, page = entry[0], entry[1]
+            level = 1
+        else:
+            continue
+        if isinstance(page, int) and page > 0 and isinstance(title, str) and title.strip():
+            if not _is_toc_bookmark(title):
+                page_to_title[page].append((level, title))
+
+    if not page_to_title:
+        return []
+
+    # 生成各页归属的章节标题（用最近的书签 + 层级栈）
+    titles_stack: list[tuple[int, str]] = []  # (level, title)
+    page_owner: dict[int, str] = {}
+    ordered_pages = sorted(page_to_title.keys())
+    for idx, page in enumerate(ordered_pages):
+        # 若该页有断层（前面的页无书签），沿用最近章节
+        prev_page = ordered_pages[idx - 1] if idx > 0 else 0
+        for slot in range(prev_page + 1, page + 1):
+            page_owner[slot] = titles_stack[-1][1] if titles_stack else ""
+        # 处理本页书签：同一位置同级或更高级别书签会覆盖
+        for level, title in page_to_title[page]:
+            while titles_stack and titles_stack[-1][0] >= level:
+                titles_stack.pop()
+            titles_stack.append((level, title))
+            page_owner[page] = title
+
+    # 尾页（最后一个书签之后）
+    last_marker = ordered_pages[-1]
+    for slot in range(last_marker, max_page + 1):
+        if slot not in page_owner:
+            page_owner[slot] = titles_stack[-1][1] if titles_stack else ""
+
+    # 按章节聚合页面文本
+    chapter_pages: dict[str, list[str]] = defaultdict(list)
+    chapter_order: list[str] = []
+    for p in pages:
+        pnum = p["page_num"]
+        owner = page_owner.get(pnum, "")
+        if not owner:
+            continue  # 丢弃封面/目录等无书签归属页
+        if owner not in chapter_pages:
+            chapter_order.append(owner)
+        chapter_pages[owner].append(p["text"])
+
+    chapters = []
+    chapter_id = 0
+    for title in chapter_order:
+        body = "\n\n".join(chapter_pages[title]).strip()
+        if not body:
+            continue
+        # 书签标题往往带 "4.3.4 " 编号，路径直接使用标题
+        chapter_path = _build_chapter_path("", title)
+        paragraphs = _split_paragraphs(body, MAX_CHUNK_TOKEN)
+        if not paragraphs:
+            continue
+        chapter_id += 1
+        chapters.append(ChapterSlice(
+            chapter_id=chapter_id,
+            title=title,
+            level=1,
+            chapter_path=chapter_path,
+            paragraphs=paragraphs,
+        ))
+    return chapters
 
 
 # ------------------------------------------------------------------
@@ -297,11 +435,18 @@ def process_pdf(file_path: str, title: str = "", source_url: str = "",
     logger.info(f"开始处理 PDF | file={file_path} | doc_uuid={doc_uuid}")
 
     # 解析 PDF
-    pages = _parse_pdf(file_path)
-    full_text = "\n\n".join(p["text"] for p in pages)
+    pages, toc = _parse_pdf(file_path)
 
-    # 三级切片
-    chapters = _build_slices_from_text(full_text, doc_uuid, source_url)
+    # 优先按书签目录切片（能还原真实章节结构）
+    chapters = []
+    if toc:
+        cleaned_pages = _clean_pdf_noise(pages)
+        chapters = _slice_by_toc(cleaned_pages, toc)
+    if not chapters:
+        # 无书签：退化为纯文本三级切片
+        cleaned_pages = _clean_pdf_noise(pages)
+        full_text = "\n\n".join(p["text"] for p in cleaned_pages)
+        chapters = _build_slices_from_text(full_text, doc_uuid, source_url)
 
     result = DocumentSlice(
         doc_uuid=doc_uuid,

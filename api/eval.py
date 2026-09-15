@@ -16,12 +16,11 @@ from sqlalchemy import desc
 from config.logging_config import get_logger
 from config.constants import (
     CODE_SUCCESS, CODE_PARAM_ERROR, CODE_SERVER_ERROR, CODE_NOT_FOUND,
-    MSG_SUCCESS, MSG_PARAM_ERROR, MSG_SERVER_ERROR, MSG_NOT_FOUND,
+    MSG_SUCCESS, MSG_SERVER_ERROR, MSG_NOT_FOUND,
 )
 from schemas.schemas import EvalRunReq, CommonResp
-from db.models.base import SessionLocal, EvalResult, BadCase
+from db.models.base import SessionLocal, EvalResult
 from service.eval_service.badcase_manager import BadCaseManager
-from service.eval_service.eval_set_generator import EvalSetGenerator
 from service.eval_service.regression_tester import run_regression
 from service.eval_service.report_generator import ReportGenerator
 

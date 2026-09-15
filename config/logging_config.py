@@ -1,7 +1,6 @@
 import logging
 import logging.handlers
 import sys
-from pathlib import Path
 from config.settings import LOG_DIR, LOG_LEVEL
 
 

@@ -10,7 +10,7 @@ import json
 import time
 
 from config.logging_config import get_logger
-from config.settings import EVAL_REPORT_DIR, EVAL_RAW_ITEM_DIR
+from config.settings import EVAL_REPORT_DIR
 from db.models.base import SessionLocal, EvalResult
 
 from ._text_utils import truncate

@@ -29,6 +29,18 @@ const routes = [
     component: () => import('@/views/EvalView.vue'),
     meta: { title: '评测监控' },
   },
+  {
+    path: '/tariff',
+    name: 'Tariff',
+    component: () => import('@/views/TariffView.vue'),
+    meta: { title: '关税与HS编码' },
+  },
+  {
+    path: '/quote',
+    name: 'Quote',
+    component: () => import('@/views/QuoteView.vue'),
+    meta: { title: '对美报价成本重算' },
+  },
 ]
 
 const router = createRouter({

@@ -25,10 +25,8 @@ env/
 *.env
 config/secrets.py
 
-# Logs
-logs/*.log
-logs/*.json
-logs/**/*.log
+# Logs / 运行时产物（整目录）
+logs/
 
 # Database
 *.db
@@ -57,3 +55,23 @@ Thumbs.db
 # Celery
 celerybeat-schedule
 celerybeat.pid
+
+# ---- 不上传：代理/过程/内部文档 与 调试痕迹 ----
+docs/
+scripts/
+backups/
+.opencode/
+# 根目录下所有 md（含 PRD、技术架构设计文档、AGENTS.md、issues.md），仅保留 README.md
+/*.md
+!README.md
+
+# 根目录探针/一次性日志
+probe_*.log
+
+# 前端 Playwright 调试产物（保留 tests/ + playwright.config.js）
+frontend/logs/
+frontend/test-results/
+frontend/pw-*.cjs
+frontend/pw-probe.txt
+frontend/playwright-e2e.cjs
+frontend/dev-quote-spy.cjs

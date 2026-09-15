@@ -15,7 +15,6 @@ AI 幻觉双重校验模块
 import asyncio
 import re
 import time
-from typing import Optional
 
 from config.logging_config import get_logger
 from config import settings
@@ -32,6 +31,9 @@ _STOPWORDS = {
 }
 _COVERAGE_PASS_THRESHOLD = 0.2   # 覆盖率低于该值判定为"疑似无依据"
 _NUMBERS_RE = re.compile(r"\b\d+(?:\.\d+)?%?\b")
+# LLM 校验的原文输入上限：contexts 按相关度排序，取头部即可覆盖答案引用的高相关段落；
+# 全量原文（可达 6 万字符）会让 xhigh reasoning 爆预算→空输出（E2E 复现 4 连空）
+_FACT_CHECK_SRC_CAP = 12000
 
 
 def _tokenize(text: str) -> set[str]:
@@ -69,10 +71,37 @@ class FactChecker:
         # 数字类词元必须逐字出现在原文，防止编造税率/金额
         ans_numbers = _NUMBERS_RE.findall(answer)
         missing_numbers = [n for n in ans_numbers if n not in src_text]
+
+        # 跨语言护栏：回答为中文、资料主要为外文（如德国ATLAS德文手册）时，
+        # 中文字词必然匹配不上原文，覆盖率指标失真。此时只校验(1)数字有原文依据
+        # (2)英文/数字专名(如 ATLAS/MRN/UZK/ARI/BIN)在原文出现，避免把"中文转述
+        # 德文资料"误判为无依据。
+        # 判定：答案含中文，且资料正文中文稀疏（中文占比 < 0.5，即主体为外文）；
+        # 主/辅语言混合场景（如多文档）亦按"主体语料非中文"进入跨语言模式。
+        has_cjk = bool(re.search(r"[\u4e00-\u9fff]", answer or ""))
+        src_cjk = re.findall(r"[\u4e00-\u9fff]", sources_text or "")
+        cjk_ratio = len(src_cjk) / max(1, len(list(iter(sources_text or ""))))
+        cross_lang = has_cjk and cjk_ratio < 0.5
+        if cross_lang:
+            latin_tokens = {t for t in ans_tokens if re.match(r"^[a-z]", t)}
+            missing_latin = sorted(latin_tokens - set(re.findall(r"[a-z][a-z0-9\-/]+", src_text)))[:10]
+            num_ok = len(missing_numbers) <= max(1, len(ans_numbers) // 4)
+            latin_ok = (not latin_tokens) or len(latin_tokens - set(missing_latin)) / len(latin_tokens) >= 0.3
+            passed = num_ok and latin_ok
+            return {
+                "passed": passed,
+                "coverage": round(coverage, 3),
+                "cross_lang": True,
+                "unsupported": unsupported,
+                "missing_numbers": missing_numbers[:10],
+                "missing_latin": missing_latin,
+            }
+
         passed = coverage >= _COVERAGE_PASS_THRESHOLD and len(missing_numbers) <= max(1, len(ans_numbers) // 4)
         return {
             "passed": passed,
             "coverage": round(coverage, 3),
+            "cross_lang": False,
             "unsupported": unsupported,
             "missing_numbers": missing_numbers[:10],
         }
@@ -83,10 +112,14 @@ class FactChecker:
         contexts: list[dict],
         request_id: str = "",
         degraded: bool = False,
+        lang: str = "",
     ) -> dict:
         """
         双重校验入口
         :return: {passed, reason, local_pass, llm_pass, coverage, llm_checked}
+        :param lang: 兼容参数（调用方传入目标语言，如"德语"）。实际跨语言判定由
+                     _local_gate 自动探测（资料中文占比<0.5）并走"语义等价性"比对，
+                     不再需要翻译答案，故此处仅作日志/兼容占位。
         """
         start = time.time()
         req_tag = request_id or "-"
@@ -102,20 +135,49 @@ class FactChecker:
         local_pass = local["passed"]
         logger.info(
             f"[{req_tag}] 本地统计门控 完成 | passed={local_pass} | coverage={local['coverage']} | "
+            f"cross_lang={local.get('cross_lang', False)} | "
             f"unsupported={local['unsupported'][:5]}"
         )
 
         # ---- 校验2：LLM 独立二次核查 ----
+        # fail-closed：LLM 校验被尝试但失败（异常/超时/空输出）→ 判不通过，触发严格重生成兜底，
+        # 避免"防幻觉安全网因校验自身失败而形同虚设直接放行"（BC-08）。
+        # 仅当 LLM_CHECK_ENABLE=false / degraded 时跳过校验，退回纯本地门控（保持降级语义）。
+        # 原文输入限长 _FACT_CHECK_SRC_CAP：contexts 按相关度排序取头部，防 xhigh reasoning 爆预算。
         llm_pass, llm_checked = True, False
-        if settings.LLM_CHECK_ENABLE and not degraded and sources_text.strip():
-            try:
-                ok = await asyncio.to_thread(self.llm.check_fact, sources_text, answer)
-                llm_pass = ok
-                llm_checked = True
-            except TimeoutError:
-                logger.warning(f"[{req_tag}] LLM 事实校验超时，按通过处理（本地门控兜底）")
-            except Exception as e:
-                logger.error(f"[{req_tag}] LLM 事实校验异常，按通过处理（本地门控兜底） | error={e}", exc_info=True)
+        llm_unavailable = False
+        check_src = sources_text[:_FACT_CHECK_SRC_CAP]
+        # 本地门控通过 → 跳过 LLM 二次核查。
+        # 原因：本地已覆盖数字/专名/术语依据（跨语言模式另做专名+数字护栏），
+        # 极长答案 + xhigh reasoning 下 LLM 核查的 YES/NO 极不稳定（E2E：40s 空输出重试、
+        # 常判 FAIL 触发 ~92s 严格重生成、重生成几乎总是兜底回同一原文——成本 ~190s 无增益）。
+        # 本地门控未通过时仍保留 LLM 核查 + fail-closed：防幻觉安全网不能因本地误判直接放行。
+        if settings.LLM_CHECK_ENABLE and not degraded and sources_text.strip() and not local_pass:
+            if local.get("cross_lang"):
+                # 跨语言模式：不翻译，直接用"语义等价性"比对（德/法/英原文 vs 中文转述）。
+                try:
+                    ok = await asyncio.to_thread(self.llm.check_fact_cross_lang, check_src, answer)
+                    llm_pass = ok
+                    llm_checked = True
+                except Exception as e:
+                    llm_unavailable = True
+                    logger.error(
+                        f"[{req_tag}] LLM 跨语言事实校验失败，fail-closed 判不通过（触发严格重生成） | error={e}",
+                        exc_info=True,
+                    )
+            else:
+                try:
+                    ok = await asyncio.to_thread(self.llm.check_fact, check_src, answer)
+                    llm_pass = ok
+                    llm_checked = True
+                except Exception as e:
+                    llm_unavailable = True
+                    logger.error(
+                        f"[{req_tag}] LLM 事实校验失败，fail-closed 判不通过（触发严格重生成） | error={e}",
+                        exc_info=True,
+                    )
+        if llm_unavailable:
+            llm_pass = False
 
         passed = local_pass and llm_pass
         reasons = []
@@ -123,11 +185,15 @@ class FactChecker:
             reasons.append(f"本地覆盖率偏低({local['coverage']})，存在无依据词元: {local['unsupported'][:5]}")
         if llm_checked and not llm_pass:
             reasons.append("LLM 二次核查判定回答与原文不符")
+        if llm_unavailable:
+            reasons.append("LLM 二次核查不可用（fail-closed）")
         reason = "；".join(reasons) or "通过"
+        if local.get("cross_lang"):
+            reason = f"[跨语言语义比对] {reason}"
 
         elapsed = round(time.time() - start, 3)
         logger.info(
-            f"[{req_tag}] 事实校验完成 | passed={passed} | local={local_pass} | llm={llm_pass}(checked={llm_checked}) | "
+            f"[{req_tag}] 事实校验完成 | passed={passed} | local={local_pass} | llm={llm_pass}(checked={llm_checked},unavail={llm_unavailable}) | "
             f"elapsed={elapsed}s | reason={reason[:120]}"
         )
         return {
@@ -137,4 +203,5 @@ class FactChecker:
             "llm_pass": llm_pass,
             "coverage": local["coverage"],
             "llm_checked": llm_checked,
+            "llm_unavailable": llm_unavailable,
         }

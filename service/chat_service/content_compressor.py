@@ -13,10 +13,13 @@
 """
 import asyncio
 import time
-from typing import Optional
 
 from config.logging_config import get_logger
-from config.settings import MAX_CHUNK_TOKEN, SMART_SUMMARY_ENABLE
+from config.settings import (
+    MAX_CHUNK_TOKEN,
+    SMART_SUMMARY_ENABLE,
+    CONTEXT_KEY_KEYS_ENABLE,
+)
 from core.llm_client import llm_client
 from .retriever import RetrievalItem, estimate_tokens
 
@@ -25,6 +28,7 @@ logger = get_logger("content_compressor")
 # 降级模式下的硬截断字符数（约 3 个阈值片段的字符量，保证不溢出上下文）
 _HARD_CAP_CHARS = MAX_CHUNK_TOKEN * 3 * 2
 _SUMMARY_MAX_TOKENS = 512
+_KEY_SENTENCES_MAX_TOKENS = 700
 
 
 def _build_metadata(item: RetrievalItem) -> dict:
@@ -86,7 +90,7 @@ class ContentCompressor:
             return []
 
         outputs: list[dict] = []
-        kept = summed = truncated = 0
+        kept = summed = truncated = keyed = 0
         total_before = 0
         total_after = 0
         for idx, item in enumerate(items):
@@ -97,6 +101,27 @@ class ContentCompressor:
 
             mode = "kept"
             content = raw
+
+            # 优先使用 overlay 缝合后的原段落上下文（同章节相邻段落），保证语义连贯
+            if item.overlay:
+                content = item.overlay
+                overlay_tok = item.overlay_token_len or estimate_tokens(content)
+                meta["paragraph"]["overlay"] = True
+                mode = "overlay"
+                kept += 1
+                after_tokens = overlay_tok
+                total_after += after_tokens
+                outputs.append(
+                    {
+                        "meta": meta,
+                        "content": content,
+                        "tokens": after_tokens,
+                        "original_tokens": tokens,
+                        "mode": mode,
+                    }
+                )
+                continue
+
             smart = SMART_SUMMARY_ENABLE and not degraded
 
             if tokens <= self.threshold:
@@ -104,8 +129,27 @@ class ContentCompressor:
                 mode = "kept"
                 content = raw
                 kept += 1
+            elif CONTEXT_KEY_KEYS_ENABLE:
+                # 超长内容：关键句提取（只抽不提，保留数值/条款/专名原字），
+                # 比 LLM 改写摘要更保真，校验可用原文比对
+                try:
+                    content = await asyncio.to_thread(
+                        self.llm.extract_key_sentences, raw, _KEY_SENTENCES_MAX_TOKENS
+                    )
+                    content = (content or "").strip() or raw[: _HARD_CAP_CHARS]
+                    mode = "keyed"
+                    keyed += 1
+                    logger.info(f"[{req_tag}] 段落[{idx}] 关键句提取完成 | before={tokens} | link={item.doc_title}(段落{item.paragraph_id})")
+                except Exception as e:
+                    logger.error(
+                        f"[{req_tag}] 段落[{idx}] 关键句提取失败，回退硬截断 | error={e}",
+                        exc_info=True,
+                    )
+                    mode = "truncated"
+                    content = raw[: _HARD_CAP_CHARS]
+                    truncated += 1
             elif smart:
-                # 超长内容：LLM 智能摘要提炼核心规则
+                # 兼容旧路径：超长内容 LLM 智能摘要提炼核心规则（未开启关键句提取时）
                 try:
                     content = await asyncio.to_thread(
                         self.llm.summary, raw, _SUMMARY_MAX_TOKENS
@@ -143,7 +187,8 @@ class ContentCompressor:
         elapsed = round(time.time() - start, 3)
         saved = max(total_before - total_after, 0)
         logger.info(
-            f"[{req_tag}] 内容压缩完成 | kept={kept} | summarized={summed} | truncated={truncated} | "
+            f"[{req_tag}] 内容压缩完成 | kept={kept} | overlay={sum(1 for o in outputs if o.get('mode')=='overlay')} | "
+            f"keyed={keyed} | summarized={summed} | truncated={truncated} | "
             f"tokens_before={total_before} | tokens_after={total_after} | saved={saved} | elapsed={elapsed}s"
         )
         return outputs

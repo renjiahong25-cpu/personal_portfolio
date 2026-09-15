@@ -27,7 +27,9 @@ export const useChatStore = defineStore('chat', {
     async loadHistory() {
       this.loadingHistory = true
       try {
-        const res = await getHistory()
+        // 无会话时不请求（后端要求 session_id 必填）
+        if (!this.currentSessionId) return []
+        const res = await getHistory(this.currentSessionId)
         this.history = res.data || res || []
         return this.history
       } catch (e) {
@@ -50,11 +52,14 @@ export const useChatStore = defineStore('chat', {
     },
 
     // 初始化AI回复块
-    initAssistantMessage() {
+    initAssistantMessage(query) {
       this.streamStatus = 'streaming'
       return {
         role: 'assistant',
         content: '',
+        thinking: '',
+        processing: '',
+        query: query || '',
         sources: [],
         structured: null,
         time: Date.now(),
@@ -67,12 +72,32 @@ export const useChatStore = defineStore('chat', {
       if (msg) msg.content += content
     },
 
+    // 追加AI思考过程（Qwen3 reasoning_content）
+    appendThinking(index, text) {
+      const msg = this.messages[index]
+      if (msg) msg.thinking += text
+    },
+
     // 追加溯源/结构化数据
     setStatusData(index, data) {
       const msg = this.messages[index]
       if (!msg) return
+      // 阶段进度提示（checking 等）
+      if (data.message) msg.processing = data.message
+      if (data.finish_reason === 'no_answer') msg.finish_reason = data.finish_reason
+      // 后端 answer 事件携带最终答案，覆盖流式过程中的推理原文（避免暴露原始JSON）
+      if (data.answer) {
+        msg.content = data.answer
+        msg.processing = ''
+      }
       if (data.sources) msg.sources = data.sources
+      if (data.risk_tips) msg.risk_tips = data.risk_tips
       if (data.structured) msg.structured = data.structured
+      // 交互按钮（知识库扩充：AI搜索/确认入库/不需要）
+      if (data.actions && data.actions.length) msg.actions = data.actions
+      // 入库进度自动轮询字段
+      if (data.ingest_task_id) msg.ingest_task_id = data.ingest_task_id
+      if (data.ingest_status) msg.ingest_status = data.ingest_status
       if (data.error) {
         msg.error = data.error
         msg.status = 'error'
@@ -100,9 +125,9 @@ export const useChatStore = defineStore('chat', {
     },
 
     // 提交反馈
-    async submitFeedback(recordId, helpful, comment) {
+    async submitFeedback({ session_id, query, response, feedback_type = 0, bad_reason = '' }) {
       try {
-        await sendFeedback({ record_id: recordId, helpful, comment })
+        await sendFeedback({ session_id, query, response, feedback_type, bad_reason })
         return true
       } catch (e) {
         console.error('提交反馈失败', e)

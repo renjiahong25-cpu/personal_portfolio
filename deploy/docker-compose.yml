@@ -1,0 +1,225 @@
+# 部署编排：MySQL + Redis + Milvus(server) + srv-embed + srv-quote(N副本) + srv-policy + srv-tariff + nginx
+# 用法（在服务器 quote_deploy 目录）:
+#   docker compose -f deploy/docker-compose.yml build
+#   docker compose -f deploy/docker-compose.yml up -d --scale srv-quote=3
+services:
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_dev}
+      MYSQL_DATABASE: cross_border_agent
+      MYSQL_USER: agent
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-agent_dev}
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "60", "1", "--maxmemory", "256mb"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  # ---- Milvus 向量库 server（与宿主机 milvus_lite 文件锁无关，多副本共享） ----
+  minio:
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    command: minio server /minio_data --console-address ":9001"
+    volumes:
+      - minio_data:/minio_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.14
+    command: etcd -advertise-client-urls http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    volumes:
+      - etcd_data:/etcd
+    restart: unless-stopped
+
+  milvus:
+    image: milvusdb/milvus:v2.4.17
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    healthcheck:
+      test: ["CMD", "bash", "-c", "((cat < /dev/null > /dev/tcp/127.0.0.1/19530) 2>/dev/null) && echo ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    depends_on:
+      etcd:
+        condition: service_started
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---- Embed/Rerank 微服务（模型单驻），policy 侧通过 EMBED_HTTP_URL 调用 ----
+  srv-embed:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    environment:
+      SERVICE_ROLE: embed
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+    command: ["uvicorn", "service.embed_service.embed_server:app", "--host", "0.0.0.0", "--port", "8600"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8600/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  # ---- 报价域（可水平扩容 N 副本，本次交付 3）----
+  srv-quote:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    environment:
+      SERVICE_ROLE: quote
+      MYSQL_HOST: db
+      MYSQL_PORT: "3306"
+      MYSQL_USER: agent
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-agent_dev}
+      MYSQL_DATABASE: cross_border_agent
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://127.0.0.1:8000/v1}
+      LLM_MODEL_NAME: Qwen3.8-27B
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      TARIFF_SYNC_ENABLE: "false"
+      TARIFF_FETCH_ENABLE: "true"
+      QUOTE_ASYNC_ENABLE: "true"
+      LANG: C.UTF-8
+    # 每容器 2 个 uvicorn 进程：报价快路径为 GIL 敏感（单请求仅 ~10ms，200 并发下
+    # 单进程 40 anyio 线程 GIL 争用把 p50 拉到 ~400ms）。多进程摊薄 GIL 争用，
+    # 水平扩容时 nginx least_conn 跨容器+跨进程均衡。
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "2"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---- 报价异步 worker（Redis Stream 队列消费；"快同步/慢异步"混合模式）----
+  srv-quote-worker:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    environment:
+      SERVICE_ROLE: quote_worker
+      MYSQL_HOST: db
+      MYSQL_PORT: "3306"
+      MYSQL_USER: agent
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-agent_dev}
+      MYSQL_DATABASE: cross_border_agent
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://127.0.0.1:8000/v1}
+      LLM_MODEL_NAME: Qwen3.8-27B
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      TARIFF_SYNC_ENABLE: "false"
+      LANG: C.UTF-8
+    command: ["python", "-m", "service.quote_worker"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---- 政策域（知识库 + 问答 + 巡检调度，单副本）----
+  srv-policy:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    environment:
+      SERVICE_ROLE: policy
+      MYSQL_HOST: db
+      MYSQL_PORT: "3306"
+      MYSQL_USER: agent
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-agent_dev}
+      MYSQL_DATABASE: cross_border_agent
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://127.0.0.1:8000/v1}
+      LLM_MODEL_NAME: Qwen3.8-27B
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      MILVUS_URI: http://milvus:19530
+      EMBED_HTTP_URL: http://srv-embed:8600
+      EMBED_HTTP_TIMEOUT: "10"
+      TARIFF_SYNC_ENABLE: "false"
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+      LANG: C.UTF-8
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      milvus:
+        condition: service_healthy
+      srv-embed:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---- 关税同步调度器（唯一 worker，负责周期拉取 HTS/TARIC + 附加关税刷新）----
+  srv-tariff:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    environment:
+      SERVICE_ROLE: tariff
+      MYSQL_HOST: db
+      MYSQL_PORT: "3306"
+      MYSQL_USER: agent
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-agent_dev}
+      MYSQL_DATABASE: cross_border_agent
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      TARIFF_SYNC_ENABLE: "false"
+      TARIFF_FETCH_ENABLE: "true"
+      LANG: C.UTF-8
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---- 网关（唯一对外端口 8080）：静态资源 + API 路由分发 ----
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ../frontend/dist:/usr/share/nginx/html:ro
+    depends_on:
+      - srv-quote
+      - srv-policy
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  minio_data:
+  etcd_data:

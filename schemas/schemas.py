@@ -6,6 +6,10 @@ class ChatQueryReq(BaseModel):
     question: str
     session_id: str = ""
     request_id: str = ""  # 幂等去重用，可选
+    # 前端交互按钮结构化动作（确定性通道，优先于 LLM 意图识别）：
+    # ai_search_ingest / confirm_ingest / decline / ingest_progress
+    action: str = ""
+    action_data: dict = {}
 
 
 class ChatQueryResp(BaseModel):

@@ -1,20 +1,16 @@
 """Milvus Lite 向量库操作封装：连接管理、写入、检索、内存优化"""
 
 import time
-from typing import Optional
-from sqlalchemy.orm import Session
 
 from config.settings import (
     MILVUS_COLLECTION,
     MILVUS_BATCH_INSERT_SIZE,
-    MILVUS_CACHE_LIMIT,
     RETRIEVE_TOP_K,
     SIMILARITY_THRESHOLD,
     VECTOR_WEIGHT,
     BM25_WEIGHT,
 )
 from config.logging_config import get_logger
-from db.models.base import DocParagraph, get_db
 from core.vector_client import vector_client
 
 logger = get_logger("vector_store")

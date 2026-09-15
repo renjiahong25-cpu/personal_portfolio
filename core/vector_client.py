@@ -9,7 +9,6 @@ from pymilvus.milvus_client.index import IndexParams
 from config.settings import (
     MILVUS_URI,
     MILVUS_COLLECTION,
-    MILVUS_CACHE_LIMIT,
     EMBEDDING_DIM,
 )
 from config.logging_config import get_logger

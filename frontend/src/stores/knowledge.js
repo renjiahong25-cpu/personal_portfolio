@@ -32,7 +32,8 @@ export const useKnowledgeStore = defineStore('knowledge', {
       this.loadingDocs = true
       try {
         const res = await getDocList()
-        this.docs = res.data || res || []
+        const data = res.data || res || []
+        this.docs = Array.isArray(data) ? data : data.items || []
         return this.docs
       } catch (e) {
         console.error('加载文档列表失败', e)
@@ -53,7 +54,9 @@ export const useKnowledgeStore = defineStore('knowledge', {
       try {
         const res = await getDocTree(docId)
         const data = res.data || res || []
-        this.treeData = this._formatTree(data)
+        // 后端返回 { chapter_list: [...] }，章节节点带 paragraphs 而非 children
+        const chapterList = Array.isArray(data) ? data : Array.isArray(data.chapter_list) ? data.chapter_list : []
+        this.treeData = this._formatTree(chapterList)
         return this.treeData
       } catch (e) {
         console.error('加载目录树失败', e)
@@ -68,8 +71,8 @@ export const useKnowledgeStore = defineStore('knowledge', {
       return (nodes || []).map((node) => ({
         ...node,
         key: node.id,
-        label: node.title || node.name,
-        children: this._formatTree(node.children),
+        label: node.title || node.name || node.chapter_title,
+        children: this._formatTree(node.children || node.paragraphs),
       }))
     },
 

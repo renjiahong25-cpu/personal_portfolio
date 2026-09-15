@@ -14,15 +14,15 @@
           ></el-button>
         </div>
 
-        <el-timeline v-if="history.length" class="history-list">
+        <el-timeline v-if="chat.history.length" class="history-list">
           <el-timeline-item
-            v-for="(item, index) in history"
+            v-for="(item, index) in chat.history"
             :key="index"
-            :timestamp="formatTime(item.time || item.created_at)"
+            :timestamp="formatTime(item.time || item.created_at || item.create_time)"
             placement="top"
           >
             <div class="history-item" :class="{ active: item.session_id === chat.currentSessionId }" @click="selectHistory(item)">
-              <span class="history-text">{{ item.summary || item.question || '历史会话' }}</span>
+              <span class="history-text">{{ item.summary || item.query || item.question || '历史会话' }}</span>
               <el-icon class="history-icon" v-if="item.session_id === chat.currentSessionId"><Check /></el-icon>
             </div>
           </el-timeline-item>
@@ -75,6 +75,22 @@
               </div>
               <div class="ai-content">
                 <div class="bubble ai-bubble">
+                  <!-- AI 思考过程（Qwen3 reasoning） -->
+                  <div v-if="msg.thinking" class="thinking-block">
+                    <div class="thinking-header" @click="msg.thinkingOpen = !msg.thinkingOpen">
+                      <el-icon><MagicStick /></el-icon>
+                      <span>AI 分析中…</span>
+                      <el-icon class="thinking-toggle"><ArrowDown v-if="!msg.thinkingOpen" /><ArrowUp v-else /></el-icon>
+                    </div>
+                    <div v-show="msg.thinkingOpen !== false" class="thinking-text">{{ msg.thinking }}</div>
+                  </div>
+
+                  <!-- 阶段处理状态 -->
+                  <div v-if="msg.processing && chat.streaming" class="processing-tip">
+                    <el-icon class="is-loading"><Loading /></el-icon>
+                    <span>{{ msg.processing }}</span>
+                  </div>
+
                   <!-- 结构化结果展示 -->
                   <div v-if="msg.structured" class="structured-result">
                     <div class="structured-section">
@@ -102,6 +118,21 @@
                     :content="msg.content"
                     :streaming="chat.streaming && msgIndex === chat.messages.length - 1 && msg.role === 'assistant'"
                   />
+
+                  <!-- 交互按钮（知识库扩充：AI自动搜索/确认入库/不需要） -->
+                  <div v-if="msg.actions && msg.actions.length" class="msg-actions">
+                    <el-button
+                      v-for="a in msg.actions"
+                      :key="a.type"
+                      size="small"
+                      :type="a.primary ? 'primary' : 'default'"
+                      :loading="msg.actionLoading === a.type"
+                      :disabled="!!msg.actionLoading && msg.actionLoading !== a.type"
+                      @click="handleAction(msg, a)"
+                    >
+                      {{ a.label }}
+                    </el-button>
+                  </div>
 
                   <!-- 异常状态提示 -->
                   <div v-if="msg.status === 'error'" class="error-tip">
@@ -184,9 +215,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useChatStore } from '@/stores/chat'
-import { chatQueryStream } from '@/api/chat'
+import { chatQueryStream, chatActionQuery } from '@/api/chat'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import StreamingText from '@/components/StreamingText.vue'
 import SourceTree from '@/components/SourceTree.vue'
@@ -221,7 +252,7 @@ const handleSend = async () => {
 
   // 新增用户消息 & 初始化AI消息
   chat.addUserMessage(content)
-  const aiMsg = chat.initAssistantMessage()
+  const aiMsg = chat.initAssistantMessage(content)
   chat.messages.push(aiMsg)
   const aiIndex = chat.messages.length - 1
 
@@ -234,8 +265,17 @@ const handleSend = async () => {
       chat.appendContent(aiIndex, text)
       scrollToBottom()
     },
+    onThinking: (text) => {
+      chat.appendThinking(aiIndex, text)
+      scrollToBottom()
+    },
     onStatus: (data) => {
       chat.setStatusData(aiIndex, data)
+      // 文本意图（如"确认抓取"）触发入库后，同样启动进度自动轮询
+      if (data.ingest_task_id && data.ingest_status === 'running') {
+        const m = chat.messages[aiIndex]
+        if (m) startIngestPolling(aiIndex, m)
+      }
       scrollToBottom()
     },
     onDone: (data) => {
@@ -256,15 +296,110 @@ const askQuestion = (q) => {
   handleSend()
 }
 
+// ---------------- 交互按钮（知识库扩充：AI搜索/确认入库/不需要） ----------------
+const ACTION_LABELS = {
+  ai_search_ingest: '（按钮）AI自动搜索官网并入库',
+  confirm_ingest: '（按钮）确认入库',
+  decline: '（按钮）不需要',
+}
+
+const handleAction = async (msg, action) => {
+  if (chat.streaming || msg.actionLoading) return
+  msg.actionLoading = action.type
+  const display = ACTION_LABELS[action.type] || `（按钮）${action.label}`
+  chat.addUserMessage(display)
+  const aiMsg = chat.initAssistantMessage(display)
+  chat.messages.push(aiMsg)
+  const aiIndex = chat.messages.length - 1
+  scrollToBottom()
+  try {
+    const data = await chatActionQuery(action.type, {
+      country: action.country || '',
+      task_id: msg.ingest_task_id || 0,
+    })
+    if (data.answer) {
+      aiMsg.content = data.answer
+      aiMsg.risk_tips = data.risk_tips || ''
+      aiMsg.sources = data.sources || []
+      if (data.actions && data.actions.length) aiMsg.actions = data.actions
+      if (data.ingest_task_id) aiMsg.ingest_task_id = data.ingest_task_id
+      if (data.ingest_status) aiMsg.ingest_status = data.ingest_status
+      if (data.ingest_status === 'running') startIngestPolling(aiIndex, aiMsg)
+    } else {
+      aiMsg.status = 'error'
+      aiMsg.error = '操作未生效，请重试'
+    }
+    chat.endStream('')
+    chat.loadHistory()
+    scrollToBottom()
+  } catch (e) {
+    aiMsg.status = 'error'
+    aiMsg.error = '操作执行失败，请稍后重试'
+    chat.errorStream(e)
+  } finally {
+    msg.actionLoading = ''
+  }
+}
+
+// ---------------- 入库进度自动轮询（30s/次，终态停止） ----------------
+const INGEST_POLL_INTERVAL = 30 * 1000
+const pollers = {}
+
+const startIngestPolling = (msgIndex, msg) => {
+  if (pollers[msgIndex] || !msg.ingest_task_id) return
+  pollers[msgIndex] = setInterval(async () => {
+    if (!msg.ingest_task_id) {
+      stopIngestPolling(msgIndex)
+      return
+    }
+    try {
+      const data = await chatActionQuery('ingest_progress', { task_id: msg.ingest_task_id })
+      if (!data.answer) return
+      const target = chat.messages[msgIndex]
+      if (!target) {
+        stopIngestPolling(msgIndex)
+        return
+      }
+      target.content = data.answer
+      if (data.ingest_status) {
+        target.ingest_status = data.ingest_status
+        if (data.ingest_status !== 'running') stopIngestPolling(msgIndex)
+      }
+      scrollToBottom()
+    } catch (e) {
+      // 单次轮询失败不中断，下一轮继续
+    }
+  }, INGEST_POLL_INTERVAL)
+}
+
+const stopIngestPolling = (msgIndex) => {
+  if (pollers[msgIndex]) {
+    clearInterval(pollers[msgIndex])
+    delete pollers[msgIndex]
+  }
+}
+
+onBeforeUnmount(() => {
+  Object.keys(pollers).forEach(stopIngestPolling)
+})
+
 // 反馈
 const sendFeedback = (msg, type) => {
   if (msg.feedback === type) return
   msg.feedback = type
-  chat.submitFeedback(msg.record_id, type === 'useful').then((ok) => {
-    if (ok) {
-      ElMessage.success(type === 'useful' ? '感谢您的反馈！' : '已记录，我们会改进')
-    }
-  })
+  chat
+    .submitFeedback({
+      session_id: chat.currentSessionId,
+      query: msg.query || '',
+      response: msg.content || '',
+      feedback_type: type === 'useful' ? 1 : 2,
+      bad_reason: '',
+    })
+    .then((ok) => {
+      if (ok) {
+        ElMessage.success(type === 'useful' ? '感谢您的反馈！' : '已记录，我们会改进')
+      }
+    })
 }
 
 // 选择历史会话
@@ -445,6 +580,65 @@ onMounted(() => {
   padding: 14px 16px;
   font-size: 14px;
   color: #303133;
+}
+
+/* 交互按钮行（知识库扩充：AI自动搜索/确认入库/不需要） */
+.msg-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed #e4e7ed;
+}
+
+/* AI 思考过程 */
+.thinking-block {
+  background: #f0f2f5;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: #909399;
+}
+
+.thinking-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+  font-weight: 500;
+}
+
+.thinking-toggle {
+  margin-left: auto;
+}
+
+.thinking-text {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #a0a4ab;
+  line-height: 1.6;
+  max-height: 160px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 阶段处理状态提示 */
+.processing-tip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #606266;
+  background: #fdf6ec;
+  border: 1px solid #faecd8;
+  border-radius: 6px;
+  padding: 6px 10px;
 }
 
 /* 结构化结果 */

@@ -4,13 +4,13 @@ import time
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, Query
+from fastapi import APIRouter, UploadFile, File, Form, Depends, Query
 from sqlalchemy.orm import Session
 
 from config.logging_config import get_logger
 from config.constants import CODE_SUCCESS, CODE_PARAM_ERROR, CODE_SERVER_ERROR, CODE_NOT_FOUND
 from db.models.base import DocMain, DocChapter, DocParagraph, get_db
-from schemas.schemas import CommonResp, DocTreeResp
+from schemas.schemas import CommonResp
 from service.data_service.doc_processor import process_pdf, process_html, process_text
 from service.data_service.chunk_manager import chunk_manager
 from service.data_service.vector_store import vector_store
@@ -32,44 +32,8 @@ class DocServiceError(Exception):
         self.msg = msg
 
 
-async def _rebuild_vectors(doc_uuid: str, db: Session):
-    """重建指定文档的向量与 BM25 索引（上传/整章节更新后调用）"""
-    paragraphs = chunk_manager.get_paragraphs_by_doc(doc_uuid, db)
-    chapters = {c["id"]: c for c in chunk_manager.get_chapters_by_doc(doc_uuid, db)}
-    doc_main = db.query(DocMain).filter(DocMain.doc_uuid == doc_uuid).first()
-    texts = [p["content_raw"] or p["content_summary"] or "" for p in paragraphs]
-
-    vec_ok = False
-    if texts and embedder.available():
-        try:
-            embeddings = await embedder.aencode(texts)
-            vector_data = [
-                {
-                    "doc_uuid": doc_uuid,
-                    "chapter_path": chapters.get(p["chapter_id"], {}).get("chapter_path", ""),
-                    "paragraph_id": p["id"],
-                    "content_type": "text",
-                    "content_text": texts[i],
-                    "embedding": embeddings[i],
-                    "source_url": (doc_main.source_url if doc_main else "") or "",
-                    "version": (doc_main.version if doc_main else "") or "",
-                    "is_draft": bool(doc_main.status == 0) if doc_main else True,
-                }
-                for i, p in enumerate(paragraphs)
-            ]
-            vector_ids = vector_store.write_paragraphs(vector_data)
-            vec_ok = len(vector_ids) == len(paragraphs)
-        except Exception as e:
-            logger.error(f"文档向量化失败（不影响 MySQL 入库，可稍后重建） | doc_uuid={doc_uuid} | error={e}")
-    if vec_ok:
-        logger.info(f"文档向量化完成 | doc_uuid={doc_uuid} | vectors={len(vector_ids)}")
-
-    try:
-        paragraph_ids = [p["id"] for p in paragraphs]
-        if paragraph_ids:
-            bm25_index.add_paragraphs(doc_uuid, paragraph_ids, db)
-    except Exception as e:
-        logger.error(f"BM25 索引更新失败（可使用重建接口） | doc_uuid={doc_uuid} | error={e}")
+# 向量重建已下沉至 service 层（对话驱动入库共用）
+from service.data_service.kb_ingest_service import rebuild_doc_vectors as _rebuild_vectors  # noqa: E402
 
 
 # ------------------------------------------------------------------
@@ -107,6 +71,23 @@ async def upload_document(
         # 根据文件类型选择解析方式
         filename = file.filename or "unknown"
         file_ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+        # 内容嗅探：扩展名可能是历史的错误命名（如 HTML 被命成 .pdf）。
+        # 优先以实际内容判定类型，保证选择正确的解析工具。
+        head = content[:1024].lstrip()
+        text_head = head[:512].decode("utf-8", errors="ignore").lower()
+        sniff_html = text_head.lstrip().startswith("<") and ("<html" in text_head or "<!doctype html" in text_head)
+        sniff_pdf = head.startswith(b"%PDF")
+
+        if file_ext == "pdf" and sniff_html:
+            logger.warning(
+                f"上传文件扩展名为 pdf 但内容为 HTML，按 HTML 解析 | filename={filename}"
+            )
+            file_ext = "html"
+        elif file_ext in ("html", "htm") and sniff_pdf:
+            logger.warning(
+                f"上传文件扩展名为 html 但内容为 PDF，按 PDF 解析 | filename={filename}"
+            )
+            file_ext = "pdf"
 
         if file_ext == "pdf":
             # PDF: 先保存到临时文件再解析
@@ -350,8 +331,6 @@ async def update_document(
             from service.data_service.doc_processor import (
                 _split_paragraphs,
                 ChapterSlice,
-                ParagraphSlice,
-                _estimate_token_count,
             )
             from config.settings import MAX_CHUNK_TOKEN
 
@@ -438,4 +417,104 @@ async def update_document(
             f"局部更新失败 | doc_uuid={doc_uuid} | elapsed={elapsed}s | error={e}",
             exc_info=True,
         )
+        return CommonResp(code=CODE_SERVER_ERROR, msg=f"服务器内部错误: {str(e)}")
+
+
+# ------------------------------------------------------------------
+# POST /api/doc/delete - 删除文档（MySQL + 向量 + BM25）
+# ------------------------------------------------------------------
+@router.post("/delete", response_model=CommonResp)
+async def delete_document(
+    doc_uuid: str = Form(..., description="文档UUID"),
+    db: Session = Depends(get_db),
+):
+    """删除指定文档：级联删除章节/段落，并清理向量库与 BM25 索引。"""
+    start = time.time()
+    logger.info(f"文档删除请求 | doc_uuid={doc_uuid}")
+
+    try:
+        doc = db.query(DocMain).filter(DocMain.doc_uuid == doc_uuid).first()
+        if not doc:
+            raise DocServiceError(CODE_NOT_FOUND, f"文档不存在: {doc_uuid}")
+
+        # 清理向量库
+        try:
+            vector_store.delete_by_doc_uuid(doc_uuid)
+        except Exception as e:
+            logger.error(f"向量删除失败 | doc_uuid={doc_uuid} | error={e}")
+
+        # 清理 BM25 索引
+        try:
+            bm25_index.remove_by_doc_uuid(doc_uuid, db)
+        except Exception as e:
+            logger.error(f"BM25 索引删除失败 | doc_uuid={doc_uuid} | error={e}")
+
+        # 级联删除 MySQL 段落、章节、文档
+        db.query(DocParagraph).filter(DocParagraph.doc_uuid == doc_uuid).delete()
+        db.query(DocChapter).filter(DocChapter.doc_uuid == doc_uuid).delete()
+        db.delete(doc)
+        db.commit()
+
+        elapsed = round(time.time() - start, 3)
+        logger.info(f"文档删除完成 | doc_uuid={doc_uuid} | elapsed={elapsed}s")
+
+        return CommonResp(code=CODE_SUCCESS, msg="删除成功")
+    except DocServiceError as e:
+        logger.warning(f"删除业务异常 | code={e.code} | msg={e.msg}")
+        return CommonResp(code=e.code, msg=e.msg)
+    except Exception as e:
+        db.rollback()
+        elapsed = round(time.time() - start, 3)
+        logger.error(f"文档删除失败 | doc_uuid={doc_uuid} | elapsed={elapsed}s | error={e}", exc_info=True)
+        return CommonResp(code=CODE_SERVER_ERROR, msg=f"服务器内部错误: {str(e)}")
+
+
+# ------------------------------------------------------------------
+# POST /api/doc/reindex - 仅重建指定文档的向量与 BM25 索引（不改动 MySQL 数据）
+# ------------------------------------------------------------------
+@router.post("/reindex", response_model=CommonResp)
+async def reindex_document(
+    doc_uuid: str = Form(..., description="文档UUID"),
+    db: Session = Depends(get_db),
+):
+    """重建指定文档的向量与 BM25 索引（用于修复向量缺失/损坏，不触碰 MySQL 内容）。"""
+    start = time.time()
+    logger.info(f"文档重建索引请求 | doc_uuid={doc_uuid}")
+
+    try:
+        doc = db.query(DocMain).filter(DocMain.doc_uuid == doc_uuid).first()
+        if not doc:
+            raise DocServiceError(CODE_NOT_FOUND, f"文档不存在: {doc_uuid}")
+
+        # 清理旧索引
+        try:
+            vector_store.delete_by_doc_uuid(doc_uuid)
+        except Exception as e:
+            logger.error(f"重建过程中向量清理失败 | doc_uuid={doc_uuid} | error={e}")
+        try:
+            bm25_index.remove_by_doc_uuid(doc_uuid, db)
+        except Exception as e:
+            logger.error(f"重建过程中 BM25 清理失败 | doc_uuid={doc_uuid} | error={e}")
+
+        # 重建（向量失败不阻断，可看日志）
+        vector_ok = True
+        try:
+            await _rebuild_vectors(doc_uuid, db)
+        except DocServiceError:
+            raise
+        except Exception as e:
+            logger.error(f"文档重建索引异常 | doc_uuid={doc_uuid} | error={e}", exc_info=True)
+            vector_ok = False
+
+        elapsed = round(time.time() - start, 3)
+        logger.info(f"文档重建索引完成 | doc_uuid={doc_uuid} | elapsed={elapsed}s")
+        msg = "重建完成" if vector_ok else "重建完成（向量可能失败，详见日志）"
+        return CommonResp(code=CODE_SUCCESS, msg=msg)
+    except DocServiceError as e:
+        logger.warning(f"重建业务异常 | code={e.code} | msg={e.msg}")
+        return CommonResp(code=e.code, msg=e.msg)
+    except Exception as e:
+        db.rollback()
+        elapsed = round(time.time() - start, 3)
+        logger.error(f"文档重建索引失败 | doc_uuid={doc_uuid} | elapsed={elapsed}s | error={e}", exc_info=True)
         return CommonResp(code=CODE_SERVER_ERROR, msg=f"服务器内部错误: {str(e)}")

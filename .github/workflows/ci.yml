@@ -1,0 +1,24 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deps
+        run: |
+          pip install --quiet ruff
+          pip install --quiet fastapi uvicorn httpx pydantic sqlalchemy pymysql redis python-dotenv
+      - name: ruff check
+        run: ruff check .
+      - name: pytest tests/unit
+        run: pytest tests/unit
+      - name: compileall
+        run: python -c "import compileall,re,sys; sys.exit(0 if compileall.compile_dir('.', quiet=1, rx=re.compile(r'(^|[\\\\/])(\.git|\.venv|frontend)([\\\\/]|$)', re.I)) else 1)"

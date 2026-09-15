@@ -40,12 +40,13 @@ service.interceptors.response.use(
     let message = '网络请求失败，请稍后重试'
     if (error.response) {
       const status = error.response.status
-      if (status === 401) message = '未授权，请重新登录'
-      else if (status === 404) message = '请求的资源不存在'
+      const detail = error.response.data && error.response.data.detail
+      // 后端 detail 优先（如"未匹配到 HS 编码"），通用文案仅作兜底
+      if (status === 401) message = detail || '未授权，请重新登录'
+      else if (detail) message = detail
       else if (status === 500) message = '服务器内部错误'
-      else if (error.response.data && error.response.data.detail) {
-        message = error.response.data.detail
-      }
+      else if (status === 404) message = '请求的资源不存在'
+      else message = `请求失败（${status}）`
     } else if (error.code === 'ECONNABORTED') {
       message = '请求超时，请稍后重试'
     }

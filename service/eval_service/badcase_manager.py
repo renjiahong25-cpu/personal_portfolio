@@ -11,7 +11,6 @@ import json
 import time
 import uuid
 
-from sqlalchemy import or_, func
 
 from config.logging_config import get_logger
 from config.settings import EVAL_SET_DIR
@@ -187,7 +186,7 @@ class BadCaseManager:
         if expected_docs and retrieved_uuids is not None and expected_docs:
             missing = [d for d in expected_docs if d not in retrieved_uuids]
             if missing:
-                return CATEGORY_MISSING_RECALL, f"真值文档未召回，缺失覆盖来源"
+                return CATEGORY_MISSING_RECALL, "真值文档未召回，缺失覆盖来源"
 
         # 4) 覆盖率不足 → 按是否编造倾向区分
         if standard_answer and coverage is not None and coverage < _COVERAGE_LOW:

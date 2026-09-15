@@ -1,7 +1,6 @@
 """BM25 引擎统一封装：索引构建、查询、增量更新"""
 
 import time
-import math
 import re
 from typing import Optional
 from rank_bm25 import BM25Okapi

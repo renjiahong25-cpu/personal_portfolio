@@ -19,13 +19,14 @@ import asyncio
 import json
 import re
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
 from typing import Optional
 
+import httpx
+
 from config.logging_config import get_logger
 from config import settings
-from config.constants import GERMAN_DATA_SOURCES
 
 logger = get_logger("retriever")
 
@@ -81,6 +82,7 @@ class RetrievalItem:
     publish_time: str = ""
     effective_time: str = ""
     category: str = ""
+    country: str = ""  # 文档管辖国家（检索国家分区键，空=全局）
     chapter_id: int = 0
     chapter_title: str = ""
     chapter_path: str = ""
@@ -94,6 +96,9 @@ class RetrievalItem:
     vector_score: float = 0.0
     fused_score: float = 0.0
     source: str = "bm25"  # bm25 / vector / mixed / official
+    sub_query_id: int = -1  # 多路检索来源子问题编号（-1=单路）
+    overlay: str = ""  # overlay 缝合后的原段落上下文（含相邻段落），只读不溯源
+    overlay_token_len: int = 0
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -116,11 +121,42 @@ class RetrievalItem:
 # ============================================================
 _CJK_RE = re.compile(r"[\u4e00-\u9fff]")
 
+# 德文扫描：含变元音（äöü）与 ß，避免 "für"/"Überlassung" 被切碎
+_DE_WORD_RE = re.compile(r"[a-z0-9äöüß]+(?:[\-\.\x2f][a-z0-9äöüß]+)*")
+
+# 德语海关域复合词词干（用于复合词拆分，提升 BM25 召回）
+_DE_COMPOUND_STEMS = frozenset([
+    "zoll", "anmeldung", "anmeldungen", "ausfuhr", "ausgang", "eingang", "abgang",
+    "verfahren", "abwicklung", "gestellung", "wartezeit", "überlassung", "überwachung",
+    "abrechnung", "erledigung", "versand", "beendigung", "teilnahme", "kontrolle",
+    "nachricht", "nachrichten", "abfertigung", "zugang", "bearbeitung", "wiederausfuhr",
+    "bestimmung", "mitteilung", "genehmigung", "stornierung", "überführung", "zollstelle",
+    "mitgliedstaat", "anwendung", "fachanwendung", "verzeichnis", "lagerbestand",
+    "kennzeichen", "anschreibung", "bewilligung", "vereinfachung", "herkunft",
+    "empfänger", "ausfuhranmeldung", "ausgangsbestätigung", "endverwendung", "auflage",
+    "anmelder", "zollvertreter", "zollabwicklung", "abgangszollstelle", "ausfuhrzollstelle",
+    "ausgangszollstelle", "gestellungszollstelle", "vorgang", "vorgänge", "erfassung",
+    "abgabe", "übermittlung", "übernahme", "getrenntstellung", "freiverkehr",
+])
+
+
+def _de_compound_expand(tokens: list) -> list:
+    """德语复合词补充词干（如 Zollanmeldungsverfahren → zoll/anmeldung/verfahren），提升 BM25 命中"""
+    extra = []
+    for tok in tokens:
+        if len(tok) < 5:
+            continue
+        for stem in _DE_COMPOUND_STEMS:
+            if len(stem) >= 5 and stem in tok and stem != tok:
+                extra.append(stem)
+    return extra
+
 
 def tokenize(text: str) -> list:
-    """轻量分词：英文/数字词元 + 中文单字与二元组，兼顾 BM25 命中率"""
+    """轻量分词：英/德文（含变元音）词元 + 中文单字与二元组；德语复合词补充词干词元"""
     text = (text or "").lower()
-    words = re.findall(r"[a-z0-9]+(?:[\-\.\/][a-z0-9]+)*", text)
+    words = _DE_WORD_RE.findall(text)
+    words += _de_compound_expand(words)
     cjk_seq = "".join(_CJK_RE.findall(text))
     chars = list(cjk_seq)
     bigrams = [cjk_seq[i : i + 2] for i in range(max(0, len(cjk_seq) - 1))]
@@ -130,8 +166,26 @@ def tokenize(text: str) -> list:
 def estimate_tokens(text: str) -> int:
     """Token 估算（中英文混合的启发式）：约 1.5 字符 / token"""
     if not text:
-        return 0
+        return max(1, round(len(text) / 1.5))
     return max(1, round(len(text) / 1.5))
+
+
+# 国家别名归一：意图识别/文档标签都映射到统一键（与 DocMain.country 一致）
+_COUNTRY_ALIAS = {
+    "德国": "德国", "germany": "德国", "de": "德国",
+    "中国": "中国", "china": "中国", "cn": "中国",
+    "荷兰": "荷兰", "netherlands": "荷兰", "nl": "荷兰",
+    "法国": "法国", "france": "法国", "fr": "法国",
+    "美国": "美国", "usa": "美国", "united states": "美国", "us": "美国",
+}
+
+
+def norm_country(country: str) -> str:
+    """国家别名归一化；空串返回空（空=不做国家分区，全库检索）"""
+    c = (country or "").strip()
+    if not c:
+        return ""
+    return _COUNTRY_ALIAS.get(c.lower(), c)
 
 
 # ============================================================
@@ -158,6 +212,7 @@ class HybridRetriever:
         self._milvus: object = None
         self._milvus_ok = False
         self._milvus_checked_at: Optional[datetime] = None
+        self._milvus_lock = asyncio.Lock()   # 并发护栏：防多路检索同时抢建 Milvus Lite 文件锁
         self._vec_out_fields: list = []
         self._vec_metric: str = "COSINE"
         self._vec_scalar_fields: set = set()
@@ -204,6 +259,7 @@ class HybridRetriever:
                     publish_time=self._raw_datetime(doc.publish_time) if doc else "",
                     effective_time=self._raw_datetime(doc.effective_time) if doc else "",
                     category=doc.category if doc else "",
+                    country=getattr(doc, "country", "") or "",
                     chapter_id=p.chapter_id or 0,
                     chapter_title=ch.chapter_title if ch else "",
                     chapter_path=ch.chapter_path if ch else "",
@@ -290,6 +346,7 @@ class HybridRetriever:
     def _build_milvus(self):
         """创建 MilvusClient 并探测集合 schema（自动适配字段名）"""
         self._milvus_ok = False  # 先复位，失败时不留陈旧状态
+        self._milvus = None
         if not _MILVUS_AVAILABLE:
             return False
         try:
@@ -350,22 +407,36 @@ class HybridRetriever:
             return False
 
     async def _ensure_milvus(self):
-        """确保 Milvus 连接可用（带冷却期，避免反复失败重连）"""
+        """确保 Milvus 连接可用（带冷却期，避免反复失败重连）
+
+        并发护栏：多路检索（multi_search）会并行触发多个 _ensure_milvus，
+        Milvus Lite 是单进程文件锁（logs/milvus.db），并发的 MilvusClient(uri=...)
+        会互相抢锁导致 DataDirLockedError。此处用 asyncio.Lock 串行化首次初始化，
+        后续直接复用已建连接，避免每次 search 反复建连。
+        """
         if not _MILVUS_AVAILABLE:
             return False
-        if self._milvus_ok and self._milvus_checked_at:
+        # 已连接且在有效期内：直接复用，不再探测
+        if self._milvus_ok and self._milvus is not None:
+            return True
+        # 冷却期内失败过：跳过本轮再次尝试（避免高频重连）
+        if not self._milvus_ok and self._milvus_checked_at:
             if datetime.now() - self._milvus_checked_at < timedelta(seconds=settings.KB_CACHE_TTL_SECONDS):
+                return False
+        async with self._milvus_lock:
+            # 双检：等锁期间可能已有别的任务建好
+            if self._milvus_ok and self._milvus is not None:
                 return True
-        try:
-            ok = await asyncio.to_thread(self._build_milvus)
-            # 失败也刷新标记时间，进入冷却期，避免高频重连
-            self._milvus_checked_at = datetime.now()
-            return ok
-        except Exception as e:
-            logger.error(f"Milvus 探测异常 | error={e}", exc_info=True)
-            self._milvus_ok = False
-            self._milvus_checked_at = datetime.now()
-            return False
+            try:
+                ok = await asyncio.to_thread(self._build_milvus)
+                # 失败也刷新标记时间，进入冷却期，避免高频重连
+                self._milvus_checked_at = datetime.now()
+                return ok
+            except Exception as e:
+                logger.error(f"Milvus 探测异常 | error={e}", exc_info=True)
+                self._milvus_ok = False
+                self._milvus_checked_at = datetime.now()
+                return False
 
     async def _embed_query(self, query: str) -> Optional[list]:
         """查询向量化（惰性加载 sentence-transformer 模型）"""
@@ -454,14 +525,27 @@ class HybridRetriever:
         - 排序依据：加权融合分 fused_score；
         - 阈值门控依据：单路最强信号 effective = max(bm25_norm, vec_sim)，
           避免单路召回时因权重缩放而整体被误杀。
+        - bm25_norm 用批内排名归一（1.0→0.0 线性衰减）：s/(s+1) 会把 10-17 分
+          压成 0.91-0.94，对同域查询（整库都是 ATLAS 流程）无区分度，融合分
+          挤在 0.37-0.39 噪声带，排序近似随机（E2E 复现 4.9 主干章节被挤出）。
         """
+        # 批内排名归一：BM25 分降序排名 → 1.0, 1-(1/(n-1)), ..., 0.0
+        ranked = sorted((b for b in bm25_items if b.bm25_score > 0), key=lambda x: -x.bm25_score)
+        n = len(ranked)
+        rank_norm: dict[tuple, float] = {}
+        for r, b in enumerate(ranked):
+            rank_norm[b._key()] = (1.0 - r / (n - 1)) if n > 1 else 1.0
+
         merged: dict[tuple, RetrievalItem] = {}
         for item in bm25_items:
-            bm25_norm = item.bm25_score / (item.bm25_score + 1.0)  # 有界归一
+            abs_norm = item.bm25_score / (item.bm25_score + 1.0)  # 绝对值：用于阈值门控
+            # 排序值：批内排名归一（有区分度）；零分或单条时回退绝对值
+            rank_val = rank_norm.get(item._key(), abs_norm) if item.bm25_score > 0 and n > 1 else abs_norm
             clone = RetrievalItem(**asdict(item))
-            clone.fused_score = settings.BM25_WEIGHT * bm25_norm
-            clone._bm25_norm = bm25_norm  # type: ignore[attr-defined]
-            clone._effective = bm25_norm  # type: ignore[attr-defined]
+            clone.fused_score = settings.BM25_WEIGHT * rank_val
+            clone._bm25_norm = rank_val  # type: ignore[attr-defined]
+            clone._bm25_abs = abs_norm  # type: ignore[attr-defined]
+            clone._effective = abs_norm  # type: ignore[attr-defined]
             merged[clone._key()] = clone
         for item in vec_items:
             key = item._key()
@@ -473,7 +557,7 @@ class HybridRetriever:
                 clone._effective = item.vector_score  # type: ignore[attr-defined]
                 merged[key] = clone
             else:
-                # 双路命中：融合 = 两路加权和，优先保留
+                # 双路命中：融合 = 两路加权和（排序用排名值），门控用绝对值
                 target.vector_score = item.vector_score
                 target.source = "mixed"
                 target.fused_score = (
@@ -481,7 +565,7 @@ class HybridRetriever:
                     + settings.VECTOR_WEIGHT * item.vector_score
                 )
                 # type: ignore[attr-defined]
-                target._effective = max(target._bm25_norm, item.vector_score)  # type: ignore[attr-defined]
+                target._effective = max(target._bm25_abs, item.vector_score)  # type: ignore[attr-defined]
         results = [v for v in merged.values() if v._effective >= threshold]  # type: ignore[attr-defined]
         results.sort(key=lambda x: x.fused_score, reverse=True)
         logger.info(
@@ -490,12 +574,61 @@ class HybridRetriever:
         )
         return results
 
+    @staticmethod
+    def _looks_german(query: str) -> bool:
+        """检测查询是否为德语：含变元音 äöüß 或常见德语词即判德语"""
+        if not query:
+            return False
+        q = query.lower()
+        if any(ch in q for ch in ("ä", "ö", "ü", "ß")):
+            return True
+        de_hints = ("für", "sind", "ist", "eine", "einen", "einem", "eine", "der", "die", "das",
+                    "und", "über", "nicht", "wie", "welche", "welches", "schritte", "verfahren",
+                    "zollanmeldung", "anmeldung", "ausfuhr", "einfuhr", "bei", "wird", "wurde")
+        words = set(q.split())
+        return bool(words & set(de_hints))
+
+    async def _remote_rerank(self, query: str, items: list[RetrievalItem],
+                             top_k: int):
+        """调远程 Embed 微服务精排；不可用返回 None（调用方回退本地模型）。"""
+        url = settings.EMBED_HTTP_URL.rstrip("/") + "/rerank"
+        try:
+            docs = [(i.content_raw or "")[:500] for i in items]
+            r = httpx.post(
+                url,
+                json={"query": query, "documents": docs, "top_k": top_k},
+                timeout=settings.EMBED_HTTP_TIMEOUT,
+            )
+            r.raise_for_status()
+            results = r.json().get("results") or []
+            if not results:
+                return None
+            by_idx = {d["document"]: float(d["score"]) for d in results}
+            scored = sorted(items, key=lambda i: by_idx.get((i.content_raw or "")[:500], 0.0), reverse=True)
+            logger.info(f"Rerank(远程) 完成 | in={len(items)} | top={top_k}")
+            for item in scored[: settings.RERANK_TOP_K]:
+                item.fused_score = by_idx.get((item.content_raw or "")[:500], 0.0)
+            return scored[: settings.RERANK_TOP_K]
+        except Exception as e:
+            logger.warning(f"Rerank 远程调用失败，回退本地模型 | error={e}")
+            return None
+
     async def _rerank(self, query: str, items: list[RetrievalItem], top_k: int) -> list[RetrievalItem]:
         """CrossEncoder Rerank 精排结果"""
         if not items:
             return items
         if not settings.RERANK_ENABLE:
             return items[:top_k]
+        # 德文（含变元音）查询跳过英文 CrossEncoder 精排——ms-marco 系模型对德语
+        # 排序失真（实测把 Verwahrungsorte 等无关段排前、丢失 4.9 Ausfuhrverfahren）。
+        if getattr(settings, "RERANK_SKIP_DE", True) and self._looks_german(query):
+            logger.info(f"Rerank 跳过（德语查询，英文模型降级）| query={query[:40]}")
+            return items[:top_k]
+        # P4：远程 Embed 微服务精排（多副本共享模型；失败自动回退本地加载）
+        if getattr(settings, "EMBED_HTTP_URL", ""):
+            remote = await self._remote_rerank(query, items, top_k)
+            if remote is not None:
+                return remote
         if not self._rerank_ok:
             try:
                 if _ST_AVAILABLE and CrossEncoder is not None:
@@ -532,17 +665,22 @@ class HybridRetriever:
         threshold: float = None,
         chapter_ids: Optional[set[int]] = None,
         request_id: str = "",
+        country: str = "",
     ) -> list[RetrievalItem]:
         """
         核心检索：章节级粗筛 → 段落级 BM25 + 向量双路召回 → 加权融合 → Rerank
+        country：目标国家分区（意图识别确定）；只召回该国管辖的文档，跨国互不干扰；
+        空=全库检索。未标注国家的文档视为全局保留（防漏标误杀）；
+        分区为空不在此回退，交由四层兜底处理。
         """
         start = time.time()
         req_tag = request_id or "-"
         top_k = top_k or settings.RETRIEVE_TOP_K
         threshold = settings.SIMILARITY_THRESHOLD if threshold is None else threshold
+        country = norm_country(country)
         logger.info(
             f"[{req_tag}] 检索开始 | query={query[:60]} | top_k={top_k} | threshold={threshold} | "
-            f"chapter_ids={list(chapter_ids)[:6] if chapter_ids else None}"
+            f"country={country or '(全库)'} | chapter_ids={list(chapter_ids)[:6] if chapter_ids else None}"
         )
 
         kb_ready = await self._ensure_kb()
@@ -559,11 +697,29 @@ class HybridRetriever:
                         range(len(self._chapter_rows)),
                         key=lambda i: cb_scores[i],
                         reverse=True,
-                    )[:5]
+                    )[:12]
                     positive = {self._chapter_rows[i][0] for i in top_indices if cb_scores[i] > 0}
-                    coarse_chapters = positive or None
+                    # 强制纳入与查询相关的「报关流程章节族」：命中核心词干即整族纳入，
+                    # 防止 4.9 Ausfuhrverfahren 因章节标题措辞差异（不含 zoll/anmeldung）被漏筛。
+                    forced: set[int] = set()
+                    core_stems = [
+                        s for s in ("ausfuhr", "anmeldung", "einfuhr", "verfahren", "zoll", "abfertigung")
+                        if s in cb_toks
+                    ]
+                    if core_stems:
+                        for cid, ctitle, cpath in self._chapter_rows:
+                            joint = (ctitle + " " + cpath).lower()
+                            # 章节族路径前缀命中即整族纳入（/4 报关流程全族、/7 参与条件、/9 单证编码）
+                            if cpath.startswith("/4") or cpath.startswith("/7") or cpath.startswith("/9"):
+                                forced.add(cid)
+                            elif any(s in joint for s in core_stems):
+                                forced.add(cid)
+                    coarse_chapters = (positive | forced) or None
                     if coarse_chapters:
-                        logger.info(f"[{req_tag}] 章节级粗筛命中 | chapters={len(coarse_chapters)}")
+                        logger.info(
+                            f"[{req_tag}] 章节级粗筛命中 | chapters={len(coarse_chapters)} "
+                            f"(bm25_score>0={len(positive)}, 词干强制={len(forced)})"
+                        )
                 except Exception as e:
                     logger.warning(f"[{req_tag}] 章节级粗筛失败，跳过 | error={e}")
                     coarse_chapters = None
@@ -579,6 +735,24 @@ class HybridRetriever:
         bm25_items = await bm25_fut if bm25_fut else []
         vec_items = await vec_fut if vec_fut else []
 
+        # 2.5) 国家分区：只保留目标国家管辖的文档（跨国互不干扰）。
+        # 语义：未标注国家的文档视为全局（保留）；仅排除明确标注为其他国家者。
+        # 分区为空不在此回退——交由 retrieve_with_fallback 的 L2/L3/L4 兜底，
+        # 避免把异国家文档灌回上下文造成跨语言干扰。
+        if country:
+            b_all, v_all = len(bm25_items), len(vec_items)
+            bm25_items = [x for x in bm25_items if not x.country or x.country == country]
+            vec_items = [x for x in vec_items if not x.country or x.country == country]
+            if not bm25_items and not vec_items:
+                logger.warning(
+                    f"[{req_tag}] 国家分区 '{country}' 无管辖文档 (bm25={b_all}, vec={v_all})，本轮召回为空"
+                )
+            elif b_all != len(bm25_items) or v_all != len(vec_items):
+                logger.info(
+                    f"[{req_tag}] 国家分区 | country={country} | bm25 {b_all}→{len(bm25_items)} | "
+                    f"vec {v_all}→{len(vec_items)}"
+                )
+
         # 3) 加权融合 + 4) Rerank
         fused = self._fuse(bm25_items, vec_items, threshold)
         final_items = await self._rerank(query, fused, top_k)
@@ -589,6 +763,251 @@ class HybridRetriever:
             f"fused={len(fused)} | final={len(final_items)} | elapsed={elapsed}s"
         )
         return final_items
+
+    # ----------------------------------------------------------
+    # ----------------------------------------------------------
+    # 流程主干补全（spine completion）
+    # ----------------------------------------------------------
+    @staticmethod
+    def _chapter_num(chapter_path: str) -> str:
+        """从章节路径提取编号（如 '/4.9.1.1 Anlegen ...' → '4.9.1.1'）"""
+        seg = chapter_path.strip().lstrip("/")
+        parts = seg.split(" ")
+        return parts[0] if parts else ""
+
+    def _complete_procedure_spine(self, merged: dict, request_id: str) -> dict:
+        """
+        对命中≥2 的流程章节族，注入其 1-2 级子章节的首段（生命周期主干）。
+        例：4.9 族命中 → 按编号序注入 4.9.1.1 Anlegen / 4.9.1.3 Bearbeitung /
+        4.9.1.4 Überlassung+ABD / 4.9.2 Überwachung / 4.9.3 Erledigung / 4.9.4 ...
+        注入段落 fused = 0.9 × 该族最高命中分，排在族内命中附近。
+        """
+        MAX_SPINE_PER_FAMILY = 6
+        if not merged or not self._bm25_rows:
+            return merged
+        # 统计每个 (doc, 章节族) 的命中数与最高分
+        fam_hits: dict[tuple, int] = {}
+        fam_max: dict[tuple, float] = {}
+        for item in merged.values():
+            num = self._chapter_num(item.chapter_path)
+            parts = num.split(".")
+            if len(parts) < 2:
+                continue
+            fam = (item.doc_uuid, ".".join(parts[:2]))
+            fam_hits[fam] = fam_hits.get(fam, 0) + 1
+            fam_max[fam] = max(fam_max.get(fam, 0.0), item.fused_score)
+        added = 0
+        for (doc_uuid, fam), hits in fam_hits.items():
+            if hits < 2:
+                continue
+            fam_depth = len(fam.split(".")[:2])  # '4.9' → 2
+            # 候选主干章节：同文档、编号以 fam. 开头、深度 = fam 深度+1 或 +2，
+            # 每章取段落 id 最小的首段
+            ch_rows: dict[int, list[RetrievalItem]] = {}
+            for row in self._bm25_rows:
+                if row.doc_uuid != doc_uuid:
+                    continue
+                num = self._chapter_num(row.chapter_path)
+                if not num.startswith(fam + "."):
+                    continue
+                if len(num.split(".")) not in (fam_depth + 1, fam_depth + 2):
+                    continue
+                ch_rows.setdefault(row.chapter_id, []).append(row)
+            cands: list[tuple[str, RetrievalItem]] = []
+            for cid, rows in ch_rows.items():
+                rows.sort(key=lambda r: r.paragraph_id or 0)
+                cands.append((self._chapter_num(rows[0].chapter_path), rows[0]))
+            # 编号按数字元组排序（防 "4.9.11.1" < "4.9.2" 的字符串序错误）
+            def _num_key(item: tuple) -> tuple:
+                try:
+                    return tuple(int(p) for p in item[0].split("."))
+                except ValueError:
+                    return (9999,)
+
+            cands.sort(key=lambda x: (_num_key(x), x[1].chapter_id))
+            # 主干与族内最强命中同权（0.9 会被同族碎片命中挤出，向量波动下不稳定）
+            base_score = 1.0 * fam_max.get((doc_uuid, fam), 0.0)
+            for idx, (num, first_row) in enumerate(cands[:MAX_SPINE_PER_FAMILY]):
+                key = (first_row.doc_uuid, first_row.paragraph_id) if first_row.paragraph_id else (first_row.doc_uuid, first_row.chapter_id)
+                if key in merged:
+                    continue
+                clone = RetrievalItem(**asdict(first_row))
+                # 位次轻微衰减，保证主干顺序（Anlegen→Bearbeitung→Überlassung→Überwachung→Erledigung）
+                clone.fused_score = base_score * (1.0 - 0.02 * idx)
+                clone.source = "spine"  # type: ignore
+                clone.sub_query_id = -1  # type: ignore  # 非子问题命中，不参与"原问"降权
+                merged[key] = clone
+                added += 1
+        if added:
+            logger.info(f"[{request_id}] 流程主干补全 | 注入={added} 段 (source=spine)")
+        return merged
+
+    # ----------------------------------------------------------
+    # 需求拆解多路检索（子问题并行检索后合并去重）
+    # ----------------------------------------------------------
+    async def multi_search(
+        self,
+        sub_queries: list[str],
+        top_k: int = None,
+        threshold: float = None,
+        merge_limit: int = None,
+        request_id: str = "",
+        original_query: str = "",
+        country: str = "",
+    ) -> list[RetrievalItem]:
+        """
+        对拆解出的多个子问题分别执行 search，再按段落主键合并去重。
+        - 各子问题检索 top_k 默认取 DECOMPOSE_TOP_K，避免多路检索结果膨胀；
+        - 若传入 original_query，将其作为"路0"一并检索（中问→德文翻译全失败时兜底）；
+        - 合并时保留每段最高 fused_score 记录及其来源子问题；
+        - 最终按 fused_score 降序截断到 merge_limit。
+        """
+        import asyncio as _aio
+
+        from config.settings import DECOMPOSE_TOP_K, DECOMPOSE_MERGE_LIMIT
+
+        start = time.time()
+        req_tag = request_id or "-"
+        # 路0：原始问题（保中文召回通道）；其余为子问题
+        queries = ([original_query] if original_query else []) + list(sub_queries)
+        if not queries:
+            return []
+        top_k = top_k or DECOMPOSE_TOP_K
+        threshold = settings.SIMILARITY_THRESHOLD if threshold is None else threshold
+        merge_limit = merge_limit or DECOMPOSE_MERGE_LIMIT
+        country = norm_country(country)
+
+        tasks = [
+            self.search(q, top_k=top_k, threshold=threshold, request_id=f"{req_tag}/sub{i}", country=country)
+            for i, q in enumerate(queries)
+        ]
+        results_per_sub = await _aio.gather(*tasks, return_exceptions=True)
+
+        # 合并去重：主键 (doc_uuid, paragraph_id) 兜底 (doc_uuid, chapter_id)
+        merged: dict[tuple, RetrievalItem] = {}
+        sub_summary: list[dict] = []
+        for i, q in enumerate(queries):
+            sub_items = results_per_sub[i]
+            tag = "原问" if i == 0 and original_query else f"sub#{i}"
+            if isinstance(sub_items, BaseException):
+                logger.warning(f"[{req_tag}] {tag} 检索异常 | query={q[:40]} | error={sub_items}")
+                sub_summary.append({"sub_id": i, "query": q, "hit": 0, "error": str(sub_items)})
+                continue
+            sub_summary.append({"sub_id": i, "query": q, "hit": len(sub_items)})
+            for item in sub_items:
+                key = (item.doc_uuid, item.paragraph_id) if item.paragraph_id else (item.doc_uuid, item.chapter_id)
+                cur = merged.get(key)
+                if cur is None or item.fused_score > cur.fused_score:
+                    clone = RetrievalItem(**asdict(item))
+                    clone.sub_query_id = i  # type: ignore[attr-defined]
+                    merged[key] = clone
+
+        # 流程主干补全：步骤类问题（"哪些步骤/Ablauf/Schritte"）靠关键词匹配不到
+        # 具体操作文本（4.9.1.1 Anlegen 等主干章节 BM25 仅 21-23 分被挤出），
+        # 对命中≥2 的流程章节族主动注入其 1-2 级子章节首段（生命周期主干）
+        merged = self._complete_procedure_spine(merged, request_id)
+
+        merged_items = list(merged.values())
+        # 子问题优先：路0（原始问题）跨语言向量易召回噪声（如中问命中中文VAT文档），
+        # 只允许它补齐 merge_limit 剩余槽位，不挤占子问题命中
+        def _merge_key(x):
+            is_orig = bool(original_query) and getattr(x, "sub_query_id", -1) == 0
+            return (1 if is_orig else 0, -x.fused_score)
+
+        merged_items.sort(key=_merge_key)
+        if len(merged_items) > merge_limit:
+            logger.info(f"[{req_tag}] 多路检索合并截断 | in={len(merged_items)} → keep={merge_limit} | 子问题优先")
+        merged_items = merged_items[:merge_limit]
+
+        elapsed = round(time.time() - start, 3)
+        logger.info(
+            f"[{req_tag}] 需求拆解多路检索完成 | subs={len(sub_queries)} | "
+            f"merged={len(merged_items)} | per_sub={sub_summary} | elapsed={elapsed}s"
+        )
+        return merged_items
+
+    # ----------------------------------------------------------
+    # 上下文缝合（overlay）：命中后把同文档同章节的相邻段落并入原段落返回
+    # ----------------------------------------------------------
+    async def expand_with_context(
+        self,
+        items: list[RetrievalItem],
+        span: int = None,
+        request_id: str = "",
+        min_tokens: int = None,
+    ) -> list[RetrievalItem]:
+        """
+        对检索命中片段做"原段落 overlay 缝合"：
+        - 按 (doc_uuid, chapter_id) 分组，命中段落所在的同一章节内，向前后各取 span 个相邻段落，
+          拼接成一个更完整的"原段落上下文"存入 item.overlay；
+        - 不改变原始 item 列表顺序与分数（overlay 只用于下游生成/校验，不做重排依据）；
+        - 段落 token 已 ≥ 阈值（单段即完整原段落）时不做缝合，直接用 content_raw。
+        :return: 就地增强后的 items（每个 item 带 overlay / overlay_token_len）
+        """
+        req_tag = request_id or "-"
+        if not items:
+            return items
+        if not settings.CONTEXT_OVERLAY_ENABLE:
+            return items
+        # 确保快照就绪（拼接依赖同章节相邻段落的 content_raw）
+        if not self._bm25_rows:
+            await self._ensure_kb()
+        if not self._bm25_rows:
+            logger.warning(f"[{req_tag}] 上下文缝合跳过：知识库快照为空")
+            return items
+
+        span = settings.CONTEXT_OVERLAY_SPAN if span is None else span
+        min_tokens = settings.CONTEXT_OVERLAY_MIN_TOKENS if min_tokens is None else min_tokens
+        t0 = time.time()
+        stitched = 0
+
+        # 按章节建立段落索引（doc_uuid, chapter_id) -> [(paragraph_id, content_raw), ...] 保序
+        chapter_paras: dict[tuple, list] = {}
+        for r in self._bm25_rows:
+            if not r.content_raw:
+                continue
+            key = (r.doc_uuid, r.chapter_id)
+            chapter_paras.setdefault(key, []).append((r.paragraph_id, r.content_raw))
+        for paras in chapter_paras.values():
+            paras.sort(key=lambda x: x[0])
+
+        for it in items:
+            if not it.content_raw:
+                continue
+            cur_tokens = it.token_len or estimate_tokens(it.content_raw)
+            if cur_tokens >= min_tokens and not it.overlay:
+                # 单段已足够完整：overlay 空串，直接用原段
+                it.overlay_token_len = cur_tokens
+                continue
+            paras = chapter_paras.get((it.doc_uuid, it.chapter_id))
+            if not paras:
+                continue
+            ids = [p[0] for p in paras]
+            try:
+                pos = ids.index(it.paragraph_id)
+            except ValueError:
+                continue
+            lo = max(0, pos - span)
+            hi = min(len(paras), pos + span + 1)
+            neighbors = [p for p in paras[lo:hi]]
+            # 相邻段落拼接（相邻段落之间用换行分隔，保留序号提醒）
+            parts = []
+            for pid, text in neighbors:
+                if pid == it.paragraph_id:
+                    parts.append(text)
+                else:
+                    parts.append(f"[相邻段落]\n{text}")
+            overlay_text = "\n\n".join(parts).strip()
+            it.overlay = overlay_text
+            it.overlay_token_len = estimate_tokens(overlay_text)
+            stitched += 1
+
+        elapsed = round(time.time() - t0, 3)
+        logger.info(
+            f"[{req_tag}] 上下文缝合完成 | items={len(items)} | stitched={stitched} | "
+            f"span={span} | min_tokens={min_tokens} | elapsed={elapsed}s"
+        )
+        return items
 
     # ----------------------------------------------------------
     # 四层兜底
@@ -610,13 +1029,15 @@ class HybridRetriever:
         """
         req_tag = request_id or "-"
         summary = {}
+        # 国家分区：由意图识别的 entities.country 决定（空=全库）
+        country = norm_country((entities or {}).get("country", ""))
 
         # ---------------- L1：精准检索 + HyDE ----------------
         t1 = time.time()
         eb_payload = query
         if hyde_doc:
             eb_payload = f"{query}\n\n候选规则线索：{hyde_doc}"
-        l1_items = await self.search(query=eb_payload, request_id=req_tag)
+        l1_items = await self.search(query=eb_payload, request_id=req_tag, country=country)
         l1_elapsed = round(time.time() - t1, 3)
         l1_hit = len(l1_items) > 0
         logger.info(f"[{req_tag}] 兜底一级(精准+HyDE) 完成 | hit={l1_hit} | count={len(l1_items)} | elapsed={l1_elapsed}s")
@@ -628,7 +1049,7 @@ class HybridRetriever:
         t2 = time.time()
         l2_threshold = settings.SIMILARITY_THRESHOLD * settings.LOOSE_THRESHOLD_RATIO
         l2_top_k = settings.RETRIEVE_TOP_K * settings.EXPANDED_TOP_K_MULTIPLIER
-        l2_items = await self.search(query=query, top_k=l2_top_k, threshold=l2_threshold, request_id=req_tag)
+        l2_items = await self.search(query=query, top_k=l2_top_k, threshold=l2_threshold, request_id=req_tag, country=country)
         l2_elapsed = round(time.time() - t2, 3)
         l2_hit = len(l2_items) > 0
         logger.info(
@@ -653,6 +1074,7 @@ class HybridRetriever:
             top_k=l2_top_k,
             threshold=l2_threshold,
             request_id=req_tag,
+            country=country,
         )
         l3_elapsed = round(time.time() - t3, 3)
         l3_hit = len(l3_items) > 0
@@ -688,6 +1110,7 @@ class HybridRetriever:
                 [{"role": "system", "content": "你是跨境清关顾问，负责生成追问。"}, {"role": "user", "content": prompt}],
                 0.2,
                 64,
+                no_think=True,
             )
             ret = (ret or "").strip().strip('"：“”')
             logger.info(f"[{request_id}] 三级追问问句生成 | question={ret}")
@@ -697,9 +1120,13 @@ class HybridRetriever:
             return ""
 
     async def _official_sources(self, entities: dict, request_id: str) -> list[RetrievalItem]:
-        """四级兜底：返回权威官网链接（zoll / bzst / 德国法规 / 工商会）+ 知识库文档来源"""
+        """四级兜底：按国家返回官方源链接（注册表命中则给链接，未注册国家不硬塞他国源）+ 知识库文档来源"""
+        from config.constants import OFFICIAL_SOURCES_BY_COUNTRY
+
+        country = norm_country((entities or {}).get("country", ""))
+        sources = OFFICIAL_SOURCES_BY_COUNTRY.get(country or "德国", {})
         items: list[RetrievalItem] = []
-        for key, src in GERMAN_DATA_SOURCES.items():
+        for key, src in sources.items():
             items.append(
                 RetrievalItem(
                     doc_title=src["name"],
@@ -710,23 +1137,30 @@ class HybridRetriever:
                     fused_score=0.1,
                 )
             )
-        # 附带知识库中相关分类文档的来源链接（仅链接，不解读）
-        _ = entities
+        # 附带知识库文档来源链接（有国家分区时只带本国+未标注文档；未注册国家仅带未标注文档）
         if self._bm25_rows:
             seen = {i.doc_uuid for i in items}
             for r in self._bm25_rows:
-                if r.doc_uuid and r.doc_uuid not in seen and r.source_url:
-                    seen.add(r.doc_uuid)
-                    items.append(
-                        RetrievalItem(
-                            doc_uuid=r.doc_uuid,
-                            doc_title=r.doc_title,
-                            source_url=r.source_url,
-                            category=r.category,
-                            content_raw=f"内部知识库文档：{r.doc_title}，来源 {r.source_url}",
-                            source="official",
-                            fused_score=0.1,
-                        )
+                if not (r.doc_uuid and r.doc_uuid not in seen and r.source_url):
+                    continue
+                if country and r.country and r.country != country:
+                    continue
+                seen.add(r.doc_uuid)
+                items.append(
+                    RetrievalItem(
+                        doc_uuid=r.doc_uuid,
+                        doc_title=r.doc_title,
+                        source_url=r.source_url,
+                        category=r.category,
+                        content_raw=f"内部知识库文档：{r.doc_title}，来源 {r.source_url}",
+                        source="official",
+                        fused_score=0.1,
                     )
-        logger.info(f"[{request_id}] 全网官网来源整理 | count={len(items)}")
+                )
+        logger.info(f"[{request_id}] 全网官网来源整理 | country={country or '-'} | count={len(items)}")
         return items
+
+    def invalidate_snapshot(self):
+        """失效知识库快照缓存（新文档入库后调用，使其立即可检索）"""
+        self._kb_loaded_at = None
+        logger.info("知识库快照缓存已失效，下次检索将重新加载")

@@ -81,27 +81,51 @@ MSG_NO_ANSWER = "当前知识库暂无对应合规规则，建议咨询专业清
 MSG_BOUNDARY_REJECT = "该问题超出本系统服务边界，不提供决策类服务"
 
 # ============================================================
-# 德国官方数据源
+# 官方数据源注册表（按国家组织）
+# L4 兜底展示 + "确认抓取"入库共用同一结构 {key: {name, url, category}}
+# 未注册国家的官方源由 AI 现场搜索（kb_ingest_service.discover_official_sources）
 # ============================================================
-GERMAN_DATA_SOURCES = {
-    "zoll": {
-        "name": "德国联邦海关总署",
-        "url": "https://www.zoll.de/",
-        "category": "通关规则",
+OFFICIAL_SOURCES_BY_COUNTRY = {
+    "德国": {
+        "zoll": {
+            "name": "德国联邦海关总署",
+            "url": "https://www.zoll.de/",
+            "category": "通关规则",
+        },
+        "bzst": {
+            "name": "德国联邦中央税务局",
+            "url": "https://www.bzst.de/",
+            "category": "IOSS税务",
+        },
+        "gesetze": {
+            "name": "德国外贸经济法规范",
+            "url": "https://www.gesetze-im-internet.de/englisch_awv/",
+            "category": "外贸法规",
+        },
+        "ihk": {
+            "name": "德国工商会",
+            "url": "https://www.ihk.de/schwerin/international/handel-mit-nicht-eu-staaten/zollabwicklung2/importe-aus-nicht-eu-laendern-3033036",
+            "category": "进口实操",
+        },
     },
-    "bzst": {
-        "name": "德国联邦中央税务局",
-        "url": "https://www.bzst.de/",
-        "category": "IOSS税务",
-    },
-    "gesetze": {
-        "name": "德国外贸经济法规范",
-        "url": "https://www.gesetze-im-internet.de/englisch_awv/",
-        "category": "外贸法规",
-    },
-    "ihk": {
-        "name": "德国工商会",
-        "url": "https://www.ihk.de/schwerin/international/handel-mit-nicht-eu-staaten/zollabwicklung2/importe-aus-nicht-eu-laendern-3033036",
-        "category": "进口实操",
+    "法国": {
+        "impots": {
+            "name": "法国税务总局",
+            "url": "https://www.impots.gouv.fr/",
+            "category": "税务申报",
+        },
+        "douane": {
+            "name": "法国海关总署",
+            "url": "https://www.douane.gouv.fr/",
+            "category": "通关规则",
+        },
+        "legifrance": {
+            "name": "法国法规数据库",
+            "url": "https://www.legifrance.gouv.fr/",
+            "category": "外贸法规",
+        },
     },
 }
+
+# 向后兼容：旧代码引用的德国源
+GERMAN_DATA_SOURCES = OFFICIAL_SOURCES_BY_COUNTRY["德国"]

@@ -74,8 +74,8 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="updated_at" label="更新时间" width="170">
-              <template #default="{ row }">{{ formatDateTime(row.updated_at) }}</template>
+            <el-table-column prop="update_time" label="更新时间" width="170">
+              <template #default="{ row }">{{ formatDateTime(row.updated_at || row.update_time) }}</template>
             </el-table-column>
             <el-table-column label="操作" width="160" align="center">
               <template #default="{ row }">
@@ -233,7 +233,7 @@ const handleDocSelect = (row) => {
 // 查看目录
 const viewTree = (row) => {
   currentDoc.value = row
-  knowledge.loadTree(row.id || row.doc_id)
+  knowledge.loadTree(row.id || row.doc_id || row.doc_uuid)
 }
 
 // 重新切片
@@ -244,7 +244,7 @@ const reSlice = (row) => {
     { type: 'warning' }
   ).then(async () => {
     try {
-      await knowledge.updateNode({ doc_id: row.id || row.doc_id, action: 'reslice' })
+      await knowledge.updateNode({ doc_id: row.id || row.doc_id || row.doc_uuid, action: 'reslice' })
       ElMessage.success('已触发重新切片')
     } catch (e) {
       ElMessage.error('操作失败')
@@ -288,7 +288,7 @@ const saveEdit = async () => {
 const loadAll = () => {
   knowledge.loadDocs()
   if (currentDoc.value) {
-    knowledge.loadTree(currentDoc.value.id || currentDoc.value.doc_id)
+    knowledge.loadTree(currentDoc.value.id || currentDoc.value.doc_id || currentDoc.value.doc_uuid)
   }
 }
 

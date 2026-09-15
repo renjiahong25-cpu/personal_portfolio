@@ -2,7 +2,6 @@
 
 import time
 import re
-from typing import Optional
 from pathlib import Path
 
 from config.logging_config import get_logger

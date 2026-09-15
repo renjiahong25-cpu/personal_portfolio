@@ -27,8 +27,38 @@ _HYDE_PROMPT = (
     "税率/认证/单证/限制要求等条例式内容；\n"
     "2. 文风与官方法规条款一致（如'符合XXX要求者应当提交XXX文件'）；\n"
     "3. 仅用于检索召回增强，允许合理推测，但不得出现编造的精确税率/编号；\n"
-    "4. 直接输出正文，不要任何解释或标记。"
+    "4. 必须使用目标国家的官方语言撰写（如国家为德国则用德语），以匹配该国的"
+    "官方法规文档用语，便于检索召回；\n"
+    "5. 直接输出正文，不要任何解释或标记。"
 )
+
+
+def _country_to_lang(country: str) -> str:
+    """将目标国家映射为官方语言，便于 HyDE 用该国语言生成检索文本"""
+    c = (country or "").strip()
+    if not c:
+        return ""
+    if c in ("中国", "China", "大陆", "中国大陆"):
+        return "中文"
+    if c in ("德国", "Deutschland", "Germany"):
+        return "德语"
+    if c in ("法国", "France", "Frankreich"):
+        return "法语"
+    if c in ("美国", "USA", "美国/英国", "United States"):
+        return "英语"
+    if c in ("英国", "UK", "Britain", "United Kingdom"):
+        return "英语"
+    if c in ("荷兰", "Netherlands", "Niederlande"):
+        return "荷兰语"
+    if c in ("比利时", "Belgium", "Belgien"):
+        return "荷兰语/法语/德语"
+    if c in ("奥地利", "Austria", "Österreich"):
+        return "德语"
+    if c in ("瑞士", "Switzerland", "Schweiz"):
+        return "德语/法语/意大利语"
+    if c in ("欧盟", "EU", "European Union"):
+        return "德语"
+    return ""
 
 
 class HyDEGenerator:
@@ -52,22 +82,27 @@ class HyDEGenerator:
             return None
 
         logger.info(f"[{req_tag}] HyDE 生成开始 | query_len={len(query)} | entities={entities}")
+        lang = _country_to_lang(entities.get("country", ""))
         user_content = (
             f"用户问题：{query}\n"
             f"抽取实体：商品={entities.get('product','')} 国家={entities.get('country','')} "
             f"HS编码={entities.get('hs_code','')} 贸易条款={entities.get('trade_term','')} "
-            f"合规场景={entities.get('category','')}"
+            f"合规场景={entities.get('category','')}\n"
+            + (f"要求使用语言：{lang}" if lang else "")
         )
         messages = [
             {"role": "system", "content": _HYDE_PROMPT},
             {"role": "user", "content": user_content},
         ]
         try:
-            hyde_doc = await asyncio.to_thread(self.llm.chat, messages, 0.4, 300)
+            hyde_doc = await asyncio.to_thread(self.llm.chat, messages, 0.4, 2048, no_think=True)
             hyde_doc = (hyde_doc or "").strip()
             # 简单防御：如果 LLM 返回了非正文内容（如对话式说明），直接丢弃
             if len(hyde_doc) < 5:
-                logger.warning(f"[{req_tag}] HyDE 生成结果过短，视为无效")
+                logger.warning(f"[{req_tag}] HyDE 生成结果过短，重试一次")
+                hyde_doc = (await asyncio.to_thread(self.llm.chat, messages, 0.4, 2048, no_think=True) or "").strip()
+            if len(hyde_doc) < 5:
+                logger.warning(f"[{req_tag}] HyDE 生成结果过短(重试后)，视为无效")
                 return None
             elapsed = round(time.time() - start, 3)
             logger.info(
