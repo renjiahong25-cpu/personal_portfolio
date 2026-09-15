@@ -10,7 +10,6 @@ US/EU/CN 的详细税率(含 301/对等)由既有 tariff_service / quote_engine 
 """
 import json
 import re
-import threading
 from functools import lru_cache
 
 from config import settings

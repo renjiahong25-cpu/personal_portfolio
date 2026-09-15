@@ -167,15 +167,24 @@ def test_thread_mutual_exclusion():
 
 
 def test_lock_backend_error_when_no_redis():
-    if REDIS:
-        pytest.skip("redis present")
+    """Redis client 不可用时 acquire 抛 LockBackendError。
+
+    注入一个 ping 必失败的假 client，使测试与真实 Redis 是否在线解耦
+    （CI 无 Redis / 本机有 Redis 均确定性地通过）。
+    """
     from config import settings
     orig = settings.LOCK_BACKEND
     try:
         settings.LOCK_BACKEND = "redis"
         m = LockManager()
         m._backend = RedisLockBackend()
-        m._backend._client = None
+
+        class _Broken:
+            def ping(self):
+                raise ConnectionError("simulated: redis down")
+            def set(self, *a, **k):
+                raise ConnectionError("simulated: redis down")
+        m._backend._client = _Broken()
         with pytest.raises(LockBackendError):
             m.acquire("t.down", timeout=0.2, ttl=5)
     finally:
