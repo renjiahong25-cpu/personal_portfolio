@@ -1,0 +1,116 @@
+:root {
+  color-scheme: dark;
+  --bg: #0f1420;
+  --card: #1a2233;
+  --border: #2a3450;
+  --text: #dce3f0;
+  --muted: #8a94ad;
+  --accent: #6ea8ff;
+  --ok: #59d98a;
+  --bad: #ff6b6b;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  min-height: 100vh;
+}
+
+.wb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, #151d2e 0%, var(--bg) 100%);
+}
+
+.wb-header h1 {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.wb-status-chip {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted);
+}
+
+.wb-status-chip.connected { color: var(--ok); border-color: var(--ok); }
+.wb-status-chip.disconnected { color: var(--bad); border-color: var(--bad); }
+
+.wb-main {
+  max-width: 720px;
+  margin: 24px auto;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.wb-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.wb-card h2 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 14px;
+}
+
+.wb-field {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--border);
+}
+
+.wb-field:last-of-type { border-bottom: none; }
+
+.wb-field label { color: var(--muted); font-size: 14px; }
+.wb-field span { font-size: 14px; }
+
+.wb-action-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+button {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+button:hover {
+  border-color: var(--accent);
+  background: #202a40;
+}
+
+#recent-tasks {
+  font-size: 13px;
+  color: var(--muted);
+}

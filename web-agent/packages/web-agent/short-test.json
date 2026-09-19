@@ -1,0 +1,15 @@
+{
+  "chat": {
+    "name": "模型网关-DEEPSEEK",
+    "mode": "independent",
+    "reuse": { "strategy": "by-name" }
+  },
+  "task": {
+    "content": "你好"
+  },
+  "options": {
+    "waitForReplies": true,
+    "waitForReady": false,
+    "timeoutMs": 90000
+  }
+}

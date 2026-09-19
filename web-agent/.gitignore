@@ -1,0 +1,22 @@
+node_modules
+dist
+.npm-cache/
+.conda-pkgs/
+.conda-web-agent/
+release/
+.worktrees/
+.private/
+.superpowers/
+.agents/
+skills-lock.json
+*.tgz
+*.log
+.DS_Store
+.idea/
+
+# 本地构建产物 / 个人临时文件（不上传）
+watcher.obj
+diagnostics/screenshot-*.png
+diagnostics/*.pid
+scripts/
+docs/assets/web-agent-wechat-group-qr.jpg

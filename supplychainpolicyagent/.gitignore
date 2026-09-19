@@ -1,0 +1,80 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment & Secrets (SENSITIVE - NEVER COMMIT)
+.env
+.env.local
+.env.production
+*.env
+config/secrets.py
+
+# Logs / 运行时产物（整目录）
+logs/
+
+# Database
+*.db
+*.sqlite3
+
+# MinIO local data
+minio_data/
+
+# Milvus local data
+milvus_data/
+
+# Eval runtime artifacts (eval sets / reports / raw results)
+data/
+
+# Redis dumps
+dump.rdb
+
+# Node (frontend)
+frontend/node_modules/
+frontend/dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# ---- 不上传：代理/过程/内部文档 与 调试痕迹 ----
+docs/
+scripts/
+backups/
+.opencode/
+# 根目录下所有 md（含 PRD、技术架构设计文档、AGENTS.md、issues.md），仅保留 README.md
+/*.md
+!README.md
+
+# 根目录探针/一次性日志
+probe_*.log
+
+# 前端 Playwright 调试产物（保留 tests/ + playwright.config.js）
+frontend/logs/
+frontend/test-results/
+frontend/pw-*.cjs
+frontend/pw-probe.txt
+frontend/playwright-e2e.cjs
+frontend/dev-quote-spy.cjs
+
+# Vite dep-optimization cache
+frontend/.vite/

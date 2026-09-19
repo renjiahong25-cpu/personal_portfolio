@@ -1,0 +1,23 @@
+{
+  "name": "@afumu/web-agent",
+  "version": "0.1.0",
+  "description": "Web Agent local CLI for agent-controlled group chats",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "type": "module",
+  "private": false,
+  "bin": {
+    "web-agent": "web-agent.mjs"
+  },
+  "files": [
+    "README.zh-CN.md",
+    "web-agent.mjs",
+    "web-agent-daemon.mjs",
+    "skills"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

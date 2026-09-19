@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Web Agent</title>
+    <link rel="stylesheet" href="team.css" />
+  </head>
+  <body>
+    <div id="app" class="app-shell">
+      <div id="floating-toolbar" class="floating-toolbar">
+        <button id="close-window" class="icon-btn window-dot window-dot-close" type="button" aria-label="缩小窗口" title="缩小窗口">×</button>
+        <button id="toggle-window-size" class="icon-btn window-dot window-dot-minimize" type="button" aria-expanded="true" aria-label="缩小窗口" title="缩小窗口">−</button>
+        <button id="toggle-fullscreen" class="icon-btn window-dot window-dot-fullscreen" type="button" aria-pressed="false" aria-label="全屏窗口" title="全屏窗口">⛶</button>
+      </div>
+      <button id="window-resize-handle" class="window-resize-handle" type="button" aria-label="调整窗口大小" title="调整窗口大小"></button>
+      <nav class="rail" aria-label="Web Agent 导航">
+        <div></div>
+        <div class="rail-actions">
+          <button class="rail-btn active" type="button" aria-label="群聊" data-tooltip="群聊">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+              <path d="M6.5 7.2A6.4 6.4 0 0 1 12 4.8c4 0 7.2 2.6 7.2 5.8s-3.2 5.8-7.2 5.8c-.7 0-1.4-.08-2.1-.25L5.2 18.7l1.15-4.05A5.3 5.3 0 0 1 4.8 10.6c0-1.25.62-2.42 1.7-3.4Z" />
+            </svg>
+          </button>
+          <button id="open-all-notes" class="rail-btn" type="button" aria-label="查看全部笔记" data-tooltip="全部笔记">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+              <rect x="5" y="5" width="5" height="5" rx="1" />
+              <rect x="14" y="5" width="5" height="5" rx="1" />
+              <rect x="5" y="14" width="5" height="5" rx="1" />
+              <rect x="14" y="14" width="5" height="5" rx="1" />
+            </svg>
+          </button>
+          <button id="open-people-library" class="rail-btn" type="button" aria-label="打开人员库" data-tooltip="人员库">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+              <path d="M12 12.2a3.4 3.4 0 1 0 0-6.8 3.4 3.4 0 0 0 0 6.8Z" />
+              <path d="M5.7 19.2c.65-3.3 2.82-5.15 6.3-5.15s5.65 1.85 6.3 5.15" />
+            </svg>
+          </button>
+          <button id="open-external-models" class="rail-btn" type="button" aria-label="添加大模型" data-tooltip="添加大模型">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+              <path d="m12 4.5 6.2 3.55v7.1L12 18.7l-6.2-3.55v-7.1L12 4.5Z" />
+              <path d="m5.95 8.25 6.05 3.45 6.05-3.45" />
+              <path d="M12 11.7v6.8" />
+            </svg>
+          </button>
+        </div>
+        <div class="rail-bottom">
+          <button id="settings-button" class="rail-btn" type="button" aria-label="设置" aria-expanded="false" aria-controls="settings-menu">⚙</button>
+          <div id="settings-menu" class="settings-menu" hidden>
+            <div class="settings-section">
+              <div class="settings-label">语言</div>
+              <div class="settings-segment" role="group" aria-label="语言">
+                <button id="language-en" class="settings-segment-option" type="button" aria-pressed="true">English</button>
+                <button id="language-zh" class="settings-segment-option" type="button" aria-pressed="false">中文</button>
+              </div>
+            </div>
+            <button id="agent-control-toggle" class="btn settings-toggle" type="button" aria-pressed="false">本机智能体控制：关闭</button>
+            <p id="agent-control-status" class="tiny settings-hint" data-control-state="disabled">端口 19305，仅允许本机连接。</p>
+          </div>
+        </div>
+      </nav>
+      <aside class="panel sidebar">
+        <div class="panel-header">
+          <div class="brand-mark">
+            <div class="logo-dot" aria-hidden="true"></div>
+            <div class="sidebar-brand-copy">
+              <div class="sidebar-brand-line">
+                <h1>Web Agent</h1>
+                <span class="sidebar-section-label">群聊</span>
+              </div>
+              <p id="store-summary" class="tiny">加载群聊中</p>
+            </div>
+          </div>
+          <div class="sidebar-header-actions">
+            <button id="quick-create-chat" class="icon-btn" type="button" aria-label="新建群聊" aria-controls="chat-create-popover" aria-expanded="false">＋</button>
+          </div>
+        </div>
+
+        <form id="create-chat-form" class="chat-create" hidden>
+          <div id="chat-create-popover">
+            <h3>新建群聊</h3>
+          </div>
+          <div class="field">
+            <label for="new-chat-name">群聊名称</label>
+            <input id="new-chat-name" type="text" placeholder="例如：产品方案讨论" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label>群聊模式</label>
+            <div class="mode-options">
+              <label class="mode-option" for="new-chat-mode-collaborative">
+                <input id="new-chat-mode-collaborative" type="radio" name="new-chat-mode" value="collaborative" checked />
+                <span>
+                  <span class="mode-name">协作群聊</span>
+                  <span class="mode-help">人员参考群聊上下文，适合接力讨论。</span>
+                </span>
+              </label>
+              <label class="mode-option" for="new-chat-mode-independent">
+                <input id="new-chat-mode-independent" type="radio" name="new-chat-mode" value="independent" />
+                <span>
+                  <span class="mode-name">独立专家</span>
+                  <span class="mode-help">人员独立回答，适合并行评审。</span>
+                </span>
+              </label>
+            </div>
+          </div>
+          <div class="two-col">
+            <button id="cancel-create-chat" class="btn" type="button">取消</button>
+            <button class="btn btn-primary" type="submit">创建</button>
+          </div>
+          <div class="chat-create-template-row">
+            <button id="open-group-template-create" class="btn btn-ghost chat-create-template-btn" type="button">从模板中创建</button>
+          </div>
+        </form>
+
+        <div id="chat-list" class="chat-list"></div>
+      </aside>
+
+      <main class="panel workspace">
+        <header class="chat-header">
+          <div class="chat-title-block">
+            <h2 id="chat-title" class="chat-title">未选择群聊</h2>
+            <p id="chat-subtitle" class="chat-subtitle">创建或选择一个群聊开始协作</p>
+          </div>
+          <div class="chat-row">
+            <div id="theme-switch" class="theme-switch" role="group" aria-label="界面模式">
+              <button id="theme-light" class="theme-option" type="button" aria-pressed="false" title="浅色模式">
+                <span aria-hidden="true">☼</span>
+                <span>浅色</span>
+              </button>
+              <button id="theme-dark" class="theme-option" type="button" aria-pressed="true" title="深色模式">
+                <span aria-hidden="true">☾</span>
+                <span>深色</span>
+              </button>
+            </div>
+            <button id="open-orchestration" class="btn drawer-summary" type="button">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                <path d="M5 7.5h4.5v4H5z" />
+                <path d="M14.5 4.5H19v4h-4.5z" />
+                <path d="M14.5 15.5H19v4h-4.5z" />
+                <path d="M9.5 9.5h2.8c1.2 0 2.2-1 2.2-2.2v-.8" />
+                <path d="M9.5 9.5h2.8c1.2 0 2.2 1 2.2 2.2v5.8" />
+              </svg>
+              <span>编排</span>
+            </button>
+            <button id="toggle-people-drawer" class="btn drawer-summary" type="button" aria-expanded="false">成员 0</button>
+            <button id="toggle-notes-panel" class="btn drawer-summary" type="button" aria-expanded="false" aria-controls="notes-panel">笔记</button>
+            <span id="chat-status" class="status-pill">空</span>
+            <button id="restore-chat" class="btn" type="button">恢复会话</button>
+          </div>
+        </header>
+
+        <section id="messages" class="messages" aria-live="polite"></section>
+
+        <form id="composer" class="composer">
+          <div id="reference-draft" class="reference-draft" hidden></div>
+          <div id="mention-panel" class="mention-panel" hidden></div>
+          <textarea id="message-input" placeholder="输入消息，@成员可指定回复；不 @ 仅记录到群聊。"></textarea>
+          <div class="composer-actions">
+            <div>
+              <div id="target-preview" class="muted tiny">选择群聊后可发送</div>
+              <div id="busy-preview" class="tiny"></div>
+            </div>
+            <button id="send-message" class="btn btn-primary" type="submit" disabled>发送</button>
+          </div>
+        </form>
+      </main>
+
+      <aside class="panel role-panel">
+        <div class="panel-header">
+          <div>
+            <h2>群聊成员与人员</h2>
+            <p id="role-summary" class="tiny">0 个人员</p>
+          </div>
+          <button id="open-gemini-login" class="icon-btn" type="button" aria-label="AI 站点登录">◇</button>
+        </div>
+        <div class="role-scroll">
+          <div class="section-title">
+            <h3>当前群聊人员</h3>
+            <button id="close-people-drawer" class="btn" type="button">收起</button>
+          </div>
+          <div id="role-list" class="role-list"></div>
+
+          <form id="add-role-form" class="editor-card role-form">
+            <h3>添加人员</h3>
+            <p class="tiny">从人员库批量选择，或临时添加只属于当前群聊的人员。</p>
+            <select id="role-template-select" hidden></select>
+            <button class="btn btn-primary" type="submit">添加人员</button>
+          </form>
+
+        </div>
+      </aside>
+
+    </div>
+    <aside id="notes-panel" class="panel notes-panel" aria-label="笔记面板">
+      <div id="notes-drag-handle" class="panel-header notes-panel-header" title="拖动笔记">
+        <div>
+          <h2>笔记</h2>
+          <p class="tiny">手动记录或收集 Mark 内容。</p>
+        </div>
+        <button id="close-notes-panel" class="icon-btn" type="button" aria-label="关闭笔记">×</button>
+      </div>
+      <div class="note-scope-tabs" role="tablist" aria-label="笔记范围">
+        <button id="chat-note-tab" class="note-scope-tab active" type="button" data-note-scope="chat">当前群聊</button>
+        <button id="global-note-tab" class="note-scope-tab" type="button" data-note-scope="global">全局笔记</button>
+      </div>
+      <div class="note-toolbar" aria-label="富文本工具栏">
+        <button id="note-bold" class="note-tool-btn" type="button" aria-label="加粗">B</button>
+        <button id="note-italic" class="note-tool-btn" type="button" aria-label="斜体"><em>I</em></button>
+        <button id="note-strike" class="note-tool-btn" type="button" aria-label="删除线"><s>S</s></button>
+        <button id="note-bullet-list" class="note-tool-btn" type="button" aria-label="项目列表">•</button>
+        <button id="note-ordered-list" class="note-tool-btn" type="button" aria-label="编号列表">1.</button>
+        <span class="note-toolbar-spacer"></span>
+        <button id="note-undo" class="note-tool-btn" type="button" aria-label="撤销">↶</button>
+        <button id="note-redo" class="note-tool-btn" type="button" aria-label="重做">↷</button>
+      </div>
+      <div id="notes-editor" class="notes-editor" aria-label="富文本笔记编辑器"></div>
+      <button id="notes-resize-handle" class="notes-resize-handle" type="button" aria-label="调整笔记大小" title="调整笔记大小"></button>
+    </aside>
+    <span id="template-summary" hidden></span>
+    <div id="template-list" hidden></div>
+    <button id="window-launcher" class="launcher" type="button" aria-label="打开 Web Agent" hidden>⌁</button>
+
+    <div id="all-notes-modal" class="modal-backdrop" hidden>
+      <section class="modal all-notes-modal" role="dialog" aria-modal="true" aria-labelledby="all-notes-title">
+        <div class="modal-header">
+          <div>
+            <h2 id="all-notes-title">全部笔记</h2>
+            <p class="tiny">全局、群聊、已删除群聊</p>
+          </div>
+          <button id="close-all-notes" class="icon-btn modal-close" type="button" aria-label="关闭全部笔记">×</button>
+        </div>
+        <div class="all-notes-workspace">
+          <div id="all-notes-list" class="all-notes-list" aria-label="笔记范围"></div>
+          <section class="all-notes-editor-shell" aria-labelledby="all-notes-active-title">
+            <div class="all-notes-editor-header">
+              <div>
+                <h3 id="all-notes-active-title">全局笔记</h3>
+                <p id="all-notes-active-meta" class="tiny">手动记录</p>
+              </div>
+            </div>
+            <div class="note-toolbar all-note-toolbar">
+              <button id="all-note-bold" class="note-tool-btn" type="button" aria-label="加粗"><b>B</b></button>
+              <button id="all-note-italic" class="note-tool-btn" type="button" aria-label="斜体"><i>I</i></button>
+              <button id="all-note-strike" class="note-tool-btn" type="button" aria-label="删除线"><s>S</s></button>
+              <button id="all-note-bullet-list" class="note-tool-btn" type="button" aria-label="项目列表">•</button>
+              <button id="all-note-ordered-list" class="note-tool-btn" type="button" aria-label="编号列表">1.</button>
+              <span class="note-toolbar-spacer"></span>
+              <button id="all-note-undo" class="note-tool-btn" type="button" aria-label="撤销">↶</button>
+              <button id="all-note-redo" class="note-tool-btn" type="button" aria-label="重做">↷</button>
+            </div>
+            <div id="all-notes-editor" class="notes-editor all-notes-editor" aria-label="当前笔记富文本编辑器"></div>
+          </section>
+        </div>
+      </section>
+    </div>
+
+    <div id="group-template-modal" class="modal-backdrop" hidden>
+      <section class="modal group-template-modal" role="dialog" aria-modal="true" aria-labelledby="group-template-title">
+        <div class="modal-header">
+          <div>
+            <h2 id="group-template-title">从模板中创建</h2>
+            <p class="tiny">选择一个现成小组，创建后会自动加入模板人员。</p>
+          </div>
+          <button id="close-group-template-modal" class="icon-btn modal-close" type="button" aria-label="关闭群聊模板">×</button>
+        </div>
+        <div class="group-template-toolbar">
+          <label class="group-template-search-field" for="group-template-search">
+            <span>搜索模板</span>
+            <input id="group-template-search" type="search" autocomplete="off" placeholder="搜索任务、行业、角色或模板名称，例如：写论文、合同、面试、AI Agent" />
+          </label>
+          <div id="group-template-categories" class="group-template-categories" aria-label="群聊模板分类"></div>
+        </div>
+        <div id="group-template-list" class="group-template-list" aria-label="群聊模板"></div>
+        <div class="group-template-footer">
+          <button id="confirm-group-template-create" class="btn btn-primary" type="button" disabled>确认创建</button>
+        </div>
+      </section>
+    </div>
+
+    <div id="people-library-modal" class="modal-backdrop" hidden>
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="people-library-title">
+        <div class="modal-header">
+          <div>
+            <h2 id="people-library-title">人员库</h2>
+            <p class="tiny">维护可复用人员人设；加入群聊后会复制为独立人员。</p>
+          </div>
+          <div class="chat-row">
+            <button id="new-template" class="btn btn-primary" type="button">新建</button>
+            <button id="close-people-library" class="icon-btn modal-close" type="button" aria-label="关闭人员库">×</button>
+          </div>
+        </div>
+        <div class="people-library-content">
+          <div class="people-library-pane">
+            <div class="section-title">
+              <h3>人员列表</h3>
+              <span id="people-library-summary" class="tiny">0 人</span>
+            </div>
+            <div class="people-library-toolbar">
+              <input id="people-library-search" type="search" placeholder="搜索人员名称、描述或提示词" autocomplete="off" />
+              <div class="template-type-tabs" role="tablist" aria-label="人员库类型">
+                <button id="people-library-tab-custom" class="template-type-tab active" type="button" data-template-type="custom">自定义人员</button>
+                <button id="people-library-tab-builtin" class="template-type-tab" type="button" data-template-type="builtin">内置人员</button>
+              </div>
+              <div id="people-library-category-filter" class="template-category-filter" aria-label="人员分类"></div>
+            </div>
+            <div id="people-library-list" class="template-list"></div>
+            <div id="people-library-pagination" class="pagination-bar"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div id="external-models-modal" class="modal-backdrop" hidden>
+      <section class="modal template-editor-modal" role="dialog" aria-modal="true" aria-labelledby="external-models-title">
+        <div class="modal-header">
+          <div>
+            <h2 id="external-models-title">外部模型</h2>
+            <p class="tiny">配置 OpenAI 或 Anthropic 兼容 API，人员可直接选择这些模型。</p>
+          </div>
+          <button id="close-external-models" class="icon-btn modal-close" type="button" aria-label="关闭外部模型">×</button>
+        </div>
+        <div id="external-models-list" class="template-list"></div>
+        <form id="external-model-form" class="modal-form">
+          <input id="external-model-id" type="hidden" />
+          <div class="field">
+            <label for="external-model-name">显示名称</label>
+            <input id="external-model-name" type="text" autocomplete="off" placeholder="例如：本地模型" />
+          </div>
+          <div class="field">
+            <label for="external-model-format">接口格式</label>
+            <select id="external-model-format">
+              <option value="openai">OpenAI 格式</option>
+              <option value="anthropic">Anthropic 格式</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="external-model-base-url">模型地址</label>
+            <input id="external-model-base-url" type="url" autocomplete="off" placeholder="https://api.example.com/v1" />
+          </div>
+          <div class="field">
+            <label for="external-model-api-key">模型 Key</label>
+            <input id="external-model-api-key" type="password" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="external-model-model-name">模型名称</label>
+            <input id="external-model-model-name" type="text" autocomplete="off" placeholder="gpt-4.1 / claude-sonnet" />
+          </div>
+          <div class="template-actions">
+            <button id="reset-external-model-form" class="btn" type="button">新建</button>
+            <button class="btn btn-primary" type="submit">保存外部模型</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <div id="person-template-modal" class="modal-backdrop" hidden>
+      <section class="modal template-editor-modal" role="dialog" aria-modal="true" aria-labelledby="template-form-title">
+        <div class="modal-header">
+          <div>
+            <h2 id="template-form-title">新建人员</h2>
+            <p class="tiny">维护人员名称、人设和默认站点。</p>
+          </div>
+          <button id="close-person-template" class="icon-btn modal-close" type="button" aria-label="关闭人员编辑">×</button>
+        </div>
+        <form id="people-library-form" class="modal-form">
+          <div class="ai-persona-panel">
+            <div class="field">
+              <label for="template-ai-description">描述想要的人设</label>
+              <textarea id="template-ai-description" placeholder="例如：一个擅长小红书增长的内容顾问"></textarea>
+            </div>
+            <div class="template-actions template-ai-actions">
+              <p id="template-persona-generation-status" class="tiny" aria-live="polite"></p>
+              <button id="generate-template-persona" class="btn btn-ghost" type="button">AI 生成</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="template-name">人员名称</label>
+            <input id="template-name" type="text" maxlength="50" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="template-description">描述</label>
+            <textarea id="template-description"></textarea>
+          </div>
+          <div class="field">
+            <label for="template-prompt">人设</label>
+            <textarea id="template-prompt"></textarea>
+          </div>
+          <div class="field">
+            <label>默认站点</label>
+            <div class="site-segmented">
+              <label class="site-segment" for="template-site-gemini">
+                <input id="template-site-gemini" type="radio" name="template-chat-site" value="gemini" />
+                <span>Gemini</span>
+              </label>
+              <label class="site-segment" for="template-site-chatgpt">
+                <input id="template-site-chatgpt" type="radio" name="template-chat-site" value="chatgpt" />
+                <span>ChatGPT</span>
+              </label>
+              <label class="site-segment" for="template-site-claude">
+                <input id="template-site-claude" type="radio" name="template-chat-site" value="claude" />
+                <span>Claude</span>
+              </label>
+              <label class="site-segment" for="template-site-deepseek">
+                <input id="template-site-deepseek" type="radio" name="template-chat-site" value="deepseek" checked />
+                <span>DeepSeek</span>
+              </label>
+              <label class="site-segment" for="template-site-grok">
+                <input id="template-site-grok" type="radio" name="template-chat-site" value="grok" />
+                <span>Grok</span>
+              </label>
+              <label class="site-segment" for="template-site-external">
+                <input id="template-site-external" type="radio" name="template-chat-site" value="external" />
+                <span>外部模型</span>
+              </label>
+            </div>
+          </div>
+          <div id="template-chatgpt-gpts-field" class="field" hidden>
+            <label for="template-chatgpt-gpts-url">GPTs 链接前缀</label>
+            <input id="template-chatgpt-gpts-url" type="url" autocomplete="off" placeholder="https://chatgpt.com/g/..." />
+            <p class="tiny">选填。保存后，该人员使用 ChatGPT 时会优先打开这个 GPTs。</p>
+          </div>
+          <div id="template-grok-project-field" class="field" hidden>
+            <label for="template-grok-project-url">Grok 项目链接</label>
+            <input id="template-grok-project-url" type="url" autocomplete="off" placeholder="https://grok.com/project/..." />
+            <p class="tiny">选填。保存后，该人员使用 Grok 时会优先打开这个项目。</p>
+          </div>
+          <div id="template-external-model-field" class="field" hidden>
+            <label for="template-external-model-select">外部模型</label>
+            <select id="template-external-model-select"></select>
+          </div>
+          <div class="template-actions">
+            <button class="btn btn-primary" type="submit">保存人员</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <div id="builtin-template-detail-modal" class="modal-backdrop" hidden>
+      <section class="modal template-detail-modal" role="dialog" aria-modal="true" aria-labelledby="builtin-template-detail-title">
+        <div class="modal-header">
+          <div>
+            <h2 id="builtin-template-detail-title">内置人员</h2>
+            <p id="builtin-template-detail-meta" class="tiny">系统内置人员</p>
+          </div>
+          <button id="close-builtin-template-detail" class="icon-btn modal-close" type="button" aria-label="关闭内置人员详情">×</button>
+        </div>
+        <pre id="builtin-template-detail-prompt" class="template-prompt-preview"></pre>
+      </section>
+    </div>
+
+    <div id="add-person-modal" class="modal-backdrop" hidden>
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="add-person-title">
+        <div class="modal-header">
+          <div>
+            <h2 id="add-person-title">添加人员</h2>
+            <p class="tiny">从人员库或临时草稿中选择人员，并为每个人指定站点。</p>
+          </div>
+          <div class="modal-header-actions">
+            <button id="open-temporary-person" class="btn btn-ghost" type="button">临时添加</button>
+          <button id="close-add-person" class="icon-btn modal-close" type="button" aria-label="关闭添加人员">×</button>
+          </div>
+        </div>
+        <div class="modal-grid single-column">
+          <form id="add-library-people-form" class="modal-form modal-card modal-grid-wide">
+            <h3>选择人员</h3>
+            <div class="add-person-toolbar">
+              <input id="add-person-search" type="search" placeholder="搜索人员名称、描述或提示词" autocomplete="off" />
+              <div class="template-type-tabs" role="tablist" aria-label="人员类型">
+                <button id="add-person-tab-custom" class="template-type-tab active" type="button" data-template-type="custom">自定义人员</button>
+                <button id="add-person-tab-builtin" class="template-type-tab" type="button" data-template-type="builtin">内置人员</button>
+              </div>
+              <div id="add-person-category-filter" class="template-category-filter" aria-label="人员分类"></div>
+            </div>
+            <div id="add-library-people-list" class="select-list"></div>
+            <button class="btn btn-primary" type="submit">加入选中人员</button>
+          </form>
+        </div>
+      </section>
+    </div>
+
+    <div id="temporary-person-modal" class="modal-backdrop" hidden>
+      <section class="modal template-editor-modal" role="dialog" aria-modal="true" aria-labelledby="temporary-person-title">
+        <div class="modal-header">
+          <div>
+            <h2 id="temporary-person-title">临时添加</h2>
+            <p class="tiny">临时人员会先进入待选列表，确认后才加入当前群聊。</p>
+          </div>
+          <button id="close-temporary-person" class="icon-btn modal-close" type="button" aria-label="关闭临时添加">×</button>
+        </div>
+          <form id="add-temporary-person-form" class="modal-form">
+            <div class="field">
+              <label for="temporary-person-name">人员名称</label>
+              <input id="temporary-person-name" type="text" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="temporary-person-description">描述</label>
+              <textarea id="temporary-person-description"></textarea>
+            </div>
+            <div class="field">
+              <label for="temporary-person-prompt">人设</label>
+              <textarea id="temporary-person-prompt"></textarea>
+            </div>
+            <button class="btn btn-primary" type="submit">加入待选列表</button>
+          </form>
+      </section>
+    </div>
+
+    <div id="orchestration-modal" class="modal-backdrop" hidden>
+      <section class="modal orchestration-modal" role="dialog" aria-modal="true" aria-labelledby="orchestration-title">
+        <div class="modal-header">
+          <div>
+            <h2 id="orchestration-title">编排任务</h2>
+            <p class="tiny">画布节点按连线顺序执行；同一个节点内的多个人员会并行工作。</p>
+          </div>
+          <button id="close-orchestration" class="icon-btn modal-close" type="button" aria-label="关闭编排任务">×</button>
+        </div>
+        <div class="orchestration-task-strip">
+          <label class="field" for="orchestration-task">任务</label>
+          <div class="orchestration-task-input-row">
+            <textarea id="orchestration-task" placeholder="描述要让编排流程完成的任务；不需要 @ 人员。"></textarea>
+            <button id="open-orchestration-template" class="btn orchestration-template-trigger" type="button">模板</button>
+            <button id="auto-orchestration" class="btn orchestration-auto" type="button">自动编排</button>
+          </div>
+        </div>
+        <div class="orchestration-layout">
+          <aside class="orchestration-sidebar">
+            <div class="section-title">
+              <h3>人员</h3>
+              <span class="tiny">拖到画布创建节点</span>
+            </div>
+            <div id="orchestration-people-list" class="orchestration-people-list"></div>
+          </aside>
+          <section class="orchestration-workspace">
+            <button id="arrange-orchestration" class="btn orchestration-arrange" type="button">整理</button>
+            <div id="orchestration-stage-canvas" class="orchestration-stage-canvas"></div>
+            <p id="orchestration-empty-hint" class="orchestration-empty-hint"></p>
+          </section>
+          <aside class="orchestration-settings">
+            <div class="orchestration-settings-heading">
+              <h3>节点设置</h3>
+              <span class="tiny">选择画布节点后编辑</span>
+            </div>
+            <div id="orchestration-stage-settings" class="orchestration-stage-settings"></div>
+            <div id="orchestration-review-settings" class="orchestration-review-settings"></div>
+          </aside>
+        </div>
+        <div class="orchestration-footer">
+          <label class="field orchestration-rounds-field" for="orchestration-max-rounds">
+            <span>最大节点执行数</span>
+            <input id="orchestration-max-rounds" type="number" min="1" max="200" value="50" />
+          </label>
+          <p class="tiny">默认 50 个，最多 200 个；用于防止循环流程无限执行，执行节点和审核节点都会计数。</p>
+          <div class="template-actions orchestration-actions">
+            <button id="save-orchestration" class="btn" type="button">保存</button>
+            <button id="run-orchestration" class="btn btn-primary" type="button">运行</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div id="orchestration-auto-modal" class="modal-backdrop modal-backdrop-secondary" hidden>
+      <section class="modal orchestration-auto-modal" role="dialog" aria-modal="true" aria-labelledby="orchestration-auto-title">
+        <div class="modal-header">
+          <div>
+            <h2 id="orchestration-auto-title">自动编排</h2>
+            <p class="tiny">根据任务和你的补充描述生成或修改流程。</p>
+          </div>
+          <button id="close-auto-orchestration" class="icon-btn modal-close" type="button" aria-label="关闭自动编排">×</button>
+        </div>
+        <div id="orchestration-auto-content" class="orchestration-auto-content"></div>
+      </section>
+    </div>
+
+    <div id="orchestration-template-modal" class="modal-backdrop modal-backdrop-secondary" hidden>
+      <section class="modal orchestration-template-modal" role="dialog" aria-modal="true" aria-labelledby="orchestration-template-title">
+        <div class="modal-header">
+          <div>
+            <h2 id="orchestration-template-title">选择编排模板</h2>
+            <p class="tiny">先套用一套结构，再按当前任务微调人员和节点。</p>
+          </div>
+          <button id="close-orchestration-template" class="icon-btn modal-close" type="button" aria-label="关闭模板选择">×</button>
+        </div>
+        <div id="orchestration-template-content" class="orchestration-template-content"></div>
+      </section>
+    </div>
+
+    <div id="iframe-host" class="iframe-host" aria-hidden="true"></div>
+    <div id="error" class="toast" hidden></div>
+    <script type="module" src="team.js"></script>
+  </body>
+</html>

@@ -4,6 +4,10 @@ on:
   push:
   pull_request:
 
+defaults:
+  run:
+    working-directory: supplychainpolicyagent
+
 jobs:
   lint:
     runs-on: ubuntu-latest

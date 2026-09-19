@@ -1,0 +1,73 @@
+name: Bug Report
+description: Report a bug in Web Agent
+labels: ["bug", "status:needs-repro"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill in all fields so we can reproduce and fix it faster.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Step-by-step instructions to trigger the bug.
+      placeholder: |
+        1. Open extension popup
+        2. Add agent "..."
+        3. Send message "..."
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: ai_sites
+    attributes:
+      label: Which AI sites are open in your browser?
+      multiple: true
+      options:
+        - ChatGPT (chat.openai.com)
+        - Claude (claude.ai)
+        - Gemini (gemini.google.com)
+        - DeepSeek (chat.deepseek.com)
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: chrome_version
+    attributes:
+      label: Chrome version
+      placeholder: "e.g. 124.0.6367.82"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: "e.g. macOS 14.4, Windows 11"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console logs / screenshots
+      description: Paste any relevant browser console errors or attach screenshots.

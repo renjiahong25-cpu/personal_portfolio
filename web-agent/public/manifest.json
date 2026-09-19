@@ -1,0 +1,75 @@
+{
+  "manifest_version": 3,
+  "name": "Web Agent",
+  "version": "1.0.2",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqxgkfzcDw0zQNilJyCd93/llDm941pSFusZJiFMTSN1MqZtC1XEsbKxqeBwQhT4MXpYbW3toEEMKC9rQA+m4oC9siPUk7wgYI2aCreKT70r5rmJCHzG/Fj1FVXmc/kajvYi9R2CnxP8PXuuw2DOAos2+dvRzp0S3+irSDZVCu/NwL2Gmidg4tMMqzD6xSl2rbf6PMS5jpHqMsT6S2ap8FQmWFN4jFkHOo2ANDJr/xqqzsC9/kLMYFZ6BtC0PKANYRs8USJhdMmlQj6dwTTghQG0hBeQyP9DDTZ7epqne5cOFmZkluVHKXLhwBP1QHJ43MMpodSzqQJ7nYVRA1bfGpQIDAQAB",
+  "description": "Multi-site AI team discussion panel",
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "storage",
+    "tabs",
+    "alarms",
+    "declarativeNetRequest",
+    "clipboardRead",
+    "clipboardWrite"
+  ],
+  "host_permissions": [
+    "https://gemini.google.com/*",
+    "https://*.gemini.google.com/*",
+    "https://chatgpt.com/*",
+    "https://*.chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "https://claude.ai/*",
+    "https://chat.deepseek.com/*",
+    "https://www.deepseek.com/*",
+    "https://deepseek.com/*",
+    "https://www.doubao.com/*",
+    "https://doubao.com/*",
+    "https://grok.com/*",
+    "https://*.grok.com/*",
+    "https://*/*",
+    "http://*/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://* http://127.0.0.1:* ws://127.0.0.1:*; frame-src https://gemini.google.com https://*.gemini.google.com https://chatgpt.com https://*.chatgpt.com https://chat.openai.com https://claude.ai https://chat.deepseek.com https://www.doubao.com https://doubao.com https://grok.com https://*.grok.com;"
+  },
+  "action": {
+    "default_title": "Web Agent"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://gemini.google.com/*",
+        "*://*.gemini.google.com/*",
+        "*://chatgpt.com/*",
+        "*://*.chatgpt.com/*",
+        "*://chat.openai.com/*",
+        "*://claude.ai/*",
+        "*://chat.deepseek.com/*",
+        "*://www.deepseek.com/*",
+        "*://deepseek.com/*",
+        "*://www.doubao.com/*",
+        "*://doubao.com/*",
+        "*://grok.com/*",
+        "*://*.grok.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "ai_iframe_rules",
+        "enabled": true,
+        "path": "web-agent-frame-rules.json"
+      }
+    ]
+  }
+}

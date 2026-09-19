@@ -1,0 +1,29 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npm run verify
+      - run: sudo apt-get install -y zip
+      - run: mkdir -p release && cd dist && zip -r ../release/web-agent-extension-${GITHUB_REF_NAME}.zip .
+      - run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            release/web-agent-extension-${GITHUB_REF_NAME}.zip \
+            --title "Web Agent ${GITHUB_REF_NAME}" \
+            --notes "Chrome extension ZIP for ${GITHUB_REF_NAME}."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Web Agent 控制室</title>
+  <link rel="stylesheet" href="workbench.css" />
+</head>
+<body>
+  <header class="wb-header">
+    <h1>Web Agent 控制室</h1>
+    <div class="wb-status-chip" id="control-status">--</div>
+  </header>
+
+  <main class="wb-main">
+    <section class="wb-card" id="gateway-card">
+      <h2>模型网关</h2>
+      <div class="wb-field"><label>DeepSeek</label><span id="deepseek-status">未连接</span></div>
+      <div class="wb-field"><label>豆包</label><span id="doubao-status">未连接</span></div>
+      <button id="btn-refresh-status">刷新状态</button>
+    </section>
+
+    <section class="wb-card" id="actions-card">
+      <h2>快捷操作</h2>
+      <div class="wb-action-row">
+        <button id="btn-open-deepseek">打开 DeepSeek 网页</button>
+        <button id="btn-open-doubao">打开豆包网页</button>
+        <button id="btn-open-team">打开 Web Agent 工作台</button>
+      </div>
+    </section>
+
+    <section class="wb-card" id="tasks-card">
+      <h2>最近任务</h2>
+      <div id="recent-tasks">暂无任务记录</div>
+    </section>
+  </main>
+
+  <script type="module" src="workbench.js"></script>
+</body>
+</html>
