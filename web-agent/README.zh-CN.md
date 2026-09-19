@@ -4,7 +4,7 @@
 
 > 本地优先的 AI 专家团工作区：一个 Chrome 扩展，把你已登录的 DeepSeek / 豆包网页会话变成多人讨论的群聊工作台；配套本机智能体控制 CLI、OpenAI 兼容模型网关，以及 opencode 集成。
 
-![Web Agent 群聊预览](docs/assets/group-chat-ui-concept.png)
+![Web Agent 桌面客户端](docs/assets/web-agent-ui-screenshot.png)
 
 ## 🌱 项目背景
 

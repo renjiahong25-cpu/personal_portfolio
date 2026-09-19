@@ -4,7 +4,7 @@
 
 > A local-first AI team workspace: a Chrome extension that turns your existing DeepSeek / Doubao web sessions into a multi-agent discussion room, plus a local agent-control CLI, an OpenAI-compatible model gateway, and an opencode integration.
 
-![Web Agent group chat preview](docs/assets/group-chat-ui-concept.png)
+![Web Agent desktop client](docs/assets/web-agent-ui-screenshot.png)
 
 ## 🌱 Background
 

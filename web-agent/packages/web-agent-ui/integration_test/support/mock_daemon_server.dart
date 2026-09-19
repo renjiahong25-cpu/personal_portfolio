@@ -13,6 +13,9 @@ class MockDaemonServer {
   /// 助手回复内容模板（每个 targeted role 一条）。
   String replyContent = '（守护进程 mock 回复）收到你的任务。';
 
+  /// 可选：按 chatSite 覆盖回复内容（截图演示等场景使用）。
+  Map<String, String> replyContentBySite = {};
+
   HttpServer? _server;
 
   final List<Map<String, dynamic>> commands = [];
@@ -20,6 +23,9 @@ class MockDaemonServer {
   /// chatId -> 已添加角色
   final Map<String, List<Map<String, dynamic>>> rolesByChat = {};
   final List<String> chats = [];
+
+  /// messageId -> task.post 时构造的回复列表（task.read/task.wait 据此返回）。
+  final Map<String, List<Map<String, dynamic>>> repliesByMessage = {};
   int _taskSeq = 0;
 
   /// 绑定随机端口并返回实际端口。
@@ -115,29 +121,31 @@ class MockDaemonServer {
         final messageId = 'mock-msg-${++_taskSeq}';
         final targetRoles = _targetRoles(payload['target']);
         final replies = targetRoles.map((role) {
+          final site = role['chatSite'] as String? ?? '';
           return {
             'messageId': 'mock-reply-$_taskSeq-${role['id']}',
             'roleId': role['id'],
-            'roleName': role['name'] ?? role['chatSite'],
-            'content': replyContent,
+            'roleName': role['name'] ?? site,
+            'content': replyContentBySite[site] ?? replyContent,
             'status': 'done',
             'conversationUrl': null,
           };
         }).toList();
+        repliesByMessage[messageId] = replies;
+        // 与真实 daemon 契约一致：message.id 用于 postTask 返回消息 ID，
+        // deliveries 携带各角色回复。
         await _ok(request, {
-          'chatId': chatId,
-          'messageId': messageId,
-          'replies': replies,
-          'pendingRoleIds': <String>[],
-          'errorRoleIds': <String>[],
+          'message': {'id': messageId},
+          'deliveries': replies,
         });
         return;
       case 'task.read':
       case 'task.wait':
+        final messageId = payload['messageId'] as String? ?? '';
         await _ok(request, {
           'chatId': payload['chatId'],
-          'messageId': payload['messageId'],
-          'replies': <Map<String, dynamic>>[],
+          'messageId': messageId,
+          'replies': repliesByMessage[messageId] ?? const <Map<String, dynamic>>[],
           'pendingRoleIds': <String>[],
           'errorRoleIds': <String>[],
         });
