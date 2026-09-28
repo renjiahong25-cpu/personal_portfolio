@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>团建场地采集展示站 · venue-scout</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --bg:#f4f5f7; --card:#fff; --ink:#1f2430; --sub:#6b7280;
+    --line:#e5e7eb; --pri:#0b7aff; --prid:#0759c4; --ok:#0e9f6e; --warn:#e11d48;
+  }
+  * { box-sizing:border-box; }
+  body { font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif; background:var(--bg); color:var(--ink); margin:0; padding:24px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  h2 { font-size:16px; margin:14px 0 8px; }
+  .sub { color:var(--sub); font-size:13px; margin-bottom:14px; }
+  .panel { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px; }
+  .grid { display:flex; flex-wrap:wrap; gap:12px; }
+  .field { display:flex; flex-direction:column; gap:4px; }
+  .field label { font-size:12px; color:var(--sub); }
+  .field input, .field select {
+    padding:7px 10px; border:1px solid var(--line); border-radius:8px; font-size:14px; min-width:140px;
+  }
+  .seg { display:flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--card); }
+  .seg button { border:0; background:transparent; padding:8px 14px; cursor:pointer; font-size:13px; color:var(--sub); }
+  .seg button.on { background:var(--pri); color:#fff; }
+  .btn {
+    display:inline-flex; align-items:center; gap:4px; padding:8px 14px; border:1px solid var(--line); border-radius:8px;
+    font-size:13px; color:var(--ink); text-decoration:none; background:#fff; cursor:pointer; font-family:inherit;
+  }
+  .btn:hover { border-color:var(--pri); color:var(--prid); }
+  .btn.primary { background:var(--pri); color:#fff; border-color:var(--pri); }
+  .btn.primary:hover { background:var(--prid); }
+  .btn.danger { background:var(--warn); color:#fff; border-color:var(--warn); }
+  .btn:disabled { opacity:.5; cursor:not-allowed; }
+  .list { max-width:1180px; margin:0 auto; display:grid; gap:12px; grid-template-columns:1fr 1fr; }
+  .card { display:flex; gap:12px; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; position:relative; }
+  .card.pass { border-left:4px solid var(--ok); }
+  .card.noop { display:none; }
+  .rank { font-size:18px; font-weight:700; color:var(--sub); min-width:30px; line-height:1.2; }
+  .selcb { width:16px; height:16px; accent-color:var(--pri); cursor:pointer; margin-bottom:6px; }
+  .card.selon { border-color:var(--pri); box-shadow:0 0 0 1px var(--pri); }
+  .selbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:12px; padding-top:12px; border-top:1px dashed var(--line); }
+  .selbar .cnt { font-size:13px; color:var(--sub); }
+  .selbar .cnt b { color:var(--pri); font-size:15px; }
+  .btabs { display:flex; gap:6px; flex-wrap:wrap; margin:10px 0 4px; }
+  .btab { padding:5px 12px; border:1px solid var(--line); border-radius:999px; font-size:12px; background:#fff; cursor:pointer; color:var(--sub); }
+  .btab.on { background:var(--pri); color:#fff; border-color:var(--pri); }
+  .btab.err { color:var(--warn); border-color:var(--warn); }
+  .body { flex:1; min-width:0; }
+  .head { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .head h3 { margin:0; font-size:16px; line-height:1.3; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; }
+  .badge { padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; }
+  .badge.manual { background:#fff1f2; color:var(--warn); }
+  .badge.cap { background:#ecfdf5; color:var(--ok); }
+  .badge.price { background:#eff6ff; color:var(--pri); }
+  .meta { display:flex; flex-wrap:wrap; gap:6px 14px; margin:8px 0 6px; font-size:13px; color:var(--sub); }
+  .meta b { color:var(--ink); font-size:15px; }
+  .addr { font-size:12px; color:var(--sub); margin-bottom:8px; }
+  .ent { font-size:12px; color:#374151; margin-bottom:8px; }
+  .ent b { color:#6d28d9; }
+  .actions { display:flex; gap:8px; flex-wrap:wrap; }
+  .notes { margin-top:8px; font-size:12px; color:#92400e; background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:6px 8px; }
+  #count { color:var(--sub); font-size:13px; }
+  .logbox {
+    background:#0f172a; color:#d1fae5; font-family:Consolas,monospace; font-size:12px; line-height:1.5;
+    border-radius:10px; padding:12px; max-height:320px; overflow:auto; white-space:pre-wrap;
+  }
+  .logbox .err { color:#fca5a5; }
+  .statusline { font-size:13px; margin:8px 0; }
+  .reviewgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); gap:12px; margin-top:12px; }
+  .rcard { position:relative; border:1px solid var(--line); border-radius:12px; padding:12px 12px 10px; background:#fff; }
+  .rcard.sel { border-color:var(--pri); box-shadow:0 0 0 2px rgba(11,122,255,.18); }
+  .rcard .rc-selcb { position:absolute; top:10px; left:10px; width:18px; height:18px; cursor:pointer; }
+  .rcard h3 { margin:0; font-size:15px; padding-left:28px; }
+  .rmeta { font-size:12.5px; display:flex; flex-wrap:wrap; gap:3px 10px; margin-top:6px; }
+  .rlinks { display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; margin-top:8px; padding-top:8px; border-top:1px dashed var(--line); }
+  .rlinks a { color:var(--pri); text-decoration:none; font-size:12.5px; }
+  .rlinks a:hover { text-decoration:underline; }
+  .rlinks .src { font-size:12px; color:var(--sub); }
+  .rnotes { font-size:12px; color:#92400e; background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:4px 8px; margin-top:8px; }
+  .reviewbar { display:flex; gap:10px; align-items:center; margin-top:10px; font-size:13px; flex-wrap:wrap; }
+  .entchip { display:inline-flex; align-items:center; gap:4px; border:1px solid var(--line); border-radius:14px; padding:2px 10px; cursor:pointer; user-select:none; font-size:12px; }
+  .entchip:has(input:checked) { border-color:var(--pri); background:rgba(11,122,255,.08); }
+  .entchip input { margin:0; }
+  .entcustom { border:1px solid var(--line); border-radius:14px; padding:2px 10px; font-size:12px; width:170px; }
+  .dlbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .acct { display:none; border:1px solid #f59e0b; background:#fffbeb; color:#92400e; border-radius:10px; padding:10px 14px; font-size:13px; margin:10px 0; }
+  .acct.show { display:block; }
+  .acct b { font-size:13px; }
+  .acct .op { margin:6px 0 2px; }
+  .acct .hint { font-size:12px; color:#b45309; }
+  .acct .req { color:var(--warn); font-weight:600; }
+  .acct .op .btn { margin-left:8px; padding:3px 10px; font-size:12px; }
+  .acctProgress { display:none; margin-top:8px; font-size:12px; color:var(--ink); background:#eff6ff; border:1px dashed #93c5fd; border-radius:8px; padding:6px 10px; }
+  .acctProgress.show { display:block; }
+
+  /* plan modal */
+  .ovl { position:fixed; inset:0; background:rgba(15,23,42,.55); display:none; align-items:center; justify-content:center; z-index:9000; padding:20px; }
+  .ovl.show { display:flex; }
+  .modal { background:#fff; border-radius:14px; max-width:760px; width:100%; max-height:92vh; overflow:auto; padding:20px; }
+  .modal h2 { margin:0 0 4px; }
+  .modal .close { float:right; border:0; background:none; font-size:20px; cursor:pointer; color:var(--sub); }
+  .modal .mhead { position:sticky; top:-20px; z-index:6; background:#fff; padding:0 0 10px; margin:0 0 10px; border-bottom:1px solid var(--line); }
+  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:14px 0; }
+  .form-grid .field label { font-size:13px; }
+  .form-grid .field input, .form-grid .field select { width:100%; }
+  .chips-multi { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { padding:5px 10px; border:1px solid var(--line); border-radius:999px; font-size:12px; cursor:pointer; background:#fff; color:var(--ink); }
+  .chip.on { background:var(--pri); color:#fff; border-color:var(--pri); }
+  .miss { border-color:var(--warn) !important; background:#fff5f5 !important; }
+  .misslabel { color:var(--warn) !important; }
+  .errline { color:var(--warn); font-size:13px; min-height:18px; margin-top:6px; }
+
+  /* plan result */
+  .planhead { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+  .statchips { display:flex; gap:8px; flex-wrap:wrap; }
+  .stat { background:#eff6ff; color:var(--pri); padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; }
+  .warning { color:#92400e; background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:6px 10px; font-size:12px; margin-bottom:10px; }
+  .dldis { opacity:.45; pointer-events:none; filter:grayscale(1); }
+  .slot-detail { margin-top:6px; background:#f6fef9; border:1px solid #d3efe2; border-radius:8px; padding:8px 10px; font-size:12px; }
+  .slot-detail .sd-how { margin-bottom:4px; }
+  .slot-detail .sd-tip { color:var(--sub); }
+  .slot-detail .sd-photo { color:#0e9f6e; margin-top:3px; }
+  .slot-detail .sd-src { margin-top:5px; }
+  .slot-detail .sd-src a { color:var(--pri); text-decoration:none; margin-right:10px; font-size:12px; }
+  .slot-detail .sd-img { max-width:180px; max-height:110px; border-radius:6px; margin-top:6px; display:block; }
+  .plan-overview { background:#f6fef9; border:1px solid #d3efe2; border-radius:10px; padding:10px 14px; margin-bottom:12px; font-size:13px; line-height:1.7; }
+  .plan-highlights { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+  .hl { background:#e7f7ef; color:#065f46; border-radius:999px; padding:4px 10px; font-size:12px; }
+  .day { border:1px solid var(--line); border-radius:12px; margin-bottom:14px; overflow:hidden; }
+  .dayhead { background:#f9fafb; padding:10px 14px; font-weight:700; font-size:14px; border-bottom:1px solid var(--line); }
+  .timeline { list-style:none; margin:0; padding:8px 14px; }
+  .timeline li { display:flex; gap:12px; padding:8px 0; border-bottom:1px dashed #f0f1f3; align-items:flex-start; }
+  .timeline li:last-child { border-bottom:0; }
+  .tl-time { min-width:96px; font-variant-numeric:tabular-nums; font-size:13px; color:var(--sub); }
+  .tl-time .et { color:#9ca3af; font-size:11px; }
+  .tl-bar { width:8px; height:26px; border-radius:4px; margin-top:2px; flex:none; }
+  .tl-body { flex:1; min-width:0; }
+  .tl-title { font-size:14px; font-weight:600; }
+  .tl-sub { font-size:12px; color:var(--sub); margin-top:2px; }
+  .tl-body .btn { margin-top:6px; padding:4px 10px; font-size:12px; }
+  .tl-drive { background:#9ca3af; }
+  .tl-meeting { background:#f59e0b; }
+  .tl-lunch { background:#3b82f6; }
+  .tl-dinner { background:#8b5cf6; }
+  .tl-activity { background:#0e9f6e; }
+  .tl-breakfast { background:#14b8a6; }
+  .tl-overnight { background:#64748b; }
+  .tag { font-size:11px; color:#fff; background:#0e9f6e; border-radius:6px; padding:1px 6px; margin-left:6px; }
+  .tag.morning { background:#f59e0b; }
+  .tag.afternoon { background:#0e9f6e; }
+
+  /* maps */
+  .maps { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:12px; }
+  .maps .m { border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  .maps .m h4 { margin:0; padding:8px 12px; font-size:13px; background:#f9fafb; border-bottom:1px solid var(--line); }
+  .mapbox { height:320px; }
+  @media (max-width:900px) { .maps { grid-template-columns:1fr; } .form-grid { grid-template-columns:1fr; } }
+  @media (max-width:860px) { .list { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+  <h1>团建场地 采集 · 规划</h1>
+  <div class="sub" id="meta">条件已通过对话确认 · 生成规划后可下载交付物</div>
+
+  <div class="acct" id="acctBanner"></div>
+
+  <div class="panel" id="deliveryPanel">
+    <div class="dlbar">
+      <span style="font-size:12px;color:var(--sub)">📂 打开交付物：</span>
+      <button class="btn dldis" id="dl_plan_pdf" data-kind="plan_pdf">行程方案 PDF</button>
+      <button class="btn dldis" id="dl_plan_docx" data-kind="plan_docx">行程方案 DOCX</button>
+      <button class="btn dldis" id="dl_plan_md" data-kind="plan_md">行程方案 MD</button>
+      <span style="width:1px;height:20px;background:var(--line);display:inline-block;margin:0 6px"></span>
+      <button class="btn dldis" id="dl_pdf_main" data-kind="pdf_main">推荐清单 PDF (Top10)</button>
+      <button class="btn dldis" id="dl_pdf_all27" data-kind="pdf_all27">推荐清单全量 PDF</button>
+      <button class="btn dldis" id="dl_docx" data-kind="docx">推荐清单 DOCX</button>
+      <button class="btn dldis" id="dl_md" data-kind="md">推荐清单 MD</button>
+      <button class="btn dldis" id="dl_json" data-kind="json">JSON 数据</button>
+      <span class="hint" id="dlHint">生成规划后可打开</span>
+    </div>
+  </div>
+
+  <div class="panel" id="reviewPanel" style="display:none">
+    <h2>🎯 Top10 复核 · 核对信息后勾选规划</h2>
+    <div class="sub">推荐前十已按对话确认的方向自动筛选（<span id="rFocusNote"></span>）。点卡片底部信息源链接可复核真实性；左上角选择框勾选为规划对象（最多 5 个），选好「规划娱乐」后点「确认并自动规划」。</div>
+    <div class="reviewbar">
+      <span>已选 <b id="rSelCount">0</b> / 5</span>
+      <span class="sub">方向筛选：</span>
+      <input type="text" id="rCity" class="entcustom" style="width:150px" placeholder="自动填入（可改，如：贺州）" onchange="renderReview()">
+      <span class="sub">规划娱乐：</span>
+      <label class="entchip"><input type="checkbox" class="entpick" value="rafting">漂流</label>
+      <label class="entchip"><input type="checkbox" class="entpick" value="karting">卡丁车</label>
+      <label class="entchip"><input type="checkbox" class="entpick" value="boating">游船</label>
+      <input type="text" id="entCustom" class="entcustom" placeholder="其他娱乐（如：温泉、滑雪，可逗号分隔）" title="自定义娱乐，会按名称在周边 POI 中匹配">
+      <button class="btn primary" id="rPlanBtn" onclick="planFromReview()" disabled>🚀 确认并自动规划</button>
+      <button class="btn" onclick="clearReviewSel()">清空勾选</button>
+      <span class="hint" id="rHint"></span>
+    </div>
+    <div class="reviewgrid" id="reviewGrid"></div>
+  </div>
+
+  <div class="ovl" id="planOvl">
+    <div class="modal">
+      <div class="mhead">
+        <button class="close" onclick="closePlan()">✕</button>
+        <h2 id="planTitle">行程方案</h2>
+      </div>
+      <div class="sub" id="planSub"></div>
+      <div class="errline" id="planErr"></div>
+      <div id="planResult"></div>
+    </div>
+  </div>
+
+  <div class="ovl" id="loginOvl">
+    <div class="modal">
+      <button class="close" onclick="closeLoginGate()">✕</button>
+      <h2>🔐 采集前需要登录账号</h2>
+      <div class="sub">采集需要借助以下账号的登录状态获取数据。请依次登录：在弹出的浏览器窗口中完成登录后，点击下方「确认我已登录」。</div>
+      <div id="loginGateOps"></div>
+      <div class="acctProgress" id="loginGateProgress">就绪</div>
+      <div style="text-align:right;margin-top:12px">
+        <button class="btn" onclick="closeLoginGate()">稍后再说</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+let mode = "all";
+let manual = "all";
+let timer = null;
+let ENTRY_KEY = new URLSearchParams(location.search).get("key") || "";
+let allVenues = [];
+let planVenue = null;
+let planChips = [];
+let selSet = new Set();
+
+const COLLECT_CLEANUP = {
+  activities: [],
+  maps: [],
+};
+function cleanupPlan() {
+  COLLECT_CLEANUP.maps.forEach(m => { try { m.map.remove(); } catch (e) {} });
+  COLLECT_CLEANUP.maps = [];
+}
+
+async function httpJ(url, opts) {
+  const u = new URL(url, location.origin);
+  if (ENTRY_KEY) u.searchParams.set("key", ENTRY_KEY);
+  const r = await fetch(u.toString(), opts || {});
+  if (r.status === 401) {
+    document.cookie = "vs_key=;path=/;max-age=0";
+    location.href = "/";
+    throw new Error("unauthorized");
+  }
+  return r;
+}
+
+// 外链走系统默认浏览器（真实 profile，携程/高德/小红书秒开）
+async function openExt(url) {
+  try {
+    await httpJ("/api/openurl", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }) });
+  } catch (e) {
+    window.open(url, "_blank");
+  }
+}
+document.addEventListener("click", (e) => {
+  const a = e.target.closest ? e.target.closest(".extlink") : null;
+  if (a && a.dataset.url) { e.preventDefault(); openExt(a.dataset.url); }
+});
+
+async function refresh() {
+  try {
+    const r = await httpJ("/api/venues?" + new URLSearchParams({ top: 200, only_pass: "false" }).toString());
+    const d = await r.json();
+    allVenues = d.venues || [];
+    const meta = document.getElementById("meta");
+    if (meta) meta.textContent =
+      `数据生成 ${d.generated_at || "-"} · 候选 ${d.total_candidates} · 通过 ${d.passed_hard_filters} · 生成规划后可下载交付物`;
+  } catch (e) { /* 401 handled */ }
+}
+
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+
+function render(venues) {
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+  venues.forEach((v, i) => {
+    const ent = (v.ent_classes || []).map(c => "🎡 " + c).join(" / ");
+    const fac = v.fac_ent ? `<div class="ent"><b>酒店设施娱乐：</b>${esc(v.fac_ent)}</div>` : "";
+    const priceBits = [];
+    if (v.price_avg != null) priceBits.push(`<span>均价 <b>${esc(v.price_avg)}</b></span>`);
+    if (v.price_promo != null) priceBits.push(`<span class="badge price">特惠 ${esc(v.price_promo)}</span>`);
+    const chips = [];
+    if (v.pass_hard_filters) chips.push(`<span class="badge cap">通过硬过滤</span>`);
+    if (v.needs_manual) chips.push(`<span class="badge manual">待人工</span>`);
+    if (v.lodging_capacity != null) chips.push(`<span class="badge cap">住宿≥${v.lodging_capacity}</span>`);
+    const cap = v.lodging_capacity != null ? `<span>🛏 <b>${v.lodging_capacity}</b></span>` : "";
+    const fit = v.fit_room_count ? `<span>🗣 10-15人间 <b>${v.fit_room_count}</b></span>` : "";
+    const rating = v.rating != null ? `<span>⭐ <b>${v.rating}</b></span>` : "";
+    const nav = v.location ? `https://uri.amap.com/navigation?to=${encodeURIComponent(v.location.replace(",", "%2C"))}%2C${encodeURIComponent(v.name)}&mode=car` : "";
+    const ctrip = v.ctrip_url || "";
+    const notes = (v.notes && v.notes.length) ? `<div class="notes">${esc(v.notes.join("；"))}</div>` : "";
+    const card = document.createElement("div");
+    card.className = "card" + (v.pass_hard_filters ? " pass" : "") + (selSet.has(v.id) ? " selon" : "");
+    card.dataset.vid = String(v.id);
+    card.innerHTML = `
+      <div class="rank">
+        <div><input type="checkbox" class="selcb" ${selSet.has(v.id) ? "checked" : ""} title="勾选以批量规划"><span style="font-size:11px;color:var(--pri);font-weight:700">${selSet.has(v.id) ? "✓" : ""}</span></div>
+        ${i + 1}
+      </div>
+      <div class="body">
+        <div class="head">
+          <h3>${esc(v.name)}</h3>
+          <div class="chips">${chips.join("")}</div>
+        </div>
+        <div class="meta">
+          <span><b>${v.score != null ? v.score.toFixed(2) : "-"}</b> 分</span>
+          <span>🚗 <b>${v.drive_minutes ?? "-"}</b> min ${v.distance_km ? "(" + v.distance_km + "km)" : ""}</span>
+          ${cap}${fit}${rating}
+          ${priceBits.join("")}
+          <span>🍜 餐厅1km ${v.restaurant_1km ?? "-"}</span>
+          <span>${esc(v.city + v.district)}</span>
+        </div>
+        <div class="addr">${esc(v.address || "无地址")}</div>
+        ${ent ? `<div class="ent"><b>周边娱乐：</b>${esc(ent)}</div>` : ""}
+        ${fac}
+        <div class="actions">
+          <button class="btn primary" onclick="openPlan('${esc(v.id || v.name)}')">🗺 规划日程</button>
+          ${nav ? `<a class="btn" href="${nav}" rel="nofollow">🧭 高德导航</a>` : ""}
+          ${ctrip ? `<a class="btn extlink" data-url="${esc(ctrip)}">✈ 携程</a>` : ""}
+        </div>
+        ${notes}
+      </div>`;
+    list.appendChild(card);
+  });
+  updateSelBar();
+}
+
+function updateSelBar() {
+  const c = document.getElementById("selCount");
+  if (c) c.textContent = selSet.size;
+  const b = document.getElementById("batchBtn");
+  if (b) b.disabled = selSet.size < 1;
+}
+
+function clearSel() {
+  selSet.clear();
+  updateSelBar();
+}
+
+async function startCollect() {
+  const btn = document.getElementById("startBtn");
+  btn.disabled = true;
+  const body = {
+    origin_name: document.getElementById("c_origin_name").value,
+    origin_location: document.getElementById("c_origin_loc").value,
+    max_drive_minutes: parseInt(document.getElementById("c_maxdrive").value) || 120,
+    min_lodging_capacity: parseInt(document.getElementById("c_minlod").value) || 100,
+    min_meeting_rooms: parseInt(document.getElementById("c_minrooms").value) || 2,
+    min_entertainment_classes: parseInt(document.getElementById("c_minent").value) || 2,
+    target_candidates: parseInt(document.getElementById("c_target").value) || 10,
+    expand_rounds: parseInt(document.getElementById("c_expand").value) || 2,
+  };
+  const r = await httpJ("/api/collect", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (r.status === 428) {
+    const e = await r.json().catch(() => ({}));
+    btn.disabled = false;
+    openLoginGate(e.need_login || []);
+    return;
+  }
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({}));
+    alert("启动失败：" + (e.detail || r.status));
+    btn.disabled = false;
+    return;
+  }
+  pollStatus();
+}
+
+// ---- 登录闸门（采集前置） ----
+
+function openLoginGate(needSites) {
+  const box = document.getElementById("loginGateOps");
+  box.innerHTML = (needSites || []).map(o =>
+    `<div class="op"><span class="${o.level === 'required' ? 'req' : ''}">${esc(o.label)}</span> — ${esc(o.reason || "")}
+      <button class="btn" data-site="${esc(o.id)}" onclick="gateLogin('${esc(o.id)}')" id="gateBtn_${esc(o.id)}">🔓 去登录</button></div>`
+  ).join("");
+  document.getElementById("loginGateProgress").textContent = "请依次登录需要账号的操作";
+  document.getElementById("loginOvl").classList.add("show");
+}
+
+function closeLoginGate() {
+  document.getElementById("loginOvl").classList.remove("show");
+}
+
+async function gateLogin(site) {
+  const pb = document.getElementById("loginGateProgress");
+  pb.textContent = `正在打开 ${site} 登录窗口…（请在弹出窗口中完成登录）`;
+  let r;
+  try { r = await httpJ(`/api/creds/open/${site}`, { method: "POST" }); }
+  catch (e) { pb.textContent = "请求失败：" + e.message; return; }
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({}));
+    pb.textContent = "启动失败：" + (e.detail || r.status);
+    return;
+  }
+  gatePoll(site, pb);
+}
+
+async function gatePoll(site, pb) {
+  const icons = { opening: "🔨", waiting_login: "🪄请在弹出的窗口完成登录", harvesting: "💾收割中", saved: "✅已保存", error: "❌" };
+  const tick = async () => {
+    let d = { sites: {} };
+    try { const r = await httpJ("/api/creds/login/status"); d = await r.json(); } catch (e) { return true; }
+    const st = (d.sites || {})[site] || {};
+    const phase = st.phase || "";
+    pb.textContent = `${icons[phase] || "⏳"} ${st.message || phase || "…"}`;
+    if (phase === "waiting_login") {
+      // 登录窗口已打开，等用户在窗口完成登录后点“确认”
+      const btn = document.getElementById(`gateBtn_${site}`);
+      if (btn) {
+        btn.textContent = "✅ 我已登录完成，确认";
+        btn.onclick = () => gateConfirm(site, pb);
+      }
+    } else if (phase === "saved") {
+      startCollect(); // 重试：只要还有站点未登录会再弹闸门，全过则直接开跑
+      return false;
+    } else if (phase === "error") {
+      const btn = document.getElementById(`gateBtn_${site}`);
+      if (btn) { btn.textContent = "🔓 重试"; btn.onclick = () => gateLogin(site); }
+      return false;
+    }
+    return true;
+  };
+  if (!(await tick())) return;
+  const iv = setInterval(async () => { if (!(await tick())) clearInterval(iv); }, 1600);
+}
+
+async function gateConfirm(site, pb) {
+  const btn = document.getElementById(`gateBtn_${site}`);
+  if (btn) btn.disabled = true;
+  pb.textContent = "正在收割登录 cookie…（需要几秒）";
+  let r;
+  try { r = await httpJ(`/api/creds/confirm/${site}`, { method: "POST" }); }
+  catch (e) { pb.textContent = "确认请求失败：" + e.message; if (btn) btn.disabled = false; return; }
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({}));
+    pb.textContent = "确认失败：" + (e.detail || r.status);
+    if (btn) { btn.disabled = false; btn.textContent = "🔓 重试"; }
+    return;
+  }
+  gatePoll(site, pb);
+}
+
+async function loadCreds(probeNow) {
+  try {
+    const r = await httpJ("/api/creds/status" + (probeNow ? "?probe=1" : ""));
+    const d = await r.json();
+    renderCreds(d);
+    if (!probeNow && d && d.login_available) setTimeout(() => loadCreds(true), 600);
+  } catch (e) { /* guard 401 handled by httpJ */ }
+}
+
+function renderCreds(d) {
+  const banner = document.getElementById("acctBanner");
+  if (!d) return;
+  const ops = d.ops || [];
+  const need = ops.filter(o => !o.configured);
+  const broken = ops.filter(o => o.configured && o.probe && (o.probe === "no_marker" || o.probe === "unreachable"));
+  if (!need.length && !broken.length) { banner.classList.remove("show"); return; }
+  const items = (need.length ? need : broken).map(o => {
+    const cond = o.configured ? `Cookie 疑似失效（${o.probe}）` : "未配置登录账号";
+    const btn = o.configured
+      ? `<button class="btn" onclick="loginCookie('${o.id}')">🔄 刷新 Cookie</button>`
+      : `<button class="btn" onclick="loginCookie('${o.id}')">🔓 一键获取 Cookie</button>`;
+    return `<div class="op"><span class="${o.level === 'required' ? 'req' : ''}">${esc(o.label)}</span> — ${cond}${btn}</div>`;
+  });
+  const hint = `点按钮会在服务器弹出浏览器窗口：你在窗口里完成登录后，cookie 会自动写入 config/settings.yaml（写后即生效，无需重启服务）。`;
+  banner.innerHTML = `<b>⚠ 需要登录账号的操作</b>${items.join("")}<div class="hint">${hint}</div><div class="acctProgress" id="acctProgress">就绪</div>`;
+  banner.classList.add("show");
+}
+
+async function loginCookie(site) {
+  const pb = document.getElementById("acctProgress");
+  if (pb) { pb.classList.add("show"); pb.textContent = "正在打开登录窗口…（在弹出窗口登录，完成后点「确认我已登录」）"; }
+  let r;
+  try { r = await httpJ(`/api/creds/open/${site}`, { method: "POST" }); }
+  catch (e) { if (pb) pb.textContent = "请求失败：" + e.message; return; }
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({}));
+    if (pb) pb.textContent = "启动失败：" + (e.detail || r.status);
+    return;
+  }
+  bannerCredsPoll(site, pb);
+}
+
+async function bannerCredsPoll(site, pb) {
+  const icons = { opening: "🔨", waiting_login: "🪄登录中…", harvesting: "💾收割中", saved: "✅已保存", error: "❌" };
+  let confirmShown = false;
+  let confirmTimer = null;
+  const tick = async () => {
+    let d = { sites: {} };
+    try { const r = await httpJ("/api/creds/login/status"); d = await r.json(); } catch (e) { return true; }
+    const st = (d.sites || {})[site] || {};
+    if (st.phase === "waiting_login" && !confirmShown) {
+      confirmShown = true;
+      if (pb) {
+        pb.innerHTML = `${icons.waiting_login} 请在弹出的窗口中完成登录，完成后点此按钮：` +
+          `<button class="btn" style="margin:4px 0 0 8px" onclick="confirmBanner('${site}')">✅ 我已登录完成</button>`;
+      }
+      return true;
+    }
+    if (pb && !(st.phase === "waiting_login" && confirmShown)) {
+      pb.textContent = `${icons[st.phase] || "⏳"} ${st.message || st.phase || "…"}`;
+    }
+    if (st.phase === "saved") {
+      if (pb) pb.style.background = "#ecfdf5";
+      confirmShown = false;
+      setTimeout(() => loadCreds(true), 600);
+      return false;
+    }
+    if (st.phase === "error") return false;
+    return true;
+  };
+  await tick();
+  const iv = setInterval(async () => { if (!(await tick())) clearInterval(iv); }, 1600);
+  window.addEventListener("beforeunload", () => clearInterval(iv));
+}
+
+async function confirmBanner(site) {
+  const pb = document.getElementById("acctProgress");
+  if (pb) pb.textContent = "正在收割登录 cookie…";
+  try { await httpJ(`/api/creds/confirm/${site}`, { method: "POST" }); }
+  catch (e) { if (pb) pb.textContent = "确认失败：" + e.message; }
+  if (pb) pb.textContent = "收割中…";
+  bannerCredsPoll(site, pb);
+}
+
+let lastSeenRun = "";
+
+async function pollStatus() {
+  if (timer) clearInterval(timer);
+  const tick = async () => {
+    try {
+      const r = await httpJ("/api/collect/status");
+      const d = await r.json();
+      const s = d.state;
+      if (!s.running && s.stage === "done" && s.last_run && s.last_run !== lastSeenRun) {
+        const isNew = lastSeenRun !== "";
+        lastSeenRun = s.last_run;
+        if (isNew) {
+          await refresh();
+          await renderReview();
+          const rp = document.getElementById("reviewPanel");
+          if (rp.style.display !== "none") rp.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }
+      return true;
+    } catch (e) {
+      return true;
+    }
+  };
+  timer = setInterval(tick, 2000);
+}
+
+// ================= 规划日程 =================
+
+function openPlan(id) {
+  cleanupPlan();
+  planVenue = allVenues.find(v => String(v.id) === String(id) || v.name === id) || { id, name: id };
+  document.getElementById("planTitle").textContent = "🗺 规划日程 · " + planVenue.name;
+  document.getElementById("planSub").textContent = "";
+  document.getElementById("planErr").textContent = "";
+  document.getElementById("planResult").innerHTML = "";
+  { const _w = document.getElementById("planFormWrap"); if (_w) _w.style.display = "none"; }
+  document.getElementById("planOvl").classList.add("show");
+  loadMetaForm();
+}
+
+function closePlan() {
+  cleanupPlan();
+  if (typeof dualPollTimer !== "undefined" && dualPollTimer) { clearInterval(dualPollTimer); dualPollTimer = null; }
+  if (typeof dualPlanState !== "undefined") dualPlanState = null;
+  document.getElementById("planOvl").classList.remove("show");
+}
+
+async function loadMetaForm() {
+  try {
+    const r = await httpJ("/api/plan/meta");
+    const d = await r.json();
+    renderForm(d.fields, d.defaults, []);
+  } catch (e) {
+    document.getElementById("planErr").textContent = "加载表单失败";
+  }
+}
+
+function renderForm(fields, defaults, missing) {
+  const box = document.getElementById("planForm");
+  if (!box) return;
+  box.innerHTML = "";
+  planChips = [];
+  fields.forEach(f => {
+    const miss = missing.includes(f.key);
+    if (f.type === "choice") {
+      const ops = (f.options || []).map(([v, l]) => `<option value="${esc(v)}" ${String(defaults[f.key]) === String(v) ? "selected" : ""}>${esc(l)}</option>`).join("");
+      box.innerHTML += `<div class="field"><label class="${miss ? "misslabel" : ""}">${esc(f.label)}${f.required ? " *" : ""}</label>
+        <select id="pf_${esc(f.key)}" class="${miss ? "miss" : ""}">${ops}</select></div>`;
+    } else if (f.type === "multichip") {
+      const vals = defaults[f.key] || [];
+      planChips[f.key] = vals;
+      const chips = (f.options || []).map(([v, l]) => `<span class="chip ${vals.includes(v) ? "on" : ""}" data-k="${esc(f.key)}" data-v="${esc(v)}" onclick="toggleChip(this)">${esc(l)}</span>`).join("");
+      box.innerHTML += `<div class="field"><label>${esc(f.label)}</label><div class="chips-multi">${chips}</div></div>`;
+    } else if (f.type === "time" || f.type === "date" || f.type === "number") {
+      const pfx = f.type === "time" ? "" : "";
+      box.innerHTML += `<div class="field"><label class="${miss ? "misslabel" : ""}">${esc(f.label)}${f.required ? " *" : ""}</label>
+        <input id="pf_${esc(f.key)}" type="${f.type}" ${f.min != null ? `min="${f.min}"` : ""} value="${esc(defaults[f.key] ?? "")}" class="${miss ? "miss" : ""}"></div>`;
+    }
+  });
+  wrap.style.display = "block";
+}
+
+function toggleChip(el) {
+  el.classList.toggle("on");
+  const k = el.dataset.k;
+  const v = el.dataset.v;
+  if (!planChips[k]) planChips[k] = [];
+  if (planChips[k].includes(v)) planChips[k] = planChips[k].filter(x => x !== v);
+  else planChips[k].push(v);
+}
+
+function collectAnswers() {
+  const a = {};
+  const fields = [];
+  const wrap = document.getElementById("planForm");
+  wrap.querySelectorAll("select, input").forEach(el => {
+    const key = el.id.replace(/^pf_/, "");
+    if (key) a[key] = el.value;
+    fields.push(key);
+  });
+  Object.keys(planChips).forEach(k => { if (k) a[k] = planChips[k]; });
+  return a;
+}
+
+async function submitPlan() {
+  const btn = event.target;
+  btn.disabled = true;
+  document.getElementById("planErr").textContent = "";
+  try {
+    const answers = collectAnswers();
+    const r = await httpJ("/api/plan", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ venue_id: planVenue.id || planVenue.name, answers }),
+    });
+    const d = await r.json();
+    if (d.status === "need_info") {
+      document.getElementById("planErr").textContent = "请补全必填项（红色标注）";
+      renderForm(d.fields, d.defaults, d.missing);
+    } else if (!r.ok) {
+      document.getElementById("planErr").textContent = (d.detail || "规划失败");
+    } else {
+      { const _w = document.getElementById("planFormWrap"); if (_w) _w.style.display = "none"; }
+      renderResult(d);
+    }
+  } catch (e) {
+    document.getElementById("planErr").textContent = e.message || "请求失败";
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+let batchPlans = [];
+let batchIdx = 0;
+
+async function batchPlan() {
+  const ids = [...selSet];
+  if (!ids.length) return;
+  const venues = ids.map(vid => allVenues.find(v => String(v.id) === String(vid))).filter(Boolean);
+  if (!venues.length) { alert("所选场地不在当前列表，请先刷新后重新勾选"); return; }
+  cleanupPlan();
+  document.getElementById("planResult").innerHTML = "";
+  document.getElementById("planErr").textContent = "";
+  { const _w = document.getElementById("planFormWrap"); if (_w) _w.style.display = "none"; }
+  document.getElementById("planTitle").textContent = "🗺 批量规划 · " + venues.length + " 家";
+  document.getElementById("planSub").textContent = "正在生成，请稍候…";
+  document.getElementById("planOvl").classList.add("show");
+
+  let defaults = {};
+  try {
+    const mr = await httpJ("/api/plan/meta");
+    defaults = (await mr.json()).defaults || {};
+  } catch (e) {}
+
+  const today = new Date();
+  const iso = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+  const answers = Object.assign({}, defaults, { depart_date: defaults.depart_date || iso });
+
+  batchPlans = [];
+  const btn = document.createElement("button");
+  btn.className = "btn primary";
+  btn.textContent = "取消";
+  btn.onclick = closePlan;
+  document.getElementById("planResult").appendChild(btn);
+
+  for (let i = 0; i < venues.length; i++) {
+    const v = venues[i];
+    document.getElementById("planSub").textContent = `生成中 ${i+1}/${venues.length} · ${v.name} …`;
+    try {
+      const r = await httpJ("/api/plan", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ venue_id: v.id || v.name, answers }),
+      });
+      const d = await r.json();
+      if (d.status === "need_info") {
+        batchPlans.push({ name: v.name, id: v.id || v.name, err: "缺少字段: " + (d.missing||[]).join(",") });
+      } else if (!r.ok) {
+        batchPlans.push({ name: v.name, id: v.id || v.name, err: (d.detail || "HTTP " + r.status).slice(0, 200) });
+      } else {
+        batchPlans.push({ name: v.name, id: v.id || v.name, plan: d });
+      }
+    } catch (e) {
+      batchPlans.push({ name: v.name, id: v.id || v.name, err: e.message || "请求失败" });
+    }
+  }
+  batchIdx = 0;
+  renderBatch();
+}
+
+function renderBatch() {
+  const box = document.getElementById("planResult");
+  box.innerHTML = "";
+  const tabs = document.createElement("div");
+  tabs.className = "btabs";
+  batchPlans.forEach((b, i) => {
+    const t = document.createElement("button");
+    t.className = "btab" + (i === batchIdx ? " on" : "") + (b.err ? " err" : "");
+    t.textContent = (b.err ? "⚠ " : "✅ ") + b.name;
+    t.onclick = () => { batchIdx = i; renderBatch(); };
+    tabs.appendChild(t);
+  });
+  box.appendChild(tabs);
+  const b = batchPlans[batchIdx];
+  if (!b) return;
+  if (b.err) {
+    const w = document.createElement("div");
+    w.className = "warning";
+    w.textContent = "⚠ " + b.name + " 生成失败：" + b.err;
+    box.appendChild(w);
+  } else {
+    document.getElementById("planSub").textContent = b.name + " · 点击上方 tab 切换场地";
+    renderResult(b.plan, b.name);
+  }
+}
+
+const SLOT_TYPE = {
+  drive: ["tl-drive", "🚗"],
+  meeting: ["tl-meeting", "🗣"],
+  lunch: ["tl-lunch", "🍚"],
+  dinner: ["tl-dinner", "🍽"],
+  activity: ["tl-activity", "🎯"],
+  breakfast: ["tl-breakfast", "🥐"],
+  overnight: ["tl-overnight", "🛏"],
+};
+
+function slotDetailHtml(s) {
+  if (!s.detail) return "";
+  const d = s.detail;
+  const tips = (d.tips || []).map(t => `<div class="sd-tip">· ${esc(t)}</div>`).join("");
+  const photo = (d.photo_spots || []).length ? `<div class="sd-photo">📸 打卡点：${esc(d.photo_spots.join(" / "))}</div>` : "";
+  const srcs = (d.source || []).slice(0, 3).map(x => x && x.url ? `<a class="extlink" data-url="${esc(x.url)}" rel="nofollow">📕 ${esc((x.title || "参考笔记").slice(0, 26))}</a>` : "").join("");
+  if (!d.how_to && !tips && !photo && !srcs) return "";
+  return `<div class="slot-detail">
+    ${d.how_to ? `<div class="sd-how">💡 ${esc(d.how_to)}</div>` : ""}
+    ${tips}${photo}${srcs ? `<div class="sd-src">${srcs}</div>` : ""}
+  </div>`;
+}
+
+function renderResult(plan, titleText, boxId, detail) {
+  cleanupPlan();
+  const box = document.getElementById(boxId || "planResult");
+  const summary = plan.summary || {};
+  const stat = `
+    <div class="statchips">
+      <span class="stat">${summary.days || 0} 天</span>
+      <span class="stat">🚗 总车程 ${summary.total_drive_min || 0} min</span>
+      <span class="stat">📌 ${summary.total_legs || 0} 段</span>
+      ${plan.cached ? `<span class="stat">⚡ 缓存</span>` : ""}
+    </div>`;
+  const overview = detail && detail.overview ? `<div class="plan-overview">📕 ${esc(detail.overview)}</div>` : "";
+  const highlights = detail && (detail.highlights || []).length
+    ? `<div class="plan-highlights">${detail.highlights.map(h => `<span class="hl">✨ ${esc(h.title || "")}${h.when ? " · " + esc(h.when) : ""}</span>`).join("")}</div>`
+    : "";
+  const warnings = (plan.warnings || []).map(w => `<div class="warning">⚠ ${esc(w)}</div>`).join("");
+  const days = (plan.days || []).map((dd, di) => `
+    <div class="day">
+      <div class="dayhead">${esc(dd.label)} · ${esc(dd.date)}</div>
+      <ul class="timeline">
+        ${(dd.slots || []).map(s => {
+          const [bar, icon] = SLOT_TYPE[s.type] || ["tl-drive", "▸"];
+          const sub = s.drive_min != null ? `<div class="tl-sub">🚗 ${s.drive_min} min${s.distance_m ? " · " + (s.distance_m/1000).toFixed(1) + " km" : ""}</div>` : (s.where ? `<div class="tl-sub">📍 ${esc(s.where)}</div>` : "");
+          const nav = s.nav ? `<a class="btn extlink" data-url="${esc(s.nav)}">🧭 导航</a>` : "";
+          const tag = s.tag ? `<span class="tag ${s.tag}">${s.tag === "morning" ? "上午" : "下午"}</span>` : "";
+          return `<li>
+            <div class="tl-time">${esc(s.start || "")}${s.end ? `<div class="et">- ${esc(s.end)}</div>` : ""}</div>
+            <div class="tl-bar ${bar}"></div>
+            <div class="tl-body">
+              <div class="tl-title">${icon} ${esc(s.label)}${tag}</div>
+              ${sub}${nav}${slotDetailHtml(s)}
+            </div>
+          </li>`;
+        }).join("")}
+      </ul>
+    </div>`).join("");
+
+  box.innerHTML = `
+    <div class="planhead"><h2 style="margin:0">${esc(titleText || "行程安排")}</h2>${stat}</div>
+    ${overview}${highlights}
+    ${warnings}
+    ${days}
+    <div class="planhead"><h2 style="margin:14px 0 0">路线地图</h2></div>
+    <div class="maps" id="maps"></div>`;
+  renderMaps(plan.map_legs || []);
+}
+
+function parseLoc(loc) {
+  const [lng, lat] = String(loc || "").split(",").map(Number);
+  return (isFinite(lng) && isFinite(lat)) ? [lat, lng] : null;
+}
+
+function amapTile() {
+  return L.tileLayer("https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}", {
+    subdomains: ["1", "2", "3", "4"],
+    maxZoom: 18,
+    attribution: "© 高德地图",
+  });
+}
+
+function drawMap(id, legs, label) {
+  const wrap = document.getElementById("maps");
+  const div = document.createElement("div");
+  div.className = "m";
+  div.innerHTML = `<h4>${label}</h4><div class="mapbox" id="${id}"></div>`;
+  wrap.appendChild(div);
+  const el = document.getElementById(id);
+  const map = L.map(el, { zoomControl: true }).setView([23.4, 113.2], 8);
+  amapTile().addTo(map);
+  const shown = [];
+  const color = { access: "#0b7aff", local: "#e11d48" };
+  const markers = [];
+  legs.forEach((lg, i) => {
+    const pts = (lg.via || []).filter(p => Array.isArray(p) && p.length >= 2).map(p => [p[1], p[0]]);
+    if (pts.length) {
+      L.polyline(pts, { color: color[lg.class] || "#0b7aff", weight: 4, opacity: .85 }).addTo(map);
+      shown.push(...pts);
+    }
+    markers.push({ loc: lg.to_loc, name: lg.to, cls: lg.class });
+  });
+  markers.forEach(m => {
+    const p = parseLoc(m.loc);
+    if (!p) return;
+    L.circleMarker(p, { radius: 6, color: "#1f2430", weight: 1, fillColor: color[m.cls] || "#0b7aff", fillOpacity: .9 })
+      .addTo(map).bindTooltip(esc(m.name));
+  });
+  if (shown.length) map.fitBounds(L.latLngBounds(shown.map(p => L.latLng(p[0], p[1]))).pad(0.15));
+  else if (markers.length) {
+    const ps = markers.map(m => parseLoc(m.loc)).filter(Boolean);
+    if (ps.length) map.fitBounds(L.latLngBounds(ps).pad(0.3));
+  }
+  COLLECT_CLEANUP.maps.push({ map });
+}
+
+function renderMaps(legs) {
+  const access = legs.filter(l => l.class === "access");
+  const local = legs.filter(l => l.class === "local");
+  const ids = ["mapAccess", "mapLocal"];
+  drawMap(ids[0], access, "🛣 总览图 · 出发地与场地间的长路线");
+  drawMap(ids[1], local, "🗺 近景图 · 场地周边短路线（娱乐串点）");
+  if (access.length === 0) document.getElementById(ids[0]) && (document.getElementById(ids[0]).innerHTML = '<div style="padding:20px;color:var(--sub)">无长距离段</div>');
+}
+
+// ================= Top10 复核卡片（模板渲染，采集完成自动刷新） =================
+
+let reviewSel = new Set();
+
+async function renderReview() {
+  let venues = [];
+  let focus = "";
+  let q = "";
+  let fallback = false;
+  try {
+    try {
+      const fr = await httpJ("/api/review-focus");
+      const fj = await fr.json();
+      focus = (fj.focus || "").trim();
+    } catch (e) {}
+    const rc = document.getElementById("rCity");
+    if (rc && !rc.value.trim() && focus) rc.value = focus;  // 自动填入（不覆盖用户手输）
+    q = (rc ? rc.value : "").trim();
+    const p = new URLSearchParams({ top: 100, only_pass: "true" });
+    if (q) p.set("city", q);
+    let d = await (await httpJ("/api/venues?" + p.toString())).json();
+    venues = (d.venues || []).filter(v => v.pass_hard_filters)
+      .sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 10);
+    if (!venues.length && q === focus) {
+      fallback = true;
+      d = await (await httpJ("/api/venues?" + new URLSearchParams({ top: 100, only_pass: "true" }).toString())).json();
+      venues = (d.venues || []).filter(v => v.pass_hard_filters)
+        .sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 10);
+    }
+  } catch (e) { return; }
+  const fnote = document.getElementById("rFocusNote");
+  if (fnote) fnote.textContent = fallback ? `方向「${focus}」暂无通过场地，已显示全部` : "";
+  const panel = document.getElementById("reviewPanel");
+  if (!venues.length) {
+    if (q) {
+      panel.style.display = "block";
+      const g = document.getElementById("reviewGrid");
+      if (g) g.innerHTML = `<div class="sub" style="padding:20px">方向「${esc(q)}」下暂无通过场地，清空输入框可查看全部</div>`;
+    } else {
+      panel.style.display = "none";
+    }
+    return;
+  }
+  panel.style.display = "block";
+  reviewSel = new Set([...reviewSel].filter(id => venues.some(v => String(v.id) === String(id))));
+  const DISC = { web_seed: "🌐 网页种子", amap_expand: "📍 高德扩量", amap_hub: "🎯 目标城市", xhs: "📕 小红书攻略" };
+  const grid = document.getElementById("reviewGrid");
+  grid.innerHTML = venues.map((v, i) => {
+    const src = v.sources || {};
+    const links = [];
+    if (v.ctrip_url) links.push(`<a class="extlink" data-url="${esc(v.ctrip_url)}" rel="nofollow">✈ 携程酒店</a>`);
+    if (src.amap_id) links.push(`<a class="extlink" data-url="https://www.amap.com/place/${esc(src.amap_id)}" rel="nofollow">🗺 高德POI</a>`);
+    else if (v.location) links.push(`<a class="extlink" data-url="https://uri.amap.com/search?keyword=${encodeURIComponent(v.name)}" rel="nofollow">🗺 高德搜索</a>`);
+    if (typeof src.xhs === "string" && src.xhs) links.push(`<a class="extlink" data-url="${esc(src.xhs)}" rel="nofollow">📕 小红书</a>`);
+    const price = v.price_avg != null ? `均价¥${v.price_avg}` : (v.price_from != null ? `¥${v.price_from}起` : "");
+    const ent = (v.ent_classes || []).length ? `<span>🎡 ${esc((v.ent_classes || []).join("/"))}</span>` : "";
+    const nb = (v.nearby_top || []).slice(0, 4).map(p =>
+      `${p.name}·${p.label}${p.distance_m != null ? (p.distance_m >= 1000 ? (p.distance_m / 1000).toFixed(1) + "km" : p.distance_m + "m") : ""}`).join(" ｜ ");
+    return `
+    <div class="rcard ${reviewSel.has(String(v.id)) ? "sel" : ""}" data-rid="${esc(String(v.id))}">
+      <input type="checkbox" class="rc-selcb" ${reviewSel.has(String(v.id)) ? "checked" : ""} title="选为规划对象（最多5个）">
+      <h3>${i + 1}. ${esc(v.name)} <span class="badge cap">${v.score != null ? v.score.toFixed(1) : "-"}分</span></h3>
+      <div class="rmeta">
+        <span>🚗 ${v.drive_minutes ?? "-"}min${v.distance_km ? " / " + v.distance_km + "km" : ""}</span>
+        <span>🛏 住${v.lodging_capacity ?? "-"}人</span>
+        <span>🗣 10-15人室×${v.fit_room_count ?? 0}</span>
+        ${ent}
+        ${v.rating != null ? `<span>⭐ ${v.rating}</span>` : ""}
+        ${price ? `<span>💰 ${esc(price)}</span>` : ""}
+      </div>
+      <div class="rmeta" style="color:var(--sub)">${esc(v.city + v.district)} · ${esc(v.address || "无地址")}</div>
+      ${nb ? `<div class="rmeta" style="color:var(--sub)">🎡 周边：${esc(nb)}</div>` : ""}
+      ${v.fac_ent ? `<div class="rmeta" style="color:var(--sub)">酒店设施：${esc(v.fac_ent)}</div>` : ""}
+      ${(v.notes || []).length ? `<div class="rnotes">⚠ 复核提示：${esc(v.notes.join("；"))}</div>` : ""}
+      <div class="rlinks">${DISC[src.discovery] ? `<span class="src">${DISC[src.discovery]}</span>` : ""}${links.join("")}</div>
+    </div>`;
+  }).join("");
+  updateReviewBar();
+}
+
+function updateReviewBar() {
+  document.getElementById("rSelCount").textContent = reviewSel.size;
+  document.getElementById("rPlanBtn").disabled = reviewSel.size < 1;
+  const h = document.getElementById("rHint");
+  if (h) h.textContent = reviewSel.size >= 5 ? "已达上限 5 个" : "";
+}
+
+function clearReviewSel() {
+  reviewSel.clear();
+  document.querySelectorAll(".rc-selcb").forEach(c => c.checked = false);
+  document.querySelectorAll(".rcard").forEach(c => c.classList.remove("sel"));
+  updateReviewBar();
+}
+
+document.getElementById("reviewGrid").addEventListener("change", e => {
+  const cb = e.target.closest(".rc-selcb");
+  if (!cb) return;
+  const card = cb.closest(".rcard");
+  const rid = card && card.dataset.rid;
+  if (!rid) return;
+  if (cb.checked) {
+    if (reviewSel.size >= 5) { cb.checked = false; updateReviewBar(); return; }
+    reviewSel.add(rid);
+    card.classList.add("sel");
+  } else {
+    reviewSel.delete(rid);
+    card.classList.remove("sel");
+  }
+  updateReviewBar();
+});
+
+// ---- 统一方案：路线（OR-Tools）+ 攻略细节层（opencode 基于小红书研究合并），单一视图 ----
+
+let dualPlanState = null;
+let dualPollTimer = null;
+const dualRenderSig = { ai: "" };
+const adoptedSet = new Set();
+
+function planFromReview() {
+  try {
+  if (!reviewSel.size) { const h = document.getElementById("rHint"); if (h) h.textContent = "请先勾选场地（最多 5 个）"; return; }
+  const venues = [...reviewSel].map(id => allVenues.find(v => String(v.id) === String(id))).filter(Boolean);
+  if (!venues.length) { const h = document.getElementById("rHint"); if (h) h.textContent = "勾选的场地不在当前列表中，请刷新重试"; return; }
+  selSet = new Set(reviewSel);
+  updateSelBar();
+  const entChips = [...document.querySelectorAll(".entpick:checked")].map(c => c.value);
+  const entCustom = ((document.getElementById("entCustom") || {}).value || "")
+    .split(/[,，、\s]+/).map(s => s.trim()).filter(s => s.length >= 2);
+  const entPrefs = entChips.concat(entCustom);
+  // 事件落库 → 服务端确定性触发方案生成（路线 + 会话参数）；攻略细节层由 opencode 分析后合并进方案
+  httpJ("/api/ui/events", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "venues_confirmed", ent_prefs: entPrefs, venues: venues.map(v => ({ id: v.id || v.name, name: v.name, score: v.score })) }),
+  }).catch(() => {});
+  openDualPlanModal(venues);
+  } catch (e) {
+    const h = document.getElementById("rHint");
+    if (h) h.textContent = "⚠ 启动失败：" + e.message;
+  }
+}
+
+function openDualPlanModal(venues) {
+  cleanupPlan();
+  document.getElementById("planTitle").textContent = "🗺 行程方案 · " + venues.length + " 家";
+  document.getElementById("planSub").textContent = "路线自动生成中；攻略细节层（玩多久/打卡点/避坑）由 opencode 基于小红书研究合并…";
+  document.getElementById("planErr").textContent = "";
+  const box = document.getElementById("planResult");
+  box.innerHTML = `
+    <div class="sub" id="batchKindInfo"></div>
+    <div id="batchBody"></div>`;
+  document.getElementById("planOvl").classList.add("show");
+  dualPlanState = { venues, kind: "ai", ai: null, venueIdx: 0 };
+  if (dualPollTimer) clearInterval(dualPollTimer);
+  dualPollTimer = setInterval(pollDualPlans, 2000);
+  pollDualPlans();
+}
+
+async function pollDualPlans() {
+  if (!dualPlanState) return;
+  try {
+    const ri = await httpJ("/api/plan/batch?kind=ai").then(r => r.json());
+    dualPlanState.ai = ri;
+    const st = ri;
+    const sig = JSON.stringify([st.stage, st.done, (st.items || []).map(it => (it.plan ? 1 : 0) + (it.err || "") + (it.detail ? 1 : 0))]);
+    if (sig !== dualRenderSig.ai) { dualRenderSig.ai = sig; renderDualView(); }
+  } catch (e) { /* 401 handled by httpJ */ }
+}
+
+function summarizeAnswers(a) {
+  if (!a) return "无参数";
+  const bits = [];
+  if (a.depart_date) bits.push(String(a.depart_date).slice(5));
+  if (a.days === "2") bits.push("两天一晚"); else if (a.days === "1") bits.push("单日往返");
+  if (a.people) bits.push(a.people + "人");
+  const mt = { none: "无会议", half: "半天会议", full: "全天会议" }[a.meeting];
+  if (mt) bits.push(mt);
+  const ent = (a.ent_prefs || []).map(x => ({ rafting: "漂流", karting: "卡丁车", boating: "游船", other: "其他" }[x] || x));
+  if (ent.length) bits.push(ent.join("/"));
+  const bd = { low: "经济", mid: "舒适", high: "轻奢" }[a.budget];
+  if (bd) bits.push(bd);
+  return bits.filter(Boolean).join(" · ") || "无参数";
+}
+
+function renderDualView() {
+  if (!dualPlanState) return;
+  const k = dualPlanState.kind;
+  const st = dualPlanState[k];
+  const info = document.getElementById("batchKindInfo");
+  const body = document.getElementById("batchBody");
+  if (!st || !st.total) {
+    info.textContent = "🤖 方案：未启动（服务端读到你的确认事件后会自动开始，请稍候）";
+    body.innerHTML = `<div class="sub" style="padding:16px">等待中…</div>`;
+    return;
+  }
+  info.textContent = "🗺 行程方案（路线 + 攻略细节）" + " · " + summarizeAnswers(st.answers) +
+    ` · ${st.done}/${st.total} ${st.stage === "done" ? "完成" : (st.stage === "error" ? "出错" : (st.stage === "queued" ? "排队" : "生成中"))}`;
+  if (st.err) info.textContent += " · ⚠ " + st.err;
+  const items = st.items || [];
+  if (!items.length) { body.innerHTML = `<div class="sub" style="padding:16px">${st.stage === "queued" ? "排队中…" : "正在生成，请稍候…"}</div>`; return; }
+  if (dualPlanState.venueIdx >= items.length) dualPlanState.venueIdx = 0;
+  const tabs = items.map((it, i) => `<button class="btab ${i === dualPlanState.venueIdx ? "on" : ""}" data-i="${i}">${i + 1}. ${esc(it.name)}</button>`).join("");
+  const cur = items[dualPlanState.venueIdx];
+  const key = k + ":" + cur.id;
+  const adopted = adoptedSet.has(key);
+  const dlv = deliveryState[key];
+  let adoptRow;
+  if (!adopted) {
+    adoptRow = `<button id="adoptBtn" class="btn primary">✅ 采用此方案</button>`;
+  } else if (dlv && (dlv.stage === "pending" || dlv.stage === "rendering")) {
+    adoptRow = `<span class="sub">已采用 ✓ 正在生成交付文档…</span>`;
+  } else if (dlv && dlv.stage === "done") {
+    const names = (dlv.files || []).map(f => esc(f.split("\\").pop().split("/").pop())).join(" · ");
+    adoptRow = `<span class="sub">📄 已生成：${names}</span> ${(dlv.files || []).length ? `<button class="btn" id="openBtn">打开</button>` : ""}`;
+  } else {
+    adoptRow = `<span class="warning">⚠ 生成失败：${esc((dlv && dlv.error) || "未知")}</span>`;
+  }
+  body.innerHTML = `<div class="btabs" id="dualVTabs">${tabs}</div><div id="batchPlanBox"></div>
+    <div style="margin-top:10px;text-align:right">${adoptRow}</div>`;
+  document.getElementById("dualVTabs").querySelectorAll(".btab").forEach(b => {
+    b.onclick = () => { dualPlanState.venueIdx = parseInt(b.dataset.i); renderDualView(); };
+  });
+  const ab = document.getElementById("adoptBtn");
+  if (ab) ab.onclick = () => adoptPlan(k, String(cur.id), String(cur.name));
+  const ob = document.getElementById("openBtn");
+  if (ob && dlv && dlv.files && dlv.files.length) ob.onclick = () => openDeliveryFile(dlv.files[0]);
+  if (cur.err) {
+    document.getElementById("batchPlanBox").innerHTML = `<div class="warning">⚠ ${esc(cur.name)}：${esc(cur.err)}</div>`;
+  } else if (cur.plan) {
+    renderResult(cur.plan, cur.name, "batchPlanBox", cur.detail);
+    if (cur.detail) renderDetailPlan(cur.detail);
+    else {
+      const box = document.getElementById("batchPlanBox");
+      const d = document.createElement("div");
+      d.className = "sub";
+      d.style.padding = "8px 16px 16px";
+      d.textContent = "📕 攻略细节层：待 opencode 基于小红书研究合并（路线已可用）";
+      box.appendChild(d);
+    }
+  } else {
+    document.getElementById("batchPlanBox").innerHTML = `<div class="sub" style="padding:16px">生成中…</div>`;
+  }
+}
+
+function renderDetailPlan(d) {
+  const hasExtra = (d.food || []).length || (d.pitfalls || []).length || (d.budget_estimate || {}).per_person_range
+    || (d.alternative_nearby || []).length || (d.references || []).length;
+  if (!hasExtra) return;
+  const box = document.getElementById("batchPlanBox");
+  const el = document.createElement("div");
+  el.style.cssText = "margin:12px 16px 16px;border:1px solid var(--line,#e5e7eb);border-radius:10px;padding:14px;background:rgba(16,185,129,.04)";
+  let h = `<div style="font-weight:700;margin-bottom:6px">📕 攻略信息（基于小红书研究重组织）</div>`;
+  const food = d.food || [];
+  if (food.length) {
+    h += `<div style="font-weight:700;margin:10px 0 4px">🍜 吃</div>`;
+    food.forEach(f => { h += `<div style="margin:2px 0 2px 8px">· ${esc(f.name || "")}（${esc(f.type || "")}）：${esc(f.notes || "")}</div>`; });
+  }
+  const pits = d.pitfalls || [];
+  if (pits.length) {
+    h += `<div style="font-weight:700;margin:10px 0 4px">⚠ 避坑</div>`;
+    pits.forEach(p => { h += `<div style="margin:2px 0 2px 8px">· ${esc(p.pitfall || "")}：${esc(p.advice || "")}</div>`; });
+  }
+  const bud = d.budget_estimate || {};
+  if (bud && bud.per_person_range) {
+    h += `<div style="font-weight:700;margin:10px 0 4px">💰 预算</div>`;
+    h += `<div style="margin:2px 0 2px 8px">· 人均 ${esc(bud.per_person_range || "")}${bud.benchmark ? `（${esc(bud.benchmark)}）` : ""}</div>`;
+    (bud.breakdown || []).forEach(b => { h += `<div class="sub" style="margin-left:8px">· ${esc(b)}</div>`; });
+  }
+  const alts = d.alternative_nearby || [];
+  if (alts.length) {
+    h += `<div style="font-weight:700;margin:10px 0 4px">📍 附近替代（攻略来自相邻地点，已标注适配）</div>`;
+    alts.forEach(a2 => { h += `<div style="margin:2px 0 2px 8px">· ${esc(a2.name || "")}（${esc(a2.distance || "")}）：${esc(a2.note || "")}</div>`; });
+  }
+  const refs = d.references || [];
+  if (refs.length) {
+    h += `<div style="font-weight:700;margin:10px 0 4px">🔗 参考笔记</div>`;
+    refs.forEach(r2 => {
+      h += r2.url
+        ? `<div style="margin:2px 0 2px 8px"><a class="extlink" data-url="${esc(r2.url)}" rel="nofollow" style="color:var(--pri);text-decoration:none">📕 ${esc((r2.title || "笔记").slice(0, 40))}</a>${r2.relevance ? ` <span class="sub">（${esc(r2.relevance)}）</span>` : ""}</div>`
+        : `<div style="margin:2px 0 2px 8px">· ${esc(r2.title || "")}${r2.relevance ? ` <span class="sub">（${esc(r2.relevance)}）</span>` : ""}</div>`;
+    });
+  }
+  el.innerHTML = h;
+  box.appendChild(el);
+}
+
+// ---- 采用 → 服务端自动生成交付文档（确定性跟进，前端实时显示进度） ----
+
+const deliveryState = {};
+let deliveryTimer = null;
+
+function adoptPlan(kind, id, name) {
+  const key = kind + ":" + id;
+  if (adoptedSet.has(key)) return;
+  adoptedSet.add(key);
+  deliveryState[key] = { kind, venue: id, stage: "pending", files: [], error: "" };
+  httpJ("/api/ui/events", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "plan_adopted", kind, venue: { id, name } }),
+  }).catch(() => {});
+  startDeliveryPoll();
+  renderDualView();
+}
+
+function startDeliveryPoll() {
+  if (deliveryTimer) return;
+  deliveryTimer = setInterval(async () => {
+    const active = Object.entries(deliveryState).filter(([, s]) => s.stage === "pending" || s.stage === "rendering");
+    if (!active.length) { clearInterval(deliveryTimer); deliveryTimer = null; return; }
+    for (const [key, s] of active) {
+      try {
+        const d = await (await httpJ(`/api/delivery?kind=${encodeURIComponent(s.kind)}&venue=${encodeURIComponent(s.venue)}`)).json();
+        s.stage = d.stage; s.files = d.files || []; s.error = d.error || "";
+      } catch (e) { /* 401 handled */ }
+    }
+    if (dualPlanState) renderDualView();
+  }, 2000);
+}
+
+function openDeliveryFile(path) {
+  httpJ("/api/openfile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path }) }).catch(() => {});
+}
+
+// 打开交付物：清单类需「方案已生成(plan_done)+文件存在」才点亮；行程方案按钮只需文件存在（plan_done 以磁盘兜底，重启不丢）
+let dlPaths = {};
+async function pollDeliverables() {
+  try {
+    const d = await (await httpJ("/api/deliverables")).json();
+    dlPaths = d.paths || {};
+    const map = { plan_pdf: "dl_plan_pdf", plan_docx: "dl_plan_docx", plan_md: "dl_plan_md", pdf_main: "dl_pdf_main", pdf_all27: "dl_pdf_all27", docx: "dl_docx", md: "dl_md", json: "dl_json" };
+    for (const [k, id] of Object.entries(map)) {
+      const a = document.getElementById(id);
+      if (!a) continue;
+      const ok = k.startsWith("plan_") ? !!(d.files || {})[k] : (d.plan_done && !!(d.files || {})[k]);
+      a.classList.toggle("dldis", !ok);
+    }
+    const hint = document.getElementById("dlHint");
+    if (hint) hint.textContent = (d.files || {}).plan_pdf ? "行程方案已生成 ✓" : (d.plan_done ? "方案已生成 ✓" : "生成规划后可打开");
+  } catch (e) { /* 401 handled */ }
+}
+
+// 打开文件：服务端用系统默认程序直接打开 data/output 原文件（PDF→阅读器、DOCX→Word），不经过下载文件夹
+async function openFile(kind) {
+  try {
+    const path = dlPaths[kind];
+    if (!path) { alert("文件不存在（请先生成规划/交付物）"); return; }
+    const r = await httpJ("/api/openfile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path }) });
+    if (!r.ok) alert("打开失败：HTTP " + r.status);
+  } catch (e) {
+    alert("打开失败：" + (e && e.message ? e.message : e));
+  }
+}
+
+document.querySelectorAll("#deliveryPanel [data-kind]").forEach(a => {
+  a.addEventListener("click", () => openFile(a.dataset.kind));
+});
+
+refresh();
+renderReview();
+pollStatus();
+loadCreds();
+pollDeliverables();
+setInterval(pollDeliverables, 3000);
+
+if (ENTRY_KEY) {
+  document.querySelectorAll('a[href^="/download"]').forEach(a => {
+    a.href += (a.href.includes("?") ? "&" : "?") + "key=" + encodeURIComponent(ENTRY_KEY);
+  });
+}
+</script>
+</body>
+</html>

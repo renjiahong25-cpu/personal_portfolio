@@ -1,0 +1,92 @@
+[
+  {
+    "id": "seed-conghua-xihuan",
+    "name": "广州熹欢森系湖畔度假庄园",
+    "aliases": ["熹欢森系湖畔度假庄园", "从化熹欢庄园"],
+    "district": "从化区",
+    "city": "广州",
+    "notes": ["宣传可住约50-60人，多功能会议厅约60人——住宿可能不足100，待校验"],
+    "sources": {"discovery": "web_seed"}
+  },
+  {
+    "id": "seed-conghua-yijianzhuang",
+    "name": "广州一见庄溯溪度假庄园",
+    "aliases": ["一见庄溯溪度假庄园", "从化一见庄"],
+    "district": "从化区",
+    "city": "广州",
+    "notes": ["宣传40-80人，会议室信息待校验"],
+    "sources": {"discovery": "web_seed"}
+  },
+  {
+    "id": "seed-conghua-tianjian",
+    "name": "田涧小苑",
+    "aliases": ["田涧小苑民宿", "从化田涧小苑"],
+    "district": "从化区",
+    "city": "广州",
+    "notes": ["宣传最多容纳100人，有会议室；周边有碧水峡漂流/卡丁车"],
+    "sources": {"discovery": "web_seed"}
+  },
+  {
+    "id": "seed-qingyuan-qingquanwan",
+    "name": "清远清泉湾爱琴海酒店",
+    "aliases": ["清泉湾爱琴海酒店", "清远清泉湾"],
+    "district": "清新区",
+    "city": "清远",
+    "notes": ["108间客房，多功能厅150人+小型会议室；竹林漂流/卡丁车"],
+    "sources": {"discovery": "web_seed"}
+  },
+  {
+    "id": "seed-qingyuan-jinshahu",
+    "name": "清远金沙湖畔酒店",
+    "aliases": ["金沙湖畔酒店", "清远金沙湖畔"],
+    "district": "清远市",
+    "city": "清远",
+    "notes": ["团建宣传可容纳10-500人，多功能厅；近古龙峡漂流"],
+    "sources": {"discovery": "web_seed"}
+  },
+  {
+    "id": "seed-nankunshan-yuzhen",
+    "name": "南昆山煜振生态庄园民宿",
+    "aliases": ["煜振生态庄园", "南昆山煜振"],
+    "district": "龙门县",
+    "city": "惠州",
+    "notes": ["20间房+帐篷，主会议厅30-80人；住宿100需帐篷混住，待校验"],
+    "sources": {"discovery": "web_seed"}
+  },
+  {
+    "id": "seed-zengcheng-yaxuan",
+    "name": "广州乡约雅轩温泉民宿",
+    "aliases": ["乡约雅轩温泉民宿", "雅轩温泉民宿", "增城雅轩", "广州增城雅轩"],
+    "district": "增城区",
+    "city": "广州",
+    "notes": ["会议室20-40人，规模偏小；近白水寨/大丰门漂流", "携程 suggest 易错配忻州沐雅轩，需城市过滤"],
+    "sources": {"discovery": "web_seed"}
+  },
+  {
+    "id": "seed-fogang-xilegu",
+    "name": "佛冈熹乐谷温泉度假区",
+    "aliases": ["熹乐谷", "森波拉熹乐谷"],
+    "district": "佛冈县",
+    "city": "清远",
+    "notes": ["大型度假区，多会议室+温泉；淡旺季均可"],
+    "sources": {"discovery": "web_seed"}
+  },
+  {
+    "id": "seed-fogang-senbola",
+    "name": "佛冈森波拉度假森林",
+    "aliases": ["森波拉", "森波拉度假森林"],
+    "district": "佛冈县",
+    "city": "清远",
+    "notes": ["度假森林+冰川水谷，会议住宿配套待校验"],
+    "sources": {"discovery": "web_seed"}
+  },
+  {
+    "id": "seed-conghua-lvxigou",
+    "name": "从化碧水峡附近度假酒店集群",
+    "aliases": ["碧水峡周边酒店"],
+    "district": "从化区",
+    "city": "广州",
+    "notes": ["占位：扩搜时用高德在碧水峡周边查住宿"],
+    "sources": {"discovery": "web_seed"}
+  }
+]

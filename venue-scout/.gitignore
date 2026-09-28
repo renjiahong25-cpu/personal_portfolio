@@ -1,0 +1,51 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Logs
+*.log
+dl_debug.*.log
+
+# Secrets — NEVER commit (config/settings.yaml holds live amap key + ctrip/xiaohongshu session cookies)
+config/settings.yaml
+config/settings.yaml.bak
+config/settings.yaml.*.bak
+data/.web_token
+.env
+.env.*
+
+# Generated / cache data
+data/cache/
+data/output/
+
+# live 采集结果（本地生成，不入库；示例数据见 data/seeds.json）
+data/venues.json
+
+# 浏览器 profile（含会话 cookie，绝不入库）
+data/browser-profile/
+data/edge_profile/
+
+# 前端备份
+web/index.html.bak
+
+# 第三方（手动克隆，见 README；不入库）
+vendor/
+
+# 本机 agent 配置 / 认知层（机器本地，非项目资产）
+AGENTS.md
+aoci.txt
+aoci.code.txt
+aoci.meta.txt
+.aoci/
+
+# AOCI-generated project config (per-project MCP binding is machine-local)
+opencode.json
+opencode.json.backup.*
+
+# OS noise
+Thumbs.db
+desktop.ini
+.DS_Store

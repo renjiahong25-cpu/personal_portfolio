@@ -1,0 +1,16 @@
+# venue-scout runtime dependencies
+# 核心
+httpx>=0.27
+pydantic>=2.7
+pyyaml>=6.0
+tenacity>=8.2
+rich>=13.7
+fastapi>=0.110
+uvicorn>=0.29
+# 规划 / 交付
+python-docx>=1.1
+ortools>=9.7
+# 前端自动化（登录/采集/冒烟）
+playwright>=1.44
+# Windows：docx→PDF 走 Word COM（pywin32）；其他平台无需
+pywin32>=306; sys_platform == "win32"

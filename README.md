@@ -8,6 +8,7 @@
 | --- | --- | --- |
 | 跨境物流规则智能 Agent | [supplychainpolicyagent/](supplychainpolicyagent/) | 面向跨境物流/报关场景的智能中台：政策问答（RAG）、HS 商品模糊搜索与关税报价、政策爬虫采集、知识库管理、离线评测 |
 | Web Agent | [web-agent/](web-agent/) | 基于 openteam 二次开发的多 AI 站点协作 Chrome 扩展 + 本机智能体控制 CLI + OpenAI 兼容模型网关 |
+| 团建场地采集 + 行程规划 | [venue-scout/](venue-scout/) | 城市团建场地多源采集（高德/网页/小红书）→ 规则筛选 → 确定性行程规划 → 文档交付（Excel/Word/PDF）；核心链路离线无 LLM，可配合 OpenCode skill 对话式使用 |
 
 ## 约定
 
