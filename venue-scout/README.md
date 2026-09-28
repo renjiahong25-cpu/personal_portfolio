@@ -62,12 +62,12 @@
 ### 第 1 步：拿到代码
 
 ```powershell
-# 方式 A：用 Git 克隆（推荐）
-git clone https://github.com/<你的账号>/venue-scout.git
-cd venue-scout
+# 方式 A：用 Git 克隆（推荐）。本项目位于 personal_portfolio 仓库的 venue-scout/ 子目录
+git clone https://github.com/renjiahong25-cpu/personal_portfolio.git
+cd personal_portfolio\venue-scout
 
-# 方式 B：没有 Git —— 在 GitHub 仓库页面点 "Code" → "Download ZIP"，
-# 下载解压后 cd 进 venue-scout 目录
+# 方式 B：没有 Git —— 打开 https://github.com/renjiahong25-cpu/personal_portfolio
+# 点 "Code" → "Download ZIP"，下载解压后 cd 进 personal_portfolio\venue-scout 目录
 ```
 
 ### 第 2 步：创建虚拟环境并安装依赖
@@ -171,7 +171,7 @@ python scripts\dialog_agent.py status
 ### 2. 首次配置（选一个 AI 模型）
 
 ```powershell
-cd venue-scout
+cd personal_portfolio\venue-scout
 opencode
 ```
 
@@ -286,8 +286,8 @@ Prereqs: **Python 3.10+** (python.org — check *"Add python.exe to PATH"*), **G
 you can download the ZIP from GitHub instead), an **Amap (Gaode) account**.
 
 ```powershell
-git clone https://github.com/<you>/venue-scout.git
-cd venue-scout
+git clone https://github.com/renjiahong25-cpu/personal_portfolio.git
+cd personal_portfolio\venue-scout
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
@@ -315,7 +315,7 @@ Web flow: enter direction → **start collection** → review Top-10 (✅/❌) �
 1. Install [OpenCode](https://opencode.ai): `npm i -g opencode-ai` (Node) /
    `curl -fsSL https://opencode.ai/install | bash` (macOS & Linux) / `choco install opencode` or
    `scoop install opencode` (Windows; WSL recommended).
-2. `cd venue-scout && opencode`, then `/connect` to configure a model provider + API key.
+2. `cd personal_portfolio\venue-scout && opencode`, then `/connect` to configure a model provider + API key.
 3. Install this repo's skill:
    ```powershell
    mkdir .opencode\skills -Force
