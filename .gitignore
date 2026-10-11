@@ -1,6 +1,40 @@
-# 仓库根：通用忽略
+# ============================================
+# 通用忽略（全仓库）
+# ============================================
 .DS_Store
 Thumbs.db
 
-# 重组前残留在根目录的旧日志（新日志在 supplychainpolicyagent/logs，由该目录 .gitignore 管理）
+# 根目录旧日志（项目日志在 projects/supplychainpolicyagent/logs，由项目 .gitignore 管理）
 /logs/
+
+# Python / Node 通用运行时产物
+__pycache__/
+.venv/
+node_modules/
+
+# ============================================
+# site/（作品集站点源码）
+# ============================================
+/site/node_modules/
+/site/dist/
+# 音频资源不入库
+/site/public/audio/*.mp3
+/site/public/audio/*.wav
+
+# ============================================
+# tools/（构建工具）
+# ============================================
+/tools/blender/cache/
+
+# ============================================
+# projects/supplychainpolicyagent/（该项目自身设计：
+# 过程文档与运行时产物不入库；锚定到 /projects/ 前缀，
+# 不影响 site/、tools/ 与根 README）
+# ============================================
+/projects/supplychainpolicyagent/data/
+/projects/supplychainpolicyagent/logs/
+/projects/supplychainpolicyagent/scripts/
+/projects/supplychainpolicyagent/docs/
+# 项目根目录下所有 md（含 PRD、技术架构设计文档、AGENTS.md），仅保留 README.md
+/projects/supplychainpolicyagent/*.md
+!/projects/supplychainpolicyagent/README.md
