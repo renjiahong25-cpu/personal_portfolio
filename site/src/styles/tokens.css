@@ -1,0 +1,19 @@
+:root{
+  --ink-900:#070b1a;--ink-800:#0d1530;--ink-700:#15203f;--ink-600:#1d2a52;--ink-500:#2a3a6b;
+  --gold-200:#fbedc5;--gold-300:#f5e0a8;--gold-400:#f0d28a;--gold-500:#e8c478;--gold-600:#b8924a;--gold-700:#8a6a35;
+  --text-1:#f5e0a8;--text-2:rgba(245,224,168,.78);--text-3:rgba(245,224,168,.5);--text-4:rgba(245,224,168,.32);
+  --rose-500:#e85d75;--teal-400:#5fc3b8;--azure-500:#6b9bff;--violet-500:#b885ff;
+  --gold-glow:rgba(232,196,120,.18);--gold-glow-strong:rgba(232,196,120,.4);
+  --ease-out-expo:cubic-bezier(.16,1,.3,1);--ease-back:cubic-bezier(.34,1.56,.64,1);--ease-soft:cubic-bezier(.25,.46,.45,.94);
+  --r-sm:8px;--r-md:14px;--r-lg:22px;--r-pill:999px;
+  --font-sans:"Inter",-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --font-num:"Inter","SF Mono","JetBrains Mono",monospace;
+}
+body{margin:0;font-family:var(--font-sans);background:var(--ink-900);color:var(--text-2);}
+.btn-gold{background:linear-gradient(180deg,var(--gold-300),var(--gold-500) 46%,var(--gold-600));box-shadow:0 2px 0 var(--gold-700),0 6px 18px rgba(0,0,0,.45),0 0 22px var(--gold-glow),inset 0 1px 0 var(--gold-200),inset 0 -1px 0 var(--gold-700);color:#1a1408;border:0;border-radius:var(--r-sm);padding:12px 34px;font-size:15px;letter-spacing:.18em;cursor:pointer;transition:transform .12s var(--ease-soft),box-shadow .12s;}
+.btn-gold:hover{transform:translateY(-1px);box-shadow:0 3px 0 var(--gold-700),0 8px 22px rgba(0,0,0,.5),0 0 30px var(--gold-glow-strong),inset 0 1px 0 var(--gold-200),inset 0 -1px 0 var(--gold-700);}
+.btn-gold:active{transform:translateY(1px);box-shadow:0 0 0 var(--gold-700),0 3px 10px rgba(0,0,0,.4),inset 0 1px 0 var(--gold-200);}
+.panel-glass{background:linear-gradient(180deg,rgba(21,32,63,.92),rgba(13,21,48,.94));backdrop-filter:blur(18px) saturate(160%);border:1px solid rgba(232,196,120,.18);box-shadow:0 12px 40px rgba(0,0,0,.55),inset 0 1px 0 rgba(245,237,197,.1);border-radius:var(--r-lg);}
+.eyebrow{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-3);}
+@keyframes nebula-drift{0%,100%{transform:translate(0,0) scale(1);opacity:.55}33%{transform:translate(-40px,25px) scale(1.05);opacity:.8}66%{transform:translate(30px,-35px) scale(.95);opacity:.6}}
+@keyframes star-twinkle{0%,100%{opacity:.2;transform:scale(1)}50%{opacity:1;transform:scale(1.3)}}

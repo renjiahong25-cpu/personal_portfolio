@@ -1,0 +1,19 @@
+{
+  "prop": "satellite_dish",
+  "dirs": 8,
+  "frames": 1,
+  "size": [
+    64,
+    64
+  ],
+  "anchor": [
+    32,
+    64
+  ],
+  "fps": 8,
+  "sheet": [
+    4096,
+    512
+  ],
+  "res": 512
+}
