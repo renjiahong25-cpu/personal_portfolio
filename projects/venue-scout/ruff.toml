@@ -1,0 +1,39 @@
+# venue-scout ruff 配置
+#
+# 现状说明：本仓库未单独收窄规则集，ruff 按当前版本默认启用全集（800+ 规则）。
+# scripts/ 多为一次性运维/调试脚本，src/ 为 Web 应用且大量使用防御式
+# `except Exception`（BLE001/S110/S112）与手动文件句柄（SIM115），
+# 全量改写代码风险大于收益，故按「具体文件 + 具体规则」限定豁免，
+# 不整目录豁免；新增文件默认不受任何豁免影响。
+
+[lint.per-file-ignores]
+"scripts/build_review_html.py" = ["F841"]
+"scripts/build_summary_docx.py" = ["B005", "F841"]
+"scripts/build_summary_md.py" = ["F811", "F841"]
+"scripts/build_summary_xlsx.py" = ["RUF034"]
+"scripts/dialog_agent.py" = ["BLE001", "RUF059", "S112"]
+"scripts/dl_debug.py" = ["BLE001"]
+"scripts/ensure_browser.py" = ["BLE001", "ISC004", "PLW1510", "S110", "S112", "SIM115"]
+"scripts/ensure_service.py" = ["BLE001", "PLW1510", "S110", "SIM115"]
+"scripts/extract_edge_cdp_cookie.py" = ["BLE001", "S110", "S112"]
+"scripts/extract_edge_ctrip_cookie.py" = ["BLE001", "F841", "PIE810"]
+"scripts/open_front_ui.py" = ["BLE001", "S110"]
+"scripts/probe_ctrip_meeting.py" = ["BLE001"]
+"scripts/render_plan_doc.py" = ["BLE001"]
+"scripts/rescan_nearby.py" = ["BLE001"]
+"scripts/run_pipeline.py" = ["B023", "BLE001", "S110"]
+"scripts/run_pipeline_top10.py" = ["PLW1510"]
+"scripts/test_data_chain.py" = ["BLE001"]
+"scripts/ui_smoke.py" = ["BLE001", "S110", "UP031"]
+"scripts/watch_events.py" = ["BLE001", "S112"]
+"scripts/xhs_research.py" = ["BLE001", "FURB192", "PLW1510", "S110"]
+"src/amap_client.py" = ["BLE001", "S110"]
+"src/cookie_login.py" = ["BLE001", "F841", "PIE810", "S110"]
+"src/creds.py" = ["BLE001"]
+"src/ctrip_client.py" = ["BLE001", "S110", "S112", "SIM102"]
+"src/planner.py" = ["F841"]
+"src/webapp.py" = ["BLE001", "F841", "PLW1510", "S110", "S112"]
+"src/xhs_client.py" = ["BLE001"]
+"tests/test_models.py" = ["C408"]
+"tests/test_planner.py" = ["RUF007", "SIM201"]
+"tests/test_scorer.py" = ["C408"]

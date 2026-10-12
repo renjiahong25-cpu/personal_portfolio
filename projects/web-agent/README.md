@@ -2,6 +2,8 @@
 
 **🌐 Language:** English | [简体中文](README.zh-CN.md)
 
+> **Origin & license:** Web Agent is a secondary development of [openteam](https://github.com/afumu/openteam) by AFu Mu, released under the [PolyForm Noncommercial License 1.0.0](LICENSE) (non-commercial use only). Main additions on top of openteam: a local agent-control CLI + daemon, an OpenAI-compatible model gateway, a Flutter desktop client, and the opencode integration (`web-agent-control` skill + `ask_web` plugin). Upstream attribution and license terms continue to apply to the inherited code — see [License](#-license).
+
 > A local-first AI team workspace: a Chrome extension that turns your existing DeepSeek / Doubao web sessions into a multi-agent discussion room, plus a local agent-control CLI, an OpenAI-compatible model gateway, and an opencode integration.
 
 ![Web Agent desktop client](docs/assets/web-agent-ui-screenshot.png)
@@ -49,8 +51,8 @@ Web Agent reuses AI accounts you already have open in your browser and spends no
 
 ```bash
 git clone https://github.com/renjiahong25-cpu/personal_portfolio.git
-cd personal_portfolio/web-agent
-npm install
+cd personal_portfolio/projects/web-agent
+npm ci
 npm run build
 ```
 
@@ -79,7 +81,7 @@ The repository is wired for opencode out of the box:
 Run opencode from the `web-agent` directory:
 
 ```bash
-cd personal_portfolio/web-agent
+cd personal_portfolio/projects/web-agent
 opencode
 ```
 

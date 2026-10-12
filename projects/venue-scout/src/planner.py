@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
 
@@ -25,7 +25,54 @@ PREF_TO_KINDS = {
     "other": ["scenic", "fun", "leisure", "waterfun", "boating", "spa"],
 }
 JUNK_CATEGORY = ("汽车销售", "加油", "银行", "政府", "公司企业", "教育", "医疗", "购物",
-                 "停车", "维修", "房产", "工厂", "物流", "通信", "保险")
+                  "停车", "维修", "房产", "工厂", "物流", "通信", "保险")
+
+# 零长度退化段判定：同名（或同坐标）且距离极短，或 1 分钟以内且 <100m 的 AMap 伪段
+DEGEN_M_SAME = 200
+DEGEN_M_NEAR = 100
+
+
+def _is_degenerate_hop(drive_min: int, meters: int, from_name: str, to_name: str,
+                       from_loc: str = "", to_loc: str = "") -> bool:
+    same_place = (from_name and from_name == to_name) or (from_loc and from_loc == to_loc)
+    if same_place and meters <= DEGEN_M_SAME:
+        return True
+    return drive_min <= 1 and meters <= DEGEN_M_NEAR
+
+
+def clamp_slots(slots: list[dict]) -> None:
+    """slot 边界 clamp（BUG-0013）：补齐缺失 start/end，消除时间重叠与 end<start。"""
+    prev_end: int | None = None
+    for sl in slots:
+        s = str(sl.get("start") or "")
+        try:
+            sm = int(s.split(":")[0]) * 60 + int(s.split(":")[1])
+        except (IndexError, ValueError):
+            continue
+        e = str(sl.get("end") or "")
+        try:
+            em = int(e.split(":")[0]) * 60 + int(e.split(":")[1])
+        except (IndexError, ValueError):
+            em = sm
+        if prev_end is not None and sm < prev_end:
+            sm = prev_end
+        em = max(em, sm)
+        sl["start"] = f"{sm // 60:02d}:{sm % 60:02d}"
+        sl["end"] = f"{em // 60:02d}:{em % 60:02d}"
+        prev_end = em
+
+
+def slot_drive_total(days: list[dict]) -> int:
+    """按用户可见的 day slots 汇总行驶分钟数（drive slot + activity slot 的 drive_min）。
+
+    BUG-0013：summary.total_drive_min 改为以 slots 口径为准，保证与逐日时间表一致。
+    """
+    total = 0
+    for d in days:
+        for sl in d.get("slots") or []:
+            if sl.get("type") in ("drive", "activity"):
+                total += int(sl.get("drive_min") or 0)
+    return total
 
 
 def poi_kind(poi: dict) -> str:
@@ -142,7 +189,7 @@ class RoutePlan:
             f"&from={from_loc.replace(',', '%2C')}%2C{from_name}&mode=car"
         )
 
-    def _drive(self, a_loc: str, b_loc: str) -> Optional[dict]:
+    def _drive(self, a_loc: str, b_loc: str) -> dict | None:
         return self.amap.driving(a_loc, b_loc)
 
     def _geometry(self, a_loc: str, b_loc: str) -> list[list[float]]:
@@ -209,8 +256,9 @@ class RoutePlan:
             kind_index = KIND_ORDER.index(kind) if kind in KIND_ORDER else 99
             base = KIND_REWARD.get(kind, 20)
             pname = pois[i - 1].get("name") or ""
+            # 用户显式点名的类/词优先于通用默认玩法（如默认奖励更高的温泉）
             if kind in covered_kinds or any(cp in pname for cp in custom_prefs):
-                base += 8
+                base += 60
             skip_penalty = max(5, base + max(0, 8 - kind_index))
             routing.AddDisjunction([manager.NodeToIndex(i)], skip_penalty)
 
@@ -250,7 +298,8 @@ class RoutePlan:
                 dt_data = self._drive(locs[cur], locs[node])
                 drive_min = max(1, round(dt_data["duration_s"] / 60)) if dt_data else 15
                 meters = int(dt_data["distance_m"] or 0) if dt_data else 0
-            degenerate = drive_min <= 1 and meters == 0 and names[cur] == names[node]
+            degenerate = _is_degenerate_hop(drive_min, meters, names[cur], names[node],
+                                            locs[cur], locs[node])
             if not degenerate and locs[cur] and locs[node]:
                 legs.append({
                     "class": "local", "from": names[cur], "to": names[node],
@@ -284,7 +333,8 @@ class RoutePlan:
                 back = self._drive(last_loc, locs[0])
                 bmin = max(1, round(back["duration_s"] / 60)) if back else 10
                 bmeters = int(back["distance_m"] or 0) if back else 0
-            b_degenerate = bmin <= 1 and bmeters == 0 and names[cur] == names[0]
+            b_degenerate = _is_degenerate_hop(bmin, bmeters, names[cur], names[0],
+                                              last_loc, locs[0])
             if not b_degenerate:
                 legs.append({
                     "class": "local", "from": names[cur], "to": names[0],
@@ -305,8 +355,8 @@ class RoutePlan:
         covered_kinds: set[str] = set()
         for kp in known_prefs:
             covered_kinds |= set(PREF_TO_KINDS[kp])
-        candidates, missing_words = pick_candidates(self.venue, prefs)
-        pois = candidates[:6]
+        candidates, missing_words = pick_candidates(self.venue, prefs, cap=8)
+        pois = candidates[:8]
         sessions = set(merged.get("sessions") or [])
         lunch_mode = merged.get("lunch_mode") or "self"
         dinner_after = merged.get("dinner_after") or "free"
@@ -318,7 +368,7 @@ class RoutePlan:
         venue_loc = self.venue.get("location") or ""
         venue_name = self.venue.get("name") or "场地"
         base = self._base_dt()
-        drive_go = max(1, round((self.venue.get("drive_minutes") or 90)))
+        drive_go = max(1, round(self.venue.get("drive_minutes") or 90))
         rd_set = bool(merged.get("return_deadline"))
         warnings: list[str] = list(missing_words and [f"周边未找到「{'」「'.join(missing_words)}」对应项目"] or [])
         room_label = pick_meeting_room(self.venue, int(merged.get("people") or 20))
@@ -424,7 +474,10 @@ class RoutePlan:
                     if skipped:
                         dropped = [pois[i - 1].get("name") for i in skipped]
                         warnings.append(f"时间不足被剪裁：{'、'.join(dropped)}")
-                ret_via = self._geometry(venue_loc, origin_loc) or (list(reversed(go_via)) if go_via else [])
+                # 返程 access leg：drive time 用去程口径估算（原路返回），折线优先现取、失败退回去程折线反序
+                ret_via = self._geometry(venue_loc, origin_loc) if venue_loc and origin_loc else []
+                if not ret_via and go_via:
+                    ret_via = list(reversed(go_via))
                 legs.append({"class": "access", "from": venue_name, "to": origin_name,
                              "from_loc": venue_loc, "to_loc": origin_loc,
                              "drive_min": drive_go, "distance_m": go_dist, "via": ret_via})
@@ -439,6 +492,7 @@ class RoutePlan:
                     who = "你设定的" if rd_set else "默认"
                     warnings.append(
                         f"返程预计 {self._fmt(end_ret)} 抵达，晚于{who} {rd} 返程时限")
+            clamp_slots(day1["slots"])
             days_out.append(day1)
 
         # ----- Day 2 -----
@@ -451,27 +505,36 @@ class RoutePlan:
             now += timedelta(minutes=45)
             rd = merged.get("return_deadline") or return_deadline_default["2"]
             deadline_min = self._mins(rd)
+            leave_latest = deadline_min - drive_go
             pois2 = [p for p in pois if (p.get("name") or "") not in used_names]
+            day2_used: set[str] = set()
             if pois2:
                 matrix2 = self._matrix(pois2)
                 lunch_min = 12 * 60
                 block_start = now.hour * 60 + now.minute
-                block_min = max(min(deadline_min - drive_go, lunch_min - 15) - block_start - 15, 45)
+                block_min = max(min(leave_latest, lunch_min - 15) - block_start - 15, 45)
                 planned, skipped = self._solve_block(pois2, matrix2, block_min, covered_kinds, custom_prefs)
+                # Day2 只安排一个上午活动
+                planned = planned[:1]
                 now = self._activity_slots(s2, pois2, planned, now, "morning", legs, matrix2)
-                if skipped:
+                for i in planned:
+                    day2_used.add(pois2[i - 1].get("name") or "")
+                if skipped or len(planned) < 1:
                     dropped = [pois2[i - 1].get("name") for i in skipped]
-                    warnings.append(f"Day2 时间不足被剪裁：{'、'.join(dropped)}")
+                    warnings.append(f"Day2 上午时间不足被剪裁：{'、'.join(dropped)}")
             else:
                 warnings.append("Day2 周边项目与 Day1 重复，无新活动可排")
             lunch2 = self._at(now, max(12 * 60, (now.hour * 60 + now.minute) + 20))
             if not has_special and lunch2 > now + timedelta(minutes=30):
                 s2.append({"type": "free", "label": "自由活动 / 休整",
                            "start": self._fmt(now), "end": self._fmt(lunch2), "where": venue_name})
-            s2.append({"type": "lunch", "label": "午餐", "start": self._fmt(lunch2),
-                       "end": self._fmt(lunch2 + timedelta(minutes=70)), "where": "酒店餐厅"})
+            s2.append({"type": "lunch", "label": "午餐（地点待定）", "start": self._fmt(lunch2),
+                       "end": self._fmt(lunch2 + timedelta(minutes=70)), "where": "待定"})
             now = lunch2 + timedelta(minutes=70)
-            ret_via = self._geometry(venue_loc, origin_loc) or (list(reversed(go_via)) if go_via else [])
+            # Day2 不再排下午活动，午餐后直接返程（drive time 用去程口径，折线失败退回去程折线反序）
+            ret_via = self._geometry(venue_loc, origin_loc) if venue_loc and origin_loc else []
+            if not ret_via and go_via:
+                ret_via = list(reversed(go_via))
             legs.append({"class": "access", "from": venue_name, "to": origin_name,
                          "from_loc": venue_loc, "to_loc": origin_loc,
                          "drive_min": drive_go, "distance_m": go_dist, "via": ret_via})
@@ -484,9 +547,11 @@ class RoutePlan:
                 ar = now + timedelta(minutes=drive_go)
                 who = "你设定的" if rd_set else "默认"
                 warnings.append(f"返程预计 {self._fmt(ar)} 抵达，晚于{who} {rd} 返程时限")
+            clamp_slots(day2["slots"])
             days_out.append(day2)
 
-        total_drive = sum(lg["drive_min"] for lg in legs)
+        # BUG-0013: 总行驶时间以 day slots 口径汇总（与逐日时间表一致），不再直接用 map_legs 求和
+        total_drive = slot_drive_total(days_out)
         return {
             "status": "ok",
             "origin": {"name": origin_name, "location": origin_loc},

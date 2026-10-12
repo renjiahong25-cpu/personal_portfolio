@@ -7,10 +7,8 @@ LLM extraction hook: if settings.llm configured, used to parse venue names from 
 
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
-from typing import Any, Optional
 
 import httpx
 
@@ -68,7 +66,7 @@ def search_notes(cookie: str, keyword: str, limit: int = 20) -> list[dict]:
         return []
 
 
-def discover(cookie: str = "", llm: Optional[dict] = None) -> list[dict]:
+def discover(cookie: str = "", llm: dict | None = None) -> list[dict]:
     """Return [{name, keywords_hit}] candidates from XHS (or empty)."""
     if not cookie:
         return []

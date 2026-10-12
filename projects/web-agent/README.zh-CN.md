@@ -2,6 +2,8 @@
 
 **🌐 语言:** [English](README.md) | 简体中文
 
+> **来源与许可：** Web Agent 是基于 [openteam](https://github.com/afumu/openteam)（AFu Mu 开源）的二次开发项目，遵循 [PolyForm Noncommercial License 1.0.0](LICENSE)（仅限非商业使用）。在 openteam 之上的主要改动：本机智能体控制 CLI + daemon、OpenAI 兼容模型网关、Flutter 桌面客户端、opencode 集成（`web-agent-control` skill + `ask_web` 插件）。继承自上游的代码继续适用其归属与许可条款——详见[许可证](#-许可证)。
+
 > 本地优先的 AI 专家团工作区：一个 Chrome 扩展，把你已登录的 DeepSeek / 豆包网页会话变成多人讨论的群聊工作台；配套本机智能体控制 CLI、OpenAI 兼容模型网关，以及 opencode 集成。
 
 ![Web Agent 桌面客户端](docs/assets/web-agent-ui-screenshot.png)
@@ -47,8 +49,8 @@ Web Agent 是**基于 [openteam](https://github.com/afumu/openteam) 的二次开
 
 ```bash
 git clone https://github.com/renjiahong25-cpu/personal_portfolio.git
-cd personal_portfolio/web-agent
-npm install
+cd personal_portfolio/projects/web-agent
+npm ci
 npm run build
 ```
 
@@ -77,7 +79,7 @@ web-agent doctor
 在 `web-agent` 目录里启动 opencode：
 
 ```bash
-cd personal_portfolio/web-agent
+cd personal_portfolio/projects/web-agent
 opencode
 ```
 

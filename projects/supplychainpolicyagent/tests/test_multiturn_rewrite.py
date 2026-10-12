@@ -6,11 +6,12 @@ F:   ChatFlow._load_history（真实 MySQL 集成，临时 session 自动清理�
 依赖: MySQL 运行中（仅 F 部分）
 """
 import sys
+from pathlib import Path
 import asyncio
 import json
 import uuid
 
-sys.path.insert(0, r"D:\Program Files\supplychainpolicyagent")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.stdout.reconfigure(encoding="utf-8")
 
 PASSED = []

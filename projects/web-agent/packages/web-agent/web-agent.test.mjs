@@ -72,7 +72,10 @@ describe('web-agent command builder', () => {
     symlinkSync(resolve(__dirname, 'web-agent.mjs'), binPath)
 
     try {
-      const result = spawnSync(binPath, ['help'], { encoding: 'utf8' })
+      // On POSIX the npm bin symlink is executed via its shebang; on Windows
+      // npm uses a .cmd shim that runs `node <target>`, so invoke the same way.
+      const isWindows = process.platform === 'win32'
+      const result = spawnSync(isWindows ? process.execPath : binPath, isWindows ? [binPath, 'help'] : ['help'], { encoding: 'utf8' })
 
       expect(result.status).toBe(0)
       expect(result.stdout).toContain('web-agent doctor')

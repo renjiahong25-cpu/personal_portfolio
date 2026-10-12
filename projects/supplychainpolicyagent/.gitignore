@@ -38,8 +38,18 @@ minio_data/
 # Milvus local data
 milvus_data/
 
-# Eval runtime artifacts (eval sets / reports / raw results)
-data/
+# Eval runtime artifacts (eval reports / raw results) 不入库；
+# 白名单放行安全小 fixture（离线种子 / 派生成本模型 / 人工金标集）
+data/*
+!data/tariff/
+data/tariff/*
+!data/tariff/route_cost_model.json
+!data/tariff/seed_us_hts.json
+!data/eval/
+data/eval/*
+!data/eval/sets/
+data/eval/sets/*
+!data/eval/sets/eval_atlas_20260909.json
 
 # Redis dumps
 dump.rdb
@@ -56,14 +66,13 @@ Thumbs.db
 celerybeat-schedule
 celerybeat.pid
 
-# ---- 不上传：代理/过程/内部文档 与 调试痕迹 ----
-docs/
-scripts/
+# ---- 不上传：内部备份与调试痕迹 ----
 backups/
 .opencode/
-# 根目录下所有 md（含 PRD、技术架构设计文档、AGENTS.md、issues.md），仅保留 README.md
+# 根目录下所有 md（含 PRD、技术架构设计文档、AGENTS.md、issues.md），仅保留 README（中/英）
 /*.md
 !README.md
+!README.en.md
 
 # 根目录探针/一次性日志
 probe_*.log

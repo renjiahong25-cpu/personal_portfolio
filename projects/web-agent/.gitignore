@@ -18,5 +18,4 @@ skills-lock.json
 watcher.obj
 diagnostics/screenshot-*.png
 diagnostics/*.pid
-scripts/
 docs/assets/web-agent-wechat-group-qr.jpg

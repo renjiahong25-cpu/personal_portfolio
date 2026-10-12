@@ -1,0 +1,200 @@
+【/4.6.3.1 Annahme der Zollanmeldung · 4.6.3.1 Annahme der Zollanmeldung】
+Zollanmeldung zurück. Werden geringfügige Fehler festgestellt, wird 
+der Anmelder aufgefordert, diese im IZA-Ausdruck zu korrigieren. 
+Anschließend übernimmt der Benutzer die Daten in ATLAS und 
+führt die gleichen Korrekturen in der Anwendung durch. Werden im 
+Rahmen der Prüfung keine Fehler festgestellt, können die Daten 
+unmittelbar übernommen werden. Stellt der Benutzer erst nach 
+Übernahme der
+
+【/4.6.3.6 Schnittstelle zu ZEUS · 4.6.3.6 Schnittstelle zu ZEUS】
+4.6.3.2 
+Überprüfung der Bemessungsgrundlagen 
+(1) Die Abfertigungszollstelle überprüft die Bemessungsgrundlagen. 
+Bestehen Gründe für eine nicht abschließende Festsetzung der 
+Einfuhrabgaben/ Anerkennung der Bemessungsgrundlagen, muss 
+der Benutzer diese in den vorgesehenen Eingabefeldern der 
+jeweiligen Position dokumentieren. 
+(2) Für den Fall, dass Angaben in der Zollanmeldung ergänzt 
+werden 
+
+【/4.9.1.1 Anlegen von Zollanmeldungen · 4.9.1.1 Anlegen von Zollanmeldungen】
+unvorhergesehenem Ausgang über einen anderen 
+Mitgliedstaat). Zudem dürfen sie nach Maßgabe der 
+Vorbemerkungen zu Kapitel 99 des Warenverzeichnisses für 
+die Außenhandelsstatistik bei der Anmeldung zum Teil nur mit 
+besonderer Genehmigung des StBA verwendet werden 
+(Codierung „9DEE“). 
+(12) Mit der Internet-Statusauskunft besteht die Möglichkeit,
+allgemeine Informationen zu Ausfuhrvorgängen auf d
+
+【/4.9.1.1.2 Vereinfachtes Verfahren mit förmlicher  Bewilligung SDE-Ausfuhr/ PV nach Artikel 166 Absatz 2 UZK sowie Verfahren der Zentralen Zollabwicklung Ausfuhr/ PV · 4.9.1.1.2 Vereinfachtes Verfahren mit fö】
+mit Anschreibung in der Buchführung des Anmelders mit
+Gestellungsbefreiung (monatliche Sammelanmeldung mit
+Bewilligung EIR-Ausfuhr)
+4.9.1.1.1 
+Normalverfahren/ Verfahren mit vereinfachter Anmeldung ohne 
+förmliche Bewilligung nach Artikel 166 Absatz 1 UZK 
+(1) Ausfuhranmeldungen sind vom Teilnehmer vor der Gestellung
+der Waren zu übermitteln. Diese werden automatisiert
+entgegengenommen, sofern kei
+
+【/4.9.1.3 Bearbeitungsmöglichkeiten · 4.9.1.3 Bearbeitungsmöglichkeiten】
+4.9.1.1.3 
+Online-Ausfuhrdokumente des EU-Systems CSW-CERTEX 
+(1) Die Online-Abschreibung der über das EU-System CSW-
+CERTEX bereitgestellten Dokumente erfolgt elektronisch (siehe
+Kapitel 3.1.2 Absatz 5 sowie Kapitel 4.22).
+(2) Zur Laufzeit des Release 10.2 erfolgt der Dokumentenabruf von
+CERTEX-Dokumenten, die in Ausfuhrvorgängen angemeldet
+werden sowie die Reservierung von Abschreibemengen und d
+
+【/4.9.1.3.3 Änderung der Ausfuhranmeldung · 4.9.1.3.3 Änderung der Ausfuhranmeldung】
+Verfahren mit förmlicher Bewilligung SDE-Ausfuhr/ PV nach Artikel 
+166 Absatz 2 UZK oder Verfahren der Zentralen Zollabwicklung 
+Ausfuhr) sowie dem Bearbeitungszustand (Ausfuhranmeldung 
+entgegengenommen oder angenommen; Waren in das 
+Ausfuhrverfahren überlassen oder nach § 12 Absatz 4 AWV 
+überlassen) insbesondere über folgende 
+Bearbeitungsmöglichkeiten: 
+Zurückstellen der Ausfuhranmeldung,
+Nich
+
+【/4.9.1.3.6 Ungültigerklärung nach Überlassung/ Stornierung · 4.9.1.3.6 Ungültigerklärung nach Überlas】
+4.9.1.3.4 
+Ungültigerklärung vor Überlassung 
+(1) Der Anmelder/ Zollvertreter kann die Ungültigerklärung einer
+bereits angenommenen Ausfuhranmeldung unter den
+Voraussetzungen des Artikels 174 Absatz 1 UZK formlos
+beantragen.
+(2) Dem Teilnehmer wird die Ungültigerklärung mit einer Nachricht
+bekannt gegeben.
+4.9.1.3.5 
+Rücknahme der Annahme / Nicht-Überlassung der 
+Ausfuhranmeldung 
+(1) Wird nach de
+
+【/4.9.1.4 Überlassung und Ausstellung des Ausfuhrbegleitdokuments · 4.9.1.4 Überlassung und Ausstellung des 】
+(3) Wurde die Freigabe zum Ausgang vorgenommen, kann die
+Ungültigerklärung der Ausfuhranmeldung nur erfolgen, wenn der
+Ausgang durch die Ausgangszollstelle vorab abgebrochen wird. Hat
+bereits eine Teilausfuhr stattgefunden, ist die Ungültigerklärung
+ausgeschlossen.
+(4) Die Ungültigerklärung eines Ausfuhrvorgangs, der ins
+Versandverfahren weitergeleitet worden ist, ist erst möglich,
+nachdem die daz
+
+【/4.9.1.4.2 Vereinfachtes Verfahren mit förmlicher  Bewilligung SDE-Ausfuhr/ PV nach Artikel 166 Absatz 2 UZK sowie Verfahren der Zentralen Zollabwicklung Ausfuhr/ PV (ohne elektronischen Nachrichtenaustausch) · 4.9.1.4.2 Vereinfachtes Verfahren mit fö】
+4.9.1.4.1 
+Normalverfahren/ Verfahren mit vereinfachter Anmeldung ohne 
+förmliche Bewilligung nach Artikel 166 Absatz 1 UZK 
+(1) Die Ausfuhrzollstelle überlässt die Waren, dokumentiert dies in
+der Anwendung und erzeugt die Druckausgabe des ABD. Dies gilt
+auch bei Beantragung der Gestellung außerhalb des Amtsplatzes.
+(2) Im Fall der Teilnehmereingabe wird dem Anmelder/ Zollvertreter
+nach der Gestel
+
+【/4.9.1.4.3 Verfahren der Zentralen Zollabwicklung Ausfuhr/ PV (mit elektronischen Nachrichtenaustausch) · 4.9.1.4.3 Verfahren der Zentralen Zollab】
+die IT-gestützte Risikoanalyse eine weitere Prüfung der
+Ausfuhranmeldung erforderlich macht.
+Greift die Ausfuhrzollstelle trotz eingestellter Wartezeit nicht ein, 
+wird dem Inhaber der Bewilligung die Überlassung mit Ablauf der 
+Wartezeit automatisiert bestätigt. 
+(3) Öffnet die Ausfuhrzollstelle einen Ausfuhrvorgang innerhalb der
+festgelegten Wartezeit und nimmt sie keine Änderungen vor, so wird
+
+
+【/4.9.11.1 Schnittstelle zum Bundesamt für Wirtschaft und Ausfuhrkontrolle (BAFA) · 4.9.11.1 Schnittstelle zum Bundesamt für】
+(7) Im Rahmen der Erledigung des Ausfuhrvorgangs werden alle
+erforderlichen Ausgangsinformationen bzw. Informationen zur
+Ungültigerklärung an EMCS übermittelt. Dies erfolgt ebenfalls für
+nachträgliche/rückwirkende Ausfuhranmeldungen.
+(8) Im Übrigen wird auf die Verfahrensanweisung zum IT-Verfahren
+EMCS verwiesen.
+4.9.10 
+Schnittstelle zum Statistischen Bundesamt (StBA) und zur EU-
+Kommission (KEU)
+
+【/4.9.11.2 Online-Abschreibung · 4.9.11.2 Online-Abschreibung】
+4.9.11.2 
+Online-Abschreibung 
+(1) Die Onlineabschreibung erfolgt elektronisch im Zeitpunkt der
+Überlassung.
+(2) Der Abgleich zwischen den Anmeldedaten und den
+Genehmigungsdaten hat durch den Benutzer nach Entgegennahme
+bis zur Überlassung auf Basis der durch ATLAS erzeugten
+Druckausgabe „Genehmigungsreport“ zu erfolgen. Insbesondere
+müssen die Daten hinsichtlich des Empfängers, der
+Genehmigungsco
+
+【/4.9.11.3 Nacherfassung von Ausfuhrgenehmigungen · 4.9.11.3 Nacherfassung von Ausfuhrgenehm】
+Ausfuhrgenehmigungen des BAFA wird auf das Kapitel 4.9.11.3 
+verwiesen. 
+(6) Erfolgt die Abwicklung eines Ausfuhrgeschäfts in mehreren
+Teilsendungen und ist zur Ausfuhr eine Genehmigung erforderlich,
+die der zollamtlichen Abschreibung bedarf, ist der Anmelder
+verpflichtet, bei Angaben zur Identifizierung der Genehmigung im
+Feld „Zusatz“ auf die Ausfuhr in Teilsendungen hinzuweisen (z. B.
+„2. Teils
+
+【/4.9.2 Überwachung · 4.9.2 Überwachung】
+4.9.2 
+Überwachung 
+(1) Die Überwachung des Ausfuhrverfahrens ist in der Anwendung
+abzuschließen, sofern die Waren das Zollgebiet der Union
+verlassen haben.
+Für Warensendungen, die im Luft-, See-, Post- oder 
+Schienengüterverkehr bei der Ausgangszollstelle gestellt werden, 
+hat der Anmelder/ Zollvertreter oder der für den Anmelder/ 
+Zollvertreter tätige Beteiligte an der Ausgangszollstelle alle fü
+
+【/4.9.2.1.3 Qualifizierung der Gestellung · 4.9.2.1.3 Qualifizierung der Gestellung】
+(7) In den Fällen, in denen bei einer deutschen Ausgangszollstelle
+die Gestellung erfolgt ist, jedoch noch keine Ausgangsbestätigung
+des Teilnehmers am Ausgang eingetroffen ist, fordert diese
+Ausgangszollstelle den Teilnehmer am Ausgang zeitnah auf, den
+Nachweis über den tatsächlichen Ausgang zu erbringen. Die
+Ausgangszollstelle stellt sicher, dass der Ausfuhrvorgang
+elektronisch abgeschlossen wir
+
+【/4.9.2.1.7 Ausgang/ Weiterleitung/ Abbruch/ Abschluss des Ausgangs · 4.9.2.1.7 Ausgang/ Weiterleitung/ Abbruc】
+4.9.2.1.4 
+Kontrolle/ Erlaubnis zum Ausgang 
+(1) Die Ausgangszollstelle teilt Entscheidungen über
+Kontrollmaßnahmen und/ oder die Erlaubnis zum Ausgang
+(Erlaubnis zum Verbringen der Waren aus dem Zollgebiet der
+Union) unverzüglich mit, wenn der Teilnehmer die gesamte
+Warensendung abschließend qualifiziert gestellt hat.
+(2) Vorbehaltlich beabsichtigter Zollkontrollen und/ oder der
+Überprüfung vorzu
+
+【/4.9.2.1.8 Weiterleitung an einen anderen Mitgliedstaat (Übergangsregelung) · 4.9.2.1.8 Weiterleitung an einen anderen】
+des Abschlusskennzeichens der Abschluss des Ausgangs 
+mitzuteilen. 
+Übermittelt der Teilnehmer den Abschluss des Ausgangs mit 
+Abschlusskennzeichen, obwohl noch nicht zu allen qualifiziert 
+gestellten Waren eine endgültige Bestimmung mitgeteilt wurde, 
+erhält er eine Fehlermeldung. 
+Die Ausfuhrzollstelle wird automatisiert über das Ergebnis der 
+Überwachung mit einer Ausgangsbestätigung/ einem Kon
+
+【/4.9.2.2.2  (Wieder-)Ausfuhr von Nicht-Unionswaren · 4.9.2.2.2  (Wieder-)Ausfuhr von Nicht-Un】
+(7) Der Benutzer kennzeichnet durch Streichung/ Änderung auf
+dem ABD die Teilsendung, die nicht weitergeleitet wird, und
+bestätigt dieses durch Dienststempelabdruck und Unterschrift.
+(8) Die Sendung ist unter Vorlage des bestätigten ABD bei der
+vorgesehenen Ausgangszollstelle des anderen Mitgliedstaates zu
+gestellen.
+4.9.2.2 
+Freizonenbesonderheiten 
+Sofern Ausfuhrsendungen im Rahmen der Überwachu
+
+【/4.9.3 Erledigung · 4.9.3 Erledigung】
+grundsätzlich ein externes Versandverfahren zu eröffnen. 
+Kapitel 4.9.7 findet Anwendung.  
+(3) Dies gilt nicht, wenn ausnahmsweise die (wieder-)
+auszuführende Nicht-Unionsware (z. B. aus einem Zolllager oder
+einer aktiven Veredelung) beim Verbringen in die Freizone nicht
+gestellt worden ist. In diesem Fall kann die Weiterleitung an eine
+andere Ausgangszollstelle ohne externes Versandverfahren
+erf

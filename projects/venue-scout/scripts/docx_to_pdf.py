@@ -1,11 +1,10 @@
-# -*- coding: utf-8 -*-
 """Convert a .docx to .pdf using Word COM automation (Windows)."""
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 
-import win32com.client  # noqa: E402
+import win32com.client
 
 
 def docx_to_pdf(docx_path: str, pdf_path: str) -> None:

@@ -15,11 +15,12 @@
 - [三、安装（10 分钟）](#三安装10-分钟)
 - [四、申请高德 API Key（必做）](#四申请高德-api-key必做)
 - [五、启动并使用](#五启动并使用)
-- [六、进阶：用 AI 助手（opencode）对话式使用](#六进阶用-ai-助手opencode对话式使用)
-- [七、可选：小红书攻略细节层](#七可选小红书攻略细节层)
-- [八、常见问题 FAQ](#八常见问题-faq)
-- [九、隐私与合规](#九隐私与合规)
-- [十、已知限制](#十已知限制)
+- [六、架构总览](#六架构总览)
+- [七、进阶：用 AI 助手（opencode）对话式使用](#七进阶用-ai-助手opencode对话式使用)
+- [八、可选：小红书攻略细节层](#八可选小红书攻略细节层)
+- [九、常见问题 FAQ](#九常见问题-faq)
+- [十、隐私与合规](#十隐私与合规)
+- [十一、已知限制](#十一已知限制)
 - [License](#license)
 
 ---
@@ -43,7 +44,7 @@
 | **Git**（可选） | 克隆仓库；没有 Git 也可以直接下载 ZIP | 见下方安装方法 |
 | **高德开放平台账号** | 地图/POI 数据源（免费额度足够个人使用） | 没有就去[申请](#四申请高德-api-key必做) |
 | Microsoft Word（可选） | PDF 导出依赖 Word 转换；没有也能用，只是交付物没有 PDF | — |
-| Node.js（可选） | 仅当你想用 [opencode](#六进阶用-ai-助手opencode对话式使用) 对话式使用时需要 | — |
+| Node.js（可选） | 仅当你想用 [opencode](#七进阶用-ai-助手opencode对话式使用) 对话式使用时需要 | — |
 
 **安装 Python**（没有的话）：
 1. 打开 <https://www.python.org/downloads/>，点黄色按钮下载最新版
@@ -146,7 +147,52 @@ python scripts\dialog_agent.py collect --origin-name 合肥 --target 5
 python scripts\dialog_agent.py status
 ```
 
-## 六、进阶：用 AI 助手（opencode）对话式使用
+## 六、架构总览
+
+核心链路（采集/筛选/规划）全部规则驱动、无 LLM、可离线复现：
+
+```
+src/                          # 核心模块
+├─ models.py                  Pydantic 数据模型：Venue / MeetingRoom / NearbyPOI / Query（数据唯一事实源）
+├─ amap_client.py             高德官方 Web 服务 API：POI 搜索 / 地理编码 / 驾车距离矩阵（QPS 节流 + 本地缓存）
+├─ ctrip_client.py            携程酒店 suggest + SOA 聚合详情（可选增强，cookie 门槛）
+├─ xhs_client.py              小红书笔记发现 / 搜索（可选攻略细节层，cookie 门槛）
+├─ http_util.py               httpx 请求封装 + 本地 JSON 响应缓存 + HTML 内嵌 JSON 抽取
+├─ scorer.py                  确定性打分与硬过滤：住宿 / 会议 / 车程 / 娱乐（无 LLM）
+├─ store.py                   场地库读写与增量 upsert（data/venues.json）
+├─ report.py                  流水线运行报告（latest.json + Markdown 报告）
+├─ planner.py                 OR-Tools 一日行程规划：poi_kind → 活动 slot、时间预算剪裁、行驶腿
+├─ plan_intake.py             规划对话字段、默认值与 answers → 参数合并
+├─ creds.py                   本地账号状态与 cookie 有效性探针（配置已 gitignore，绝不入库）
+├─ cookie_login.py            一键登录窗口：自动收割携程/小红书 cookie 写入本地配置（Playwright）
+└─ webapp.py                  FastAPI 服务：复核 UI、/api/*、/download/*、事件驱动自动流水线
+scripts/                      # 流水线与工具脚本
+├─ run_pipeline.py            全流水线入口：collect → filter → report
+├─ run_pipeline_top10.py      Top-10 文档链：md → docx → xlsx → pdf
+├─ build_summary_md.py        合格场地 → venues_summary.md（含携程详情/价格）
+├─ build_summary_docx.py      md → 排版 .docx（超链接 + 实拍图嵌入）
+├─ build_summary_xlsx.py      md → 排版 .xlsx（表头加粗+填充、列宽自适应、超链接）
+├─ render_plan_doc.py         行程方案 → md/docx/pdf（含逐 slot 小红书攻略细节 + 来源链接）
+├─ docx_to_pdf.py             docx → PDF（Word COM，仅 Windows）
+├─ dialog_agent.py            Agent CLI：collect / plan-batch / status / events / delivery
+├─ ensure_service.py          一键幂等启动服务（+ 自动打开 Edge 并填入访问密钥）
+├─ open_front_ui.py           连接真实 Edge 实例（专用 profile）打开前端
+├─ ensure_browser.py          浏览器启动助手（幂等 + 节流）
+├─ refresh_facilities.py      场地携程详情复核（更新 enrich 缓存）
+├─ rescan_nearby.py           周边 POI 重扫（距离/类目补全）回写
+├─ xhs_research.py            小红书搜索 + 抓取 → 攻略细节 JSON（MediaCrawler 封装）
+├─ extract_edge_ctrip_cookie.py / extract_edge_cdp_cookie.py   Edge cookie 抽取（磁盘 / CDP 两条路）
+├─ probe_ctrip_meeting.py / probe_xhs_page.py   单点在线探针
+├─ query.py / build_review_html.py / dl_debug.py   库查询 / 独立复核页 / 下载调试小工具
+├─ test_ctrip_seeds.py / test_data_chain.py   在线数据链路复测（需真实凭据；离线单测见 tests/）
+├─ ui_smoke.py                UI 冒烟测试（需本地 live 环境，不进 CI）
+└─ watch_events.py            前端事件流监视（节流）
+tests/                        # 纯逻辑单测（离线，CI 直接跑）
+skills/venue-scout/           OpenCode skill（对话式工作流契约）
+vendor/                       MediaCrawler（第三方，不入库）
+```
+
+## 七、进阶：用 AI 助手（opencode）对话式使用
 
 装好 [OpenCode](https://opencode.ai)（终端里的 AI 编程助手）后，你可以直接说
 **"帮我规划一个合肥一日团建 20 人"**，它会调用本仓库内置的 skill（`skills/venue-scout/SKILL.md`）
@@ -199,9 +245,12 @@ copy skills\venue-scout .opencode\skills\venue-scout -Recurse -Force
 它会自己读 skill、起服务、跑采集、出方案。中途需要人工确认的环节（复核 Top10、
 确认选择）它会等你在页面上点完再继续。
 
-## 七、可选：小红书攻略细节层
+## 八、可选：小红书攻略细节层
 
-默认关闭。启用后，"确认方案"会自动搜小红书真实游玩笔记，把玩法/价格/坑内嵌进方案文档。
+默认关闭，且启用有 **cookie 门槛（需用户授权）**：需要你先登录自己的小红书账号并自愿提供
+`web_session` cookie 后才能启用——工具只通过你自己的会话读取内容，不注册、不共享账号。
+启用后，"确认方案"会自动搜小红书真实游玩笔记，把玩法/价格/坑内嵌进方案文档。
+抓取频率与平台服务条款的遵守由用户自行负责。
 
 ```powershell
 # 1. 克隆 MediaCrawler（第三方，见 vendor/README.md）
@@ -217,9 +266,9 @@ python -m pip install -r vendor\MediaCrawler\requirements.txt
 python scripts\xhs_research.py --venue-id amap:B0M6M6U9KK --notes 1
 ```
 
-> ⚠️ 请遵守小红书 ToS，控制频率，仅个人低频使用；详见[隐私与合规](#九隐私与合规)。
+> ⚠️ 请遵守小红书 ToS，控制频率，仅个人低频使用；详见[隐私与合规](#十隐私与合规)。
 
-## 八、常见问题 FAQ
+## 九、常见问题 FAQ
 
 **Q: 提示"禁止运行脚本"？**
 A: PowerShell 执行策略限制。运行 `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` 后重试。
@@ -242,14 +291,15 @@ A: 正常。可加大 `radius_km` / `max_drive_min`，或用 `--hub` 指定周�
 **Q: 数据存在哪？能重置吗？**
 A: 全部在 `data/`（场地库 `data/venues.json`、会话 `data/output/session_plan.json`）。删 `data/venues.json` 即重置场地库（下次采集重建）。
 
-## 九、隐私与合规
+## 十、隐私与合规
 
 - **高德 Key**：只存本地 `config/settings.yaml`（已被 .gitignore 排除，不会进仓库）；走官方 Web 服务 API，不爬取高德。
-- **携程/美团/点评**：不爬、不存任何价格或用户数据。
-- **小红书**：默认关闭；启用即视为你已获得相应 Cookie 授权，请自行控制频率并遵守其服务条款。
+- **携程**：价格核验为**可选、默认关闭**，且需**用户授权**——仅当你用自己账号登录携程并提供登录 cookie（cookie 门槛）后才会启用；本项目不存储任何用户数据。
+- **美团/点评**：未接入，不爬取、不存储任何数据。
+- **小红书**：攻略细节层**可选、默认关闭**，启用有 **cookie 门槛**——需你自己账号登录并自愿提供 `web_session` cookie（用户授权）；抓取频率与平台服务条款的遵守由用户自行负责。
 - **本仓库不含任何真实采集数据**：`data/venues.json` 不入库，只带 2KB 的 `data/seeds.json` 示例。
 
-## 十、已知限制
+## 十一、已知限制
 
 - 价格/设施字段来自公开 POI 与网页，时效性有限；建议把推荐清单当"初筛"，出行前电话确认
 - 行程规划为规则引擎（无 LLM）：质量稳定但创意有限；文案可后续接任意 LLM 润色
@@ -327,6 +377,10 @@ Web flow: enter direction → **start collection** → review Top-10 (✅/❌) �
 
 ## Optional: Xiaohongshu detail layer
 
+**Disabled by default and cookie-gated (user-authorized):** it only works after you log in to your
+own XHS account and supply your `web_session` cookie — the tool reads exclusively through your own
+session, never registers or shares accounts.
+
 ```powershell
 git clone https://github.com/NanmiCoder/MediaCrawler vendor\MediaCrawler
 python -m pip install -r vendor\MediaCrawler\requirements.txt
@@ -334,45 +388,62 @@ python -m pip install -r vendor\MediaCrawler\requirements.txt
 python scripts\xhs_research.py --venue-id amap:B0M6M6U9KK --notes 1
 ```
 
-Respect XHS ToS — personal, low-frequency use only (see Privacy).
+Respect XHS ToS — personal, low-frequency use only (see Privacy & compliance).
 
 ## Architecture
 
+The core chain (collect / filter / plan) is rule-driven, LLM-free and reproducible offline:
+
 ```
 src/
-├─ models.py            Venue / Plan dataclasses
-├─ amap_client.py       Amap POI (place/text, place/around, distance matrix)
-├─ amap_collector.py    hub + expand + nearby-rescan collection
-├─ seed_expansion.py    web-seed expansion (manual / xhs entries)
-├─ ctrip_client.py      Ctrip price verification (cookie-gated, optional)
-├─ filter_rules.py      deterministic filtering rules
-├─ planner.py           day-plan builder (per-venue poi_kind slots, time budgets, warnings)
-├─ plan_intake.py       plan answers → session state
-├─ webapp.py            FastAPI: review UI, /api/*, /download/*, event pipeline
-├─ events.py            event log (venues_confirmed / plan_adopted / …)
-├─ creds.py / cookie_login.py   local credential store + login helpers (never committed)
-└─ utils.py
+├─ models.py            Pydantic data models: Venue / MeetingRoom / NearbyPOI / Query (single source of truth)
+├─ amap_client.py       Amap (Gaode) official Web API: POI search, geocoding, drive matrix (throttled, cached)
+├─ ctrip_client.py      Ctrip hotel suggest + SOA aggregate detail (optional, cookie-gated)
+├─ xhs_client.py        Xiaohongshu note discovery / search (optional detail layer, cookie-gated)
+├─ http_util.py         httpx wrapper + local JSON response cache + embedded-HTML JSON extraction
+├─ scorer.py            Deterministic scoring & hard filters: lodging / meeting / drive / entertainment
+├─ store.py             Venue DB load / save / incremental upsert (data/venues.json)
+├─ report.py            Pipeline run reports (latest.json + Markdown report)
+├─ planner.py           OR-Tools day-plan builder: poi_kind → activity slots, time-budget trimming, drive legs
+├─ plan_intake.py       Plan dialog fields, defaults, answers → merged params
+├─ creds.py             Local account status + cookie validity probes (config gitignored, never committed)
+├─ cookie_login.py      One-click login window that auto-harvests Ctrip/XHS cookies into local config
+└─ webapp.py            FastAPI service: review UI, /api/*, /download/*, event-driven auto pipeline
 scripts/
-├─ run_pipeline.py      full pipeline entry (collect → filter → plan → docs)
-├─ refresh_facilities.py├─ rescan_nearby.py
-├─ xhs_research.py      XHS search + crawl → guide detail JSON (agent analyzes notes)
-├─ render_plan_doc.py   plan → md/docx/pdf (embeds per-slot XHS details + source links)
-├─ dialog_agent.py      agent CLI: collect / plan-batch / status / events
-├─ ensure_service.py    one-shot service launch (+ auto-open Edge with access key)
-├─ open_front_ui.py     real Edge launch, CDP gate pass, readiness guard
-├─ ensure_browser.py    browser lifecycle helper
-├─ ui_smoke.py          headless UI smoke test
-└─ watch_events.py      event watcher
-skills/venue-scout/    OpenCode skill (conversational workflow contract)
-vendor/                MediaCrawler (third-party, not in repo)
+├─ run_pipeline.py      Full pipeline entry: collect → filter → report
+├─ run_pipeline_top10.py Top-10 document chain: md → docx → xlsx → pdf
+├─ build_summary_md.py  Passed venues → venues_summary.md (with Ctrip detail/prices)
+├─ build_summary_docx.py md → polished .docx (hyperlinks + embedded photos)
+├─ build_summary_xlsx.py md → polished .xlsx (bold/filled header, auto width, hyperlinks)
+├─ render_plan_doc.py   Plan → md/docx/pdf (per-slot XHS guide details + source links)
+├─ docx_to_pdf.py       docx → PDF via Word COM (Windows only)
+├─ dialog_agent.py      Agent CLI: collect / plan-batch / status / events / delivery
+├─ ensure_service.py    One-shot idempotent service start (+ auto-open Edge with access key)
+├─ open_front_ui.py     Frontend launch against a real Edge instance (dedicated profile)
+├─ ensure_browser.py    Browser launch helper (idempotent, throttled)
+├─ refresh_facilities.py Re-verify venue Ctrip detail (refresh enrich cache)
+├─ rescan_nearby.py     Nearby-POI rescan (distance/category fill-in)
+├─ xhs_research.py      XHS search + crawl → guide detail JSON (MediaCrawler wrapper)
+├─ extract_edge_ctrip_cookie.py / extract_edge_cdp_cookie.py  Edge cookie extraction (disk / CDP paths)
+├─ probe_ctrip_meeting.py / probe_xhs_page.py   Single-endpoint live probes
+├─ query.py / build_review_html.py / dl_debug.py  DB query / standalone review page / download debug
+├─ test_ctrip_seeds.py / test_data_chain.py  Live data-chain re-checks (need real credentials; offline unit tests live in tests/)
+├─ ui_smoke.py          UI smoke test (needs a live local environment; not part of CI)
+└─ watch_events.py      Frontend event-stream watcher (throttled)
+tests/                   Pure-logic unit tests (offline; run by CI)
+skills/venue-scout/      OpenCode skill (conversational workflow contract)
+vendor/                  MediaCrawler (third-party, not in repo)
 ```
 
 ## Privacy & compliance
 
 - Amap key lives only in local `config/settings.yaml` (gitignored). Official Web-service API only.
-- No Ctrip/Meituan/Dianping crawling or data storage.
-- XHS layer disabled by default; enabling it presumes you hold the required cookies —
-  keep frequency low and respect their ToS.
+- Ctrip price verification is an **optional, disabled-by-default, cookie-gated** enhancement: it runs
+  only with your own Ctrip login cookie (explicit user authorization) and stores no user data.
+  No Meituan/Dianping integration at all.
+- XHS detail layer is **optional, disabled by default** and requires **your own XHS login cookie
+  (web_session) as the entry threshold** — it only reads through your own session; keep frequency
+  low and respect their ToS.
 - No real collected data ships in this repo (only a 2 KB sample in `data/seeds.json`).
 
 ## Known limitations

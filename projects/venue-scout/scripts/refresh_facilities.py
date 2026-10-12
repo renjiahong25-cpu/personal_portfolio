@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
 """Refresh data/output/latest_venue_enrich.json by fetching each venue's Ctrip
 aggregate detail with generous spacing and name verification.
 
 Run with the venue-scout python:
-    & .venv\Scripts\python.exe scripts\refresh_facilities.py
+    & .venv\\Scripts\\python.exe scripts\refresh_facilities.py
 """
 from __future__ import annotations
 
@@ -24,7 +23,7 @@ SETTINGS = ROOT / "config" / "settings.yaml"
 CTRIP_AGG = "https://m.ctrip.com/restapi/soa2/33278/json/getHotelDetailAggregate"
 
 sys.path.insert(0, str(ROOT))
-from src.creds import terminal_lines  # noqa: E402
+from src.creds import terminal_lines
 
 FAC_ENT_MAP = [
     ("温泉", "温泉"),

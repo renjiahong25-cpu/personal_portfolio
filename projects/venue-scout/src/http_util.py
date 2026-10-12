@@ -4,7 +4,7 @@ import hashlib
 import json
 import re
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 from tenacity import retry, stop_after_attempt, wait_fixed
@@ -24,7 +24,7 @@ def _cache_path(key: str) -> Path:
     return CACHE / f"{h}.json"
 
 
-def cache_get(key: str) -> Optional[Any]:
+def cache_get(key: str) -> Any | None:
     p = _cache_path(key)
     if p.exists():
         return json.loads(p.read_text(encoding="utf-8"))
@@ -38,7 +38,7 @@ def cache_set(key: str, value: Any) -> None:
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
-def _get(url: str, params: Optional[dict] = None, headers: Optional[dict] = None) -> httpx.Response:
+def _get(url: str, params: dict | None = None, headers: dict | None = None) -> httpx.Response:
     h = {"User-Agent": UA, "Accept-Language": "zh-CN,zh;q=0.9"}
     if headers:
         h.update(headers)
@@ -46,7 +46,7 @@ def _get(url: str, params: Optional[dict] = None, headers: Optional[dict] = None
         return client.get(url, params=params)
 
 
-def extract_window_json(html: str, var_name: str) -> Optional[dict]:
+def extract_window_json(html: str, var_name: str) -> dict | None:
     """Extract `window.VAR = {...};` JSON blob (Ctrip list pages)."""
     m = re.search(rf"window\.{re.escape(var_name)}\s*=\s*", html)
     if not m:
@@ -91,9 +91,9 @@ def extract_window_json(html: str, var_name: str) -> Optional[dict]:
     return None
 
 
-def extract_next_data(html: str) -> Optional[dict]:
+def extract_next_data(html: str) -> dict | None:
     m = re.search(
-        r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', html, re.S
+        r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', html, re.DOTALL
     )
     if not m:
         return None
@@ -103,7 +103,7 @@ def extract_next_data(html: str) -> Optional[dict]:
         return None
 
 
-def digits_int(text: Optional[str]) -> Optional[int]:
+def digits_int(text: str | None) -> int | None:
     if not text:
         return None
     m = re.search(r"(\d+)", str(text).replace(",", ""))

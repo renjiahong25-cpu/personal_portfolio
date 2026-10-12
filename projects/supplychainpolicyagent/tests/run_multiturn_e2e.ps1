@@ -3,8 +3,8 @@
 # 用法: powershell -NoProfile -ExecutionPolicy Bypass -File tests\run_multiturn_e2e.ps1
 # 退出码: 0=探针全通过  1=后端未就绪/进程死  其他=探针失败项
 $ErrorActionPreference = "Continue"
-$root = "D:\Program Files\supplychainpolicyagent"
-$py   = "D:\conda_envs\cross-border-agent\python.exe"
+$root = Split-Path -Parent $PSScriptRoot
+$py   = if ($env:SCP_PYTHON) { $env:SCP_PYTHON } else { "python" }
 $out  = "$root\logs\uvicorn.out.log"
 $err  = "$root\logs\uvicorn.err.log"
 

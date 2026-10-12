@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 r"""重扫周边娱乐（补 distance_m + 温泉类），回写 latest.json（可选 --pipeline 同步回写）。
 
 用法：
@@ -36,8 +35,8 @@ def main() -> int:
         print("[ERR] 无可扫场馆", file=sys.stderr)
         return 1
 
-    from src.creds import load_settings
     from src.amap_client import AMapClient
+    from src.creds import load_settings
 
     cfg = load_settings()
     key = ((cfg.get("amap") or {}).get("key") or "").strip()

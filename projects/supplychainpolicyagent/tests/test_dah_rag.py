@@ -8,7 +8,6 @@ DAH-RAG Test Script
 import asyncio
 import time
 import json
-from datetime import datetime
 
 from config.logging_config import get_logger
 
@@ -118,7 +117,7 @@ async def test_query_adaptive_chunker():
 
 async def test_knowledge_graph():
     """测试知识图谱"""
-    from service.dah_rag.knowledge_graph import KnowledgeGraph, KGNode, KGEdge
+    from service.dah_rag.knowledge_graph import KGNode, KnowledgeGraph, KGEdge
     
     kg = KnowledgeGraph()
     
@@ -152,7 +151,7 @@ async def test_knowledge_graph():
 
 async def test_multi_granular_index():
     """测试多粒度索引"""
-    from service.dah_rag.multi_granular_index import MultiGranularIndex, IndexLevel
+    from service.dah_rag.multi_granular_index import MultiGranularIndex
     
     index = MultiGranularIndex()
     
@@ -244,7 +243,7 @@ async def performance_comparison():
     results["chunker_ms"] = round(chunker_latency, 2)
     
     # 测试知识图谱延迟
-    from service.dah_rag.knowledge_graph import KnowledgeGraph
+    from service.dah_rag.knowledge_graph import KGNode, KnowledgeGraph
     kg = KnowledgeGraph()
     
     # 添加一些测试数据

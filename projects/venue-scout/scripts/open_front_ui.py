@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 r"""有头打开 venue-scout 前端：启动【真实 Edge 实例】（专用 profile，下载走真实"下载"文件夹）。
 
 关键：用户窗口绝不能用 Playwright launch 托管——Playwright 会把所有下载劫持到
@@ -60,7 +59,7 @@ def main() -> int:
     log("BROWSER_READY")
     subprocess.Popen(
         [exe, f"--user-data-dir={PROFILE}", f"--remote-debugging-port={CDP_PORT}",
-         "--no-first-run", "--no-default-browser-check", f"--window-size=1440,900", "--window-position=40,40", url],
+         "--no-first-run", "--no-default-browser-check", "--window-size=1440,900", "--window-position=40,40", url],
         creationflags=getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0),
     )
 

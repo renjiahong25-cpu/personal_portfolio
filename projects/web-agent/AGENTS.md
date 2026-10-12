@@ -2,17 +2,15 @@
 
 ## Project Structure & Module Organization
 
-Web Agent is a Manifest V3 Chrome extension built with Vite and TypeScript. Core source lives in `src/`: `background/` contains the service worker, routing, runtime, and control handlers; `content/` contains AI-site content scripts and adapters; `group/` contains group state, prompts, roles, and mention parsing; `teamPage/` contains the workspace UI. Shared utilities are in `src/shared/`, and protocol types are in `src/control/`.
+Web Agent is a Manifest V3 Chrome extension built with Vite and TypeScript. Core source lives in `src/`: `background/` contains the service worker, routing, runtime, and control handlers; `content/` contains AI-site content scripts and adapters; `group/` contains group state, prompts, roles, and mention parsing; `teamPage/` contains the workspace UI. Shared utilities are in `src/shared/`, which also holds the local control protocol types (`localControlProtocol.ts`); the control client and handlers live in `src/background/` (`controlClient.ts`, `controlHandlers.ts`).
 
 Static extension files are in `public/`. Design docs and images are in `docs/`. The local agent CLI package is in `packages/web-agent/`. `dist/` is generated build output; do not edit it directly.
 
 ## Environment
 
-- Node.js: `C:\Program Files\nodejs\node.exe`
-- npm: `C:\Program Files\nodejs\npm.cmd`
-- Always use full paths for npm/node commands. The shell is PowerShell 5.1, not cmd.
-- Example: `& "C:\Program Files\nodejs\npm.cmd" test`
-- Working directory for project: `D:\Program Files\web-agent`
+- Node.js ≥ 18 and npm on PATH.
+- The shell is PowerShell 5.1, not cmd; invoke npm as `npm.cmd` (e.g. `npm.cmd test`) — bare `npm` fails in PowerShell.
+- Run project commands from the repository root (the directory containing this AGENTS.md).
 
 ## Build, Test, and Development Commands
 

@@ -1,0 +1,69 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Node / frontend
+node_modules/
+frontend/dist/
+*.local
+
+# Runtime data (local only, never committed).
+#
+# Anchored to the repository root on purpose: an unanchored `cache/` also
+# matched the *source* package backend_python/src/services/cache/, which kept
+# the content-addressed audio cache out of the repository and broke the
+# committed tree. The leading slash limits each rule to the runtime directory.
+/cache/
+/output/
+/logs/
+/data/
+
+# Native toolchain and model weights, unpacked locally (repository root only,
+# for the same reason as above).
+#
+# fluidsynth's release archive and the SoundFont are 2.6 MB and 206 MB of
+# third-party binary. Neither belongs in history: they are not ours to
+# redistribute, and MuseScore_General.sf2 is GPL. Both are resolved at runtime
+# through PIANOFLOW_FLUIDSYNTH_LOCATION and PIANOFLOW_SOUNDFONT_PATH.
+/tools/
+
+# The SoundFont is GPL and 206 MB.
+#
+# models/bytedance/ is the 154 MB high-resolution piano transcription graph. It is a
+# third-party ONNX export of an Apache-2.0 project, so the *code* licence is clear and
+# the *weights* are not; it stays out of the repository for the same reason as the
+# SoundFont. The manifest still records its URL, its declared licence and its sha256,
+# so a local copy is verifiable rather than merely trusted.
+models/soundfonts/
+models/bytedance/
+
+# Third-party model weights and vendored upstream checkouts.
+#
+# Same reasoning as models/bytedance/ above: the *code* licences of these projects are
+# known, the *weights* are not ours to redistribute. They are resolved at runtime from
+# local paths (models/rmvpe, models/demucs) or injected on sys.path (vendor/, stemdeck/),
+# so the repository records how they are used without carrying the bytes.
+models/demucs/
+models/rmvpe/
+vendor/
+stemdeck/
+
+# Upstream source that was checked out to read, not to build from: TuneScript, kept
+# next to the probes that were tuned against it.
+tunescrpt/
+
+# Experiment scratch: superseded probe scripts. Single-run scripts from the melody
+# tuning sessions (final_v2..v7, melody_v2, run_flat, step1_melody, ...). Kept on disk
+# because they document what was tried and rejected; nothing imports them and nothing
+# has a test, so they stay out of history.
+experiments/probes/
+
+# AOCI runtime assets are governed by .aoci/.gitignore

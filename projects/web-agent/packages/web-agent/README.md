@@ -13,10 +13,10 @@ npm install -g @afumu/web-agent
 web-agent doctor
 ```
 
-Or install from a source checkout of the [personal_portfolio](https://github.com/renjiahong25-cpu/personal_portfolio) repository (this package lives in `web-agent/packages/web-agent`):
+Or install from a source checkout of the [personal_portfolio](https://github.com/renjiahong25-cpu/personal_portfolio) repository (this package lives in `projects/web-agent/packages/web-agent`):
 
 ```bash
-cd personal_portfolio/web-agent
+cd personal_portfolio/projects/web-agent
 npm install -g ./packages/web-agent
 web-agent doctor
 ```
@@ -34,7 +34,7 @@ npx skills add afumu/web-agent --skill web-agent-control
 From a source checkout, install from the `web-agent` repository directory:
 
 ```bash
-cd personal_portfolio/web-agent
+cd personal_portfolio/projects/web-agent
 npx skills add . --skill web-agent-control
 ```
 

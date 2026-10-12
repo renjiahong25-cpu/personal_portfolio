@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -14,9 +13,9 @@ class Season(str, Enum):
 
 class MeetingRoom(BaseModel):
     name: str = ""
-    capacity: Optional[int] = None
+    capacity: int | None = None
     layout: str = ""
-    area_sqm: Optional[float] = None
+    area_sqm: float | None = None
     source: str = ""
 
 
@@ -24,7 +23,7 @@ class NearbyPOI(BaseModel):
     name: str
     category: str
     location: str = ""
-    distance_m: Optional[int] = None
+    distance_m: int | None = None
     keyword_hit: str = ""
     tags: list[str] = Field(default_factory=list)
 
@@ -47,12 +46,12 @@ class Venue(BaseModel):
     city: str = ""
     location: str = ""  # GCJ-02 "lng,lat"
 
-    drive_minutes: Optional[int] = None
-    drive_distance_m: Optional[int] = None
+    drive_minutes: int | None = None
+    drive_distance_m: int | None = None
 
-    lodging_capacity: Optional[int] = None
-    room_count: Optional[int] = None
-    bed_capacity: Optional[int] = None
+    lodging_capacity: int | None = None
+    room_count: int | None = None
+    bed_capacity: int | None = None
 
     meeting_rooms: list[MeetingRoom] = Field(default_factory=list)
     meeting_summary: str = ""
@@ -61,9 +60,9 @@ class Venue(BaseModel):
     entertainment: EntertainmentSummary = Field(default_factory=EntertainmentSummary)
     nearby_pois: list[NearbyPOI] = Field(default_factory=list)
 
-    rating: Optional[float] = None
+    rating: float | None = None
     phone: str = ""
-    price_from: Optional[int] = None
+    price_from: int | None = None
 
     sources: dict[str, str] = Field(default_factory=dict)
     needs_manual: bool = False

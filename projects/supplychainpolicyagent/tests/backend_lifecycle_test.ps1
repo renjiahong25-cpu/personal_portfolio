@@ -9,7 +9,8 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Script   = "D:\Program Files\supplychainpolicyagent\scripts\backend.ps1"
+$root    = Split-Path -Parent $PSScriptRoot
+$Script   = Join-Path $root "scripts\backend.ps1"
 $Base     = "http://127.0.0.1:8000"
 $Passed   = @()
 $Failed   = @()
@@ -70,14 +71,14 @@ if ($r.exit -ne 0) {
 } else {
     Check "start 输出含 PID=" ($r.output -match "PID=")
     Check "start 输出含 health 就绪/200" ($r.output -match "就绪|200")
-    Check "stdout 日志生成" (Test-Path "D:\Program Files\supplychainpolicyagent\logs\uvicorn.out.log")
+    Check "stdout 日志生成" (Test-Path (Join-Path $root "logs\uvicorn.out.log"))
 
     Write-Host "`n-- 阶段2: health 与端口 --"
     Check "端口 8000 被监听(最多等30s)" (Wait-PortUp 30)
     $h = Get-Health
     Check "GET /health == 200" ($h -eq 200) "status=$h"
     $owner = Get-PortOwner
-    $pidFile = "D:\Program Files\supplychainpolicyagent\logs\backend.pid"
+    $pidFile = Join-Path $root "logs\backend.pid"
     if (Test-Path $pidFile) {
         $filePid = [int](Get-Content -LiteralPath $pidFile -Raw).Trim()
         Check "端口属主 == PID文件" ($owner -eq $filePid) "owner=$owner pidfile=$filePid"
@@ -103,7 +104,7 @@ if ($r.exit -ne 0) {
     Start-Sleep -Seconds 2
     Check "停后端口已释放" (-not (Test-PortListen))
     Check "停后 /health 不可达" ((Get-Health) -eq 0)
-    Check "PID 文件已删除" (-not (Test-Path "D:\Program Files\supplychainpolicyagent\logs\backend.pid"))
+    Check "PID 文件已删除" (-not (Test-Path (Join-Path $root "logs\backend.pid")))
 
     Write-Host "`n-- 阶段5: restart 可再启 --"
     $r = Invoke-BackendScript "restart"

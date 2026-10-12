@@ -191,9 +191,10 @@ export function sendFeedback(data) {
 }
 
 /**
- * 历史对话列表
+ * 历史对话（该会话的消息列表，按时间倒序）
  * @param {string} sessionId
+ * @param {number} [limit=20] 返回条数 1~100
  */
-export function getHistory(sessionId) {
-  return request.get('/chat/history', { params: { session_id: sessionId } })
+export function getHistory(sessionId, limit = 20) {
+  return request.get('/chat/history', { params: { session_id: sessionId, limit } })
 }

@@ -12,6 +12,7 @@
 依赖: 自动重启后端（INGEST_MAX_PDFS_PER_SITE=1 控制测试规模）
 """
 import sys
+from pathlib import Path
 import json
 import os
 import subprocess
@@ -19,13 +20,13 @@ import time
 import urllib.request
 import uuid
 
-sys.path.insert(0, r"D:\Program Files\supplychainpolicyagent")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.stdout.reconfigure(encoding="utf-8")
 
-import httpx
+import httpx  # noqa: E402
 
-ROOT = r"D:\Program Files\supplychainpolicyagent"
-PY = r"D:\conda_envs\cross-border-agent\python.exe"
+ROOT = str(Path(__file__).resolve().parent.parent)
+PY = os.getenv("SCP_PYTHON", "python")  # env 可覆盖，默认 PATH 中的 python
 BACKEND_URL = "http://127.0.0.1:8000"
 LOG_DIR = os.path.join(ROOT, "logs")
 
@@ -94,7 +95,7 @@ def phase0_backend():
     while time.time() < deadline:
         if bp.poll() is not None:
             with open(os.path.join(LOG_DIR, "uvicorn.err.log"), encoding="utf-8", errors="ignore") as f:
-                log("\n".join(["  " + l for l in f.read().splitlines()[-40:]]))
+                log("\n".join(["  " + ln for ln in f.read().splitlines()[-40:]]))
             log("RESULT: FAILED (后端进程死亡)")
             sys.exit(1)
         if http_code(f"{BACKEND_URL}/health") == 200:

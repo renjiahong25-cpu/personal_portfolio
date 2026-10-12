@@ -8,8 +8,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from src.ctrip_client import CtripClient, parse_meeting_from_text  # noqa: E402
-from src.http_util import extract_next_data, extract_window_json  # noqa: E402
+from src.ctrip_client import CtripClient, parse_meeting_from_text
+from src.http_util import extract_next_data, extract_window_json
 
 SAMPLES = [
     # 清泉湾爱琴海（宣传108间房+多功能厅）— 用搜索页探测

@@ -13,12 +13,7 @@ exclude = [
 select = ["E4", "E7", "E9", "F"]
 
 [tool.ruff.lint.per-file-ignores]
-# 独立脚本/临测工具：多为 sys.path 注入后 import 的既有模式，豁免风格类
-# （F401/F841/E402/E701/E741 只影响脚本可读性，不影响运行正确性）
-"scripts/*.py" = ["F401", "F841", "E402", "E701", "E741"]
-# 新增交付脚本保持严格门禁（覆盖上面的历史脚本豁免）
-"scripts/p6_inflate_data.py" = []
-"scripts/p6_load_test.py" = []
-"tests/*_test.py" = ["E402", "E701", "E741", "F401", "F841", "F821"]
-"tests/*.py" = ["E402", "E701", "E741", "F401", "F841", "F821"]
+# 说明：scripts/ 与 tests/ 不再整目录豁免（F401/F841/E402/E701/E741/F821 已清零）。
+# chat_service/__init__.py：logger 必须先于子模块 import 初始化（get_logger 配置
+# 全局 handler，子模块 import 时即产生日志），import 顺序无法调整，单文件保留 E402。
 "service/chat_service/__init__.py" = ["E402"]

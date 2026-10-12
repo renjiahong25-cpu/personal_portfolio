@@ -9,6 +9,7 @@
 """
 import asyncio
 import json
+import threading
 import time
 import uuid
 
@@ -49,6 +50,40 @@ def _new_run_id() -> str:
     return f"evalrun_{time.strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:6]}"
 
 
+class _HybridRetrieveRunner:
+    """复用问答主链路 HybridRetriever（BM25+向量+融合+Rerank）的常驻执行器。
+
+    评测条目在 run_in_executor 线程池中执行、无事件循环，而 search() 是 async，
+    且 HybridRetriever 内部 asyncio.Lock 不能跨事件循环复用。这里保持单个
+    常驻事件循环 + 单例检索器：KB 快照与 Milvus 连接在评测全程复用，
+    通过 run_coroutine_threadsafe 提交，避免每条目 asyncio.run 重建快照/抢文件锁。
+    """
+
+    _SEARCH_TIMEOUT = 120  # 单条检索超时（秒），超时按引擎不可用降级
+
+    def __init__(self):
+        from service.chat_service.retriever import HybridRetriever
+
+        self.retriever = HybridRetriever()
+        self.loop = asyncio.new_event_loop()
+        self._ready = threading.Event()
+        self._thread = threading.Thread(
+            target=self._run_loop, name="eval-hybrid-retriever", daemon=True)
+        self._thread.start()
+        if not self._ready.wait(timeout=15):
+            raise RuntimeError("检索执行线程未就绪")
+
+    def _run_loop(self):
+        asyncio.set_event_loop(self.loop)
+        self._ready.set()
+        self.loop.run_forever()
+
+    def search(self, query: str, top_k: int, request_id: str) -> list:
+        fut = asyncio.run_coroutine_threadsafe(
+            self.retriever.search(query, top_k=top_k, request_id=request_id), self.loop)
+        return fut.result(timeout=self._SEARCH_TIMEOUT)
+
+
 class RegressionTester:
     """版本迭代自动回归测试器"""
 
@@ -56,6 +91,8 @@ class RegressionTester:
         self._llm = llm or _default_llm
         self._max_concurrency = max_concurrency or EVAL_MAX_CONCURRENCY
         self._logger = get_logger("regression_tester")
+        self._hybrid_runner = None  # 惰性构建（首次检索时）
+        self._hybrid_disabled = False  # 引擎不可用后置位，全程走 LIKE 兜底
 
     # ------------------------------------------------------------
     # 对外入口
@@ -243,9 +280,9 @@ class RegressionTester:
         )
 
         async with semaphore:
-            # 1. 检索参考文档
+            # 1. 检索参考文档（混合检索，不可用时 LIKE 兜底）
             retrieved = await loop.run_in_executor(
-                None, lambda: self._retrieve(item.get("question", "")))
+                None, lambda: self._retrieve(item.get("question", ""), run_id=run_id))
             # 2. 构建上下文 + 调用 LLM
             contexts = self._build_contexts(retrieved)
             refuse_hint = _REFUSE_HINT if item.get("should_refuse") else ""
@@ -273,8 +310,10 @@ class RegressionTester:
     def _mk_result(self, item: dict, retrieved: list, answer: str,
                    latency_ms: float, error: str) -> dict:
         """组装单条原始结果（供指标计算使用）"""
+        retriever_mode = retrieved[0].get("retriever", "") if retrieved else "none"
         return {
             "item_id": item.get("id", ""),
+            "retriever": retriever_mode,
             "level": item.get("level", ""),
             "question": item.get("question", ""),
             "standard_answer": item.get("standard_answer", ""),
@@ -299,10 +338,49 @@ class RegressionTester:
     # ------------------------------------------------------------
     # 检索与上下文
     # ------------------------------------------------------------
-    def _retrieve(self, query: str, top_k: int = RETRIEVE_TOP_K) -> list:
-        """轻量关键词检索：命中段落按关键词命中数降序返回（Milvus 未接入前兜底实现）"""
-        from sqlalchemy import or_
+    def _hybrid_search(self, query: str, top_k: int, run_id: str):
+        """调用问答主链路 HybridRetriever（BM25+向量+融合+Rerank）；不可用/超时返回 None"""
+        if self._hybrid_disabled:
+            return None
+        try:
+            if self._hybrid_runner is None:
+                self._hybrid_runner = _HybridRetrieveRunner()
+            return self._hybrid_runner.search(query, top_k, f"eval/{run_id}")
+        except Exception as e:
+            self._hybrid_disabled = True
+            self._logger.warning(
+                f"混合检索不可用，降级 LIKE 关键词兜底 | query={truncate(query, 50)} | error={e}",
+                exc_info=True)
+            return None
+
+    def _retrieve(self, query: str, top_k: int = RETRIEVE_TOP_K, run_id: str = "") -> list:
+        """检索参考文档：优先复用问答主链路混合检索；引擎不可用或零命中时
+        回退 SQL LIKE 关键词，结果中逐条标记 retriever=hybrid/fallback（优雅降级，CI 可跑）。"""
         start = time.time()
+        items = self._hybrid_search(query, top_k, run_id)
+        if items:
+            picked = [{
+                "doc_uuid": it.doc_uuid,
+                "doc_title": it.doc_title,
+                "paragraph_id": it.paragraph_id,
+                "chapter_id": it.chapter_id,
+                "content": it.content_raw or "",
+                "retriever": "hybrid",
+            } for it in items[:top_k]]
+            self._logger.debug(
+                f"混合检索完成 | 命中={len(picked)} | "
+                f"耗时={round((time.time() - start) * 1000, 1)}ms")
+            return picked
+
+        picked = self._retrieve_like(query, top_k)
+        self._logger.debug(
+            f"LIKE 兜底检索完成 | 命中={len(picked)} | "
+            f"耗时={round((time.time() - start) * 1000, 1)}ms")
+        return picked
+
+    def _retrieve_like(self, query: str, top_k: int) -> list:
+        """SQL LIKE 关键词兜底（Milvus/BM25 不可用或零命中时使用），标记 retriever=fallback"""
+        from sqlalchemy import or_
         keywords = extract_keywords(query, max_kw=6)
         if not keywords:
             return []
@@ -319,7 +397,7 @@ class RegressionTester:
                     .all()
                 )
         except Exception as e:
-            self._logger.error(f"检索失败 | query={truncate(query, 50)} | error={e}", exc_info=True)
+            self._logger.error(f"LIKE 兜底检索失败 | query={truncate(query, 50)} | error={e}", exc_info=True)
             return []
 
         scored = []
@@ -333,12 +411,11 @@ class RegressionTester:
                     "paragraph_id": p.id,
                     "chapter_id": p.chapter_id,
                     "content": content,
+                    "retriever": "fallback",
                 }))
         scored.sort(key=lambda x: x[0], reverse=True)
         picked = [s for _, s in scored[:top_k]]
-        self._logger.debug(
-            f"检索完成 | 关键词={keywords} | 命中={len(picked)}/{len(scored)} | "
-            f"耗时={round((time.time() - start) * 1000, 1)}ms")
+        self._logger.debug(f"LIKE 兜底检索 | 关键词={keywords} | 命中={len(picked)}/{len(scored)}")
         return picked
 
     def _build_contexts(self, retrieved: list) -> str:

@@ -1,6 +1,6 @@
 # 跨境物流规则智能 Agent
 
-Cross-Border Logistics Rules Intelligent Agent
+Cross-Border Logistics Rules Intelligent Agent · [English](README.en.md)
 
 面向跨境物流/报关场景的一体化智能中台：**政策法规问答（RAG）**、**HS 商品名称模糊搜索与关税报价**、**政策爬虫采集**、**知识库管理**、**离线评测** 五大模块。后端 FastAPI 微服务化（api / policy / quote / tariff 多角色），前端 Vue3 + Vite，向量检索 Milvus + BM25 混合。
 
@@ -233,6 +233,8 @@ BASE_URL=http://127.0.0.1:8080 npx playwright test --headed --config playwright.
 PW_HOLD=1800000 BASE_URL=http://127.0.0.1:8080 npx playwright test --headed --config playwright.config.js tests/ui/chat-llm.spec.js
 ```
 
+CI：`.github/workflows/ci.yml` 在每次 push/PR 跑 lint（ruff + 单测 + 编译）与前端构建（`npm ci` + `npm run build`）。Playwright UI 测试依赖 live 服务，仅手动触发：`.github/workflows/ui-tests.yml`（`workflow_dispatch`）。
+
 ## 部署说明
 
 生产多角色横向部署（`deploy/docker-compose.yml`）：
@@ -241,13 +243,17 @@ PW_HOLD=1800000 BASE_URL=http://127.0.0.1:8080 npx playwright test --headed --co
 - nginx 分流：`/api/chat|doc|spider|eval` → policy；`/api/tariff|/health` → quote；静态资源 → 前端 dist
 - 关键环境变量通过 `.env` 注入（不要提交真实口令到仓库）
 
-> 说明：上传前已对整个仓库做脱敏——真实口令 / 内网地址 / PRD / 过程文档 / 日志 / 探针脚本一律不入库（见 `.gitignore`）。
+> 说明：仓库不含真实口令 / 内网地址 / PRD / 本地运行时数据（`data/downloads`、eval raw/reports）/ 日志（见 `.gitignore`）；`data/` 白名单仅放行 3 个安全小 fixture（离线 HS 种子、派生路由成本模型、人工金标评测集）。`scripts/` 为一次性探针/运维脚本，其中的连接信息一律走环境变量（`MYSQL_PASSWORD`、`LLM_API_KEY`、`SCP_PYTHON` 等），不含真实密钥。
 
 ## 相关设计要点
 
 - **Qwen3 `--reasoning` 模式**：LLM 先思考再作答，`max_tokens` 需同时覆盖思考与正文预算（管线按 32768 设置，避免正文被思考腰斩）。
 - **混合检索**：向量（COSINE、AUTOINDEX）+ BM25 双路召回，RRF 融合后 Rerank，保证德国等外语长文本政策命中率。
 - **流式双通道**：`thinking`（LLM 思考片段，灰色）与 `answer`（正文，Markdown 渲染）双流输出，适配长回答与流程图。
+
+## 已知问题
+
+- **Milvus Lite 文件锁并发限制**：Milvus Lite 为单文件单进程锁。dev 模式下多 worker（或多进程共用同一 `logs/milvus.db`）时，Milvus 初始化会互相抢锁，导致部分检索路向量召回为 0（自动降级为纯 BM25，主链路不中断、评测可跑）。生产请使用 Milvus Server（`MILVUS_DB_URI=http://<host>:19530`），不受文件锁影响。
 
 ## License
 

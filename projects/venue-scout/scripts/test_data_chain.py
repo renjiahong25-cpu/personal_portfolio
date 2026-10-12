@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """数据链路聚焦测试：小红书攻略检索 → 携程详情 → 高德路程.
 
 只跑少量种子 + 少量关键词，验证三者真实可用性（真实联网，不加缓存前缀避免脏缓存）。
@@ -6,7 +5,6 @@
 """
 from __future__ import annotations
 
-import json
 import sys
 import time
 from pathlib import Path
@@ -16,9 +14,9 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from src import xhs_client
 from src.amap_client import AMapClient
 from src.ctrip_client import CtripClient, enrich_meeting_rooms
-from src import xhs_client
 
 
 def load_settings() -> dict:

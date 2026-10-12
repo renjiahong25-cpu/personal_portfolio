@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 r"""浏览器窗口守卫（幂等 + 有界，最坏 ~80s 返回）。
 
 判定「有头前端窗口可用」= 真实 Edge 实例（命令行含 data\edge_profile 专用 profile）活着。

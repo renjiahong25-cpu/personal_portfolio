@@ -1,0 +1,28 @@
+{
+  "chat": {
+    "name": "img-test-fix-1",
+    "description": "测试修复后抓图"
+  },
+  "roles": [
+    {
+      "source": "temporary",
+      "name": "豆包画师",
+      "description": "豆包 AI 图片生成",
+      "chatSite": "doubao",
+      "modelSource": "site",
+      "systemPrompt": "你是一个图片生成助手，擅长根据用户描述生成高质量图片。"
+    }
+  ],
+  "task": {
+    "target": "all",
+    "content": "一只白色布偶猫，蓝色眼睛，在花园里"
+  },
+  "options": {
+    "waitForReplies": true,
+    "activateChat": true,
+    "webAgentPage": false,
+    "timeoutMs": 300000,
+    "downloadDir": "C:\\Users\\14837\\Pictures\\web-agent-gen",
+    "namePrefix": "cat"
+  }
+}

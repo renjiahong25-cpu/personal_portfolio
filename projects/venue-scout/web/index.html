@@ -179,6 +179,7 @@
       <button class="btn dldis" id="dl_pdf_main" data-kind="pdf_main">推荐清单 PDF (Top10)</button>
       <button class="btn dldis" id="dl_pdf_all27" data-kind="pdf_all27">推荐清单全量 PDF</button>
       <button class="btn dldis" id="dl_docx" data-kind="docx">推荐清单 DOCX</button>
+      <button class="btn dldis" id="dl_xlsx" data-kind="xlsx">推荐清单 XLSX</button>
       <button class="btn dldis" id="dl_md" data-kind="md">推荐清单 MD</button>
       <button class="btn dldis" id="dl_json" data-kind="json">JSON 数据</button>
       <span class="hint" id="dlHint">生成规划后可打开</span>
@@ -1215,7 +1216,7 @@ async function pollDeliverables() {
   try {
     const d = await (await httpJ("/api/deliverables")).json();
     dlPaths = d.paths || {};
-    const map = { plan_pdf: "dl_plan_pdf", plan_docx: "dl_plan_docx", plan_md: "dl_plan_md", pdf_main: "dl_pdf_main", pdf_all27: "dl_pdf_all27", docx: "dl_docx", md: "dl_md", json: "dl_json" };
+    const map = { plan_pdf: "dl_plan_pdf", plan_docx: "dl_plan_docx", plan_md: "dl_plan_md", pdf_main: "dl_pdf_main", pdf_all27: "dl_pdf_all27", docx: "dl_docx", xlsx: "dl_xlsx", md: "dl_md", json: "dl_json" };
     for (const [k, id] of Object.entries(map)) {
       const a = document.getElementById(id);
       if (!a) continue;

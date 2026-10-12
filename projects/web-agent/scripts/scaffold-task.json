@@ -1,0 +1,28 @@
+{
+    "chat":  {
+                 "name":  "scaffold-img2img-test-1",
+                 "description":  "测试脚手架图生图"
+             },
+    "task":  {
+                 "target":  "all",
+                 "content":  "(((Strictly 1:1 pixel match all original metal scaffolding poles in the reference image, keep their position, angle, size, layout unchanged. No shift, no deformation, no adding/removing any poles. Preserve all thin rod ends and cross joints.))),\n\n(((Strict classification color rules, NO color misassignment:\n1.  All horizontal crossbars (parallel to the ground) and all vertical ground-standing poles: solid pure yellow (#FFD100), NO exceptions.\n2.  Only diagonal/angled metal poles (scaffold braces/scissors cross braces): solid pure red (#FF3B30).\n3.  The red-white striped safety belts/banners are NOT poles: they must be completely erased and not treated as metal scaffolding.))),\n\n(((100% remove all non-pole elements:\n- Erase all red-white striped safety belts/warning banners, protective mesh, concrete wall, ground, sky, crane, construction debris, wooden boards, wires, shadows, halos, and background noise.\n- Only retain metal scaffolding poles, no other objects.))),\n\n(((Pure solid white background (#FFFFFF), no shadows, no texture, no gradients, no residual details.))),\n\nHigh-precision industrial schematic render, sharp clean pole edges, high contrast, no blur, no artifacts, ultra high quality.\n\n--no red horizontal poles, red-white safety tape, warning strip, red banner, mesh, flexible belt, deformed pole, oversized pole, broken pole, missing pole, hollow pole, blurred edge, shadow, halo, background residue, noise, texture, mixed colors, color bleeding, gradients, crane, sky, concrete wall, ground debris"
+             },
+    "roles":  [
+                  {
+                      "name":  "豆包画师",
+                      "source":  "temporary",
+                      "description":  "豆包 AI 图片生成",
+                      "modelSource":  "site",
+                      "systemPrompt":  "你是一个专注于工业脚手架结构示意图的图片生成助手。严格遵循用户的颜色规则和结构要求。",
+                      "chatSite":  "doubao"
+                  }
+              ],
+    "options":  {
+                    "activateChat":  true,
+                    "webAgentPage":  false,
+                    "downloadDir":  "D:\\yolosam\\babytrain\\new\\images\\train",
+                    "timeoutMs":  300000,
+                    "namePrefix":  "1773197413.409188",
+                    "waitForReplies":  true
+                }
+}

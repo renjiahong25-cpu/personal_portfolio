@@ -142,10 +142,18 @@
   2. 返程 access leg（map_legs[7]）`via` 为空，去程 via 1186 点——地图上返程画不出路径
   3. `map_legs[4]` 出现「白水寨→白水寨」零长度退化段（via 2 点、drive_min=1），Day2 slot 表却无对应项
   4. Day1 `overnight` slot 缺 `end`，且与 dinner start 同为 18:00（时间重叠）
-- 原因：待排查（planner 对 legs/slots 口径、AMap 返程折线解析、剪裁/去重逻辑不统一）
-- 解决方案：未修（不影响规划可用性）；列入观察，后续修 planner 时统一 leg→slot 对应与折线标准
-- 验证：泄漏 demo 已记录（21.5s 求解、cached 一致性 OK）
-- 状态：open
+- 原因：
+  1. `summary.total_drive_min` 直接对 `map_legs` 求和，而 legs 里含「POI→场地」回场腿（地图用）但没有对应 day slot → 与逐日表格 drive_min 合计差 16 分钟
+  2. 返程 access leg 的折线现取失败时旧版无兜底，`via` 为空
+  3. AMap 对同名/同坐标 POI 返回伪段（drive_min=1、via 2 点），旧判据 `meters==0 且 drive_min<=1 且同名` 太严（实际 meters 为小正数）未拦下
+  4. slots 生成时未做边界校验，个别 slot 缺 end 或与前一 slot 重叠
+- 解决方案（planner.py，2026-10-11）：
+  1. 新增 `slot_drive_total()`：`summary.total_drive_min` 改为按用户可见的 day slots（drive + activity 的 drive_min）汇总，保证与逐日时间表口径一致；`map_legs` 仅服务地图渲染，不再参与总时长
+  2. 返程 access leg：drive time 沿用去程口径估算（原路返回）；折线 `ret_via` 现取失败/为空时兜底 `list(reversed(go_via))`，且坐标缺失时不再发起无意义请求（Day1 单日与 Day2 两处同样处理）
+  3. 新增 `_is_degenerate_hop()`：同名/同坐标且 ≤200m，或 ≤1 分钟且 ≤100m 的段一律判定退化——不产生 leg、不推进时间、activity slot 的 drive_min 记 0（活动开始时间=到达时间）；「POI→场地」回场腿同样过滤
+  4. 新增 `clamp_slots()`：每天 slots 落盘前统一补齐缺失 start/end、消除 start<前一 slot end 的重叠、消除 end<start（overnight 保持 23:59 收尾）
+- 验证：`tests/test_planner.py`（stub AMap 纯离线）：总时长=slots 合计、零长度同名段不产生 leg 且不占时间、slots 无重叠且均含 start/end、返程腿 via 兜底为去程折线反序——全部通过
+- 状态：resolved
 
 ### BUG-0014-登录闸门（两段式）确认后无下一步；采集无界面提示
 - 日期：2026-09-26

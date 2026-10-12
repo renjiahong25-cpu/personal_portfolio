@@ -1,0 +1,85 @@
+{
+  "meta": {
+    "version": "seed-2026-09-2",
+    "note": "路径成本为区间估算，非实时运价；仅用于相对路径对比与粗略到岸成本测算。",
+    "currency": "USD",
+    "parity_usd_cny": 7.1,
+    "freight_anchor": {
+      "source": "Freightos FBX (public, daily, real-transaction based)",
+      "as_of": "2026-09",
+      "cn_us_west_40ft_usd": 3498.6,
+      "note": "FBX 覆盖 CN→US 等大洋干线；东南亚近洋/内陆短驳无公开指数，ref_usd_40ft 为标注 derived 的市场典型区间"
+    }
+  },
+  "leg_freight_pct": {
+    "CN-US": {"min": 4.0, "max": 9.0, "ref_usd_40ft": [3000, 4500], "basis": "FBX 2026-09: CN→US West 40ft ≈ $3,499"},
+    "CN-VN": {"min": 3.0, "max": 6.0, "ref_usd_40ft": [700, 1500], "basis": "derived: 华南→越南近洋短驳市场典型"},
+    "CN-TH": {"min": 3.0, "max": 6.0, "ref_usd_40ft": [800, 1800], "basis": "derived: 华南→泰国近洋短驳市场典型"},
+    "CN-SG": {"min": 3.0, "max": 5.0, "ref_usd_40ft": [800, 1600], "basis": "derived: 华南→新加坡近洋短驳市场典型"},
+    "CN-MY": {"min": 3.0, "max": 6.0, "ref_usd_40ft": [800, 1700], "basis": "derived: 华南→马来西亚近洋短驳市场典型"},
+    "CN-MX": {"min": 6.0, "max": 10.0, "ref_usd_40ft": [2500, 4500], "basis": "derived: 华南→曼萨尼约跨太平洋市场典型"},
+    "VN-US": {"min": 5.0, "max": 9.0, "ref_usd_40ft": [1800, 4000], "basis": "derived: 东南亚→US West 跨太平洋市场典型(FBX 同量级锚定)"},
+    "TH-US": {"min": 5.0, "max": 9.0, "ref_usd_40ft": [1800, 4000], "basis": "derived: 东南亚→US West 跨太平洋市场典型(FBX 同量级锚定)"},
+    "SG-US": {"min": 5.0, "max": 9.0, "ref_usd_40ft": [1800, 4000], "basis": "derived: 东南亚→US West 跨太平洋市场典型(FBX 同量级锚定)"},
+    "MY-US": {"min": 5.0, "max": 9.0, "ref_usd_40ft": [1800, 4000], "basis": "derived: 东南亚→US West 跨太平洋市场典型(FBX 同量级锚定)"},
+    "MX-US": {"min": 2.0, "max": 5.0, "ref_usd_40ft": [600, 1500], "basis": "derived: 美墨跨境陆运/近海短驳市场典型"},
+    "VN-TH": {"min": 2.0, "max": 5.0, "ref_usd_40ft": [300, 1000], "basis": "derived: 东盟内部短驳市场典型"},
+    "VN-SG": {"min": 2.0, "max": 5.0, "ref_usd_40ft": [300, 1000], "basis": "derived: 东盟内部短驳市场典型"},
+    "VN-MY": {"min": 2.0, "max": 5.0, "ref_usd_40ft": [300, 1000], "basis": "derived: 东盟内部短驳市场典型"},
+    "VN-MX": {"min": 6.0, "max": 10.0, "ref_usd_40ft": [2200, 4200], "basis": "derived: 东南亚→墨西哥跨太平洋市场典型"},
+    "TH-VN": {"min": 2.0, "max": 5.0, "ref_usd_40ft": [300, 1000], "basis": "derived: 东盟内部短驳市场典型"},
+    "TH-SG": {"min": 2.0, "max": 5.0, "ref_usd_40ft": [300, 1000], "basis": "derived: 东盟内部短驳市场典型"},
+    "TH-MY": {"min": 2.0, "max": 5.0, "ref_usd_40ft": [300, 1000], "basis": "derived: 东盟内部短驳市场典型"},
+    "TH-MX": {"min": 6.0, "max": 10.0, "ref_usd_40ft": [2200, 4200], "basis": "derived: 东南亚→墨西哥跨太平洋市场典型"},
+    "SG-VN": {"min": 2.0, "max": 5.0, "ref_usd_40ft": [300, 1000], "basis": "derived: 东盟内部短驳市场典型"},
+    "SG-TH": {"min": 2.0, "max": 5.0, "ref_usd_40ft": [300, 1000], "basis": "derived: 东盟内部短驳市场典型"},
+    "SG-MY": {"min": 2.0, "max": 5.0, "ref_usd_40ft": [300, 1000], "basis": "derived: 东盟内部短驳市场典型"},
+    "SG-MX": {"min": 6.0, "max": 10.0, "ref_usd_40ft": [2200, 4200], "basis": "derived: 东南亚→墨西哥跨太平洋市场典型"},
+    "MY-VN": {"min": 2.0, "max": 5.0, "ref_usd_40ft": [300, 1000], "basis": "derived: 东盟内部短驳市场典型"},
+    "MY-TH": {"min": 2.0, "max": 5.0, "ref_usd_40ft": [300, 1000], "basis": "derived: 东盟内部短驳市场典型"},
+    "MY-SG": {"min": 2.0, "max": 5.0, "ref_usd_40ft": [300, 1000], "basis": "derived: 东盟内部短驳市场典型"},
+    "MY-MX": {"min": 6.0, "max": 10.0, "ref_usd_40ft": [2200, 4200], "basis": "derived: 东南亚→墨西哥跨太平洋市场典型"},
+    "MX-VN": {"min": 6.0, "max": 10.0, "ref_usd_40ft": [2200, 4200], "basis": "derived: 墨西哥→东南亚跨太平洋市场典型"},
+    "MX-TH": {"min": 6.0, "max": 10.0, "ref_usd_40ft": [2200, 4200], "basis": "derived: 墨西哥→东南亚跨太平洋市场典型"},
+    "MX-SG": {"min": 6.0, "max": 10.0, "ref_usd_40ft": [2200, 4200], "basis": "derived: 墨西哥→东南亚跨太平洋市场典型"},
+    "MX-MY": {"min": 6.0, "max": 10.0, "ref_usd_40ft": [2200, 4200], "basis": "derived: 墨西哥→东南亚跨太平洋市场典型"}
+  },
+  "freight_pct_of_value": {
+    "direct": {"min": 18.0, "max": 35.0, "note": "直邮小包/快递，单票小额豁免已取消需完整买家信息"},
+    "direct_sea": {"min": 4.0, "max": 9.0, "note": "整柜/拼箱海运直达"},
+    "vn": {"min": 6.0, "max": 12.0, "note": "中国→越南→美国，含越南二程中转与本地操作"},
+    "mx": {"min": 8.0, "max": 14.0, "note": "中国→墨西哥→美国，含墨内陆运/清关"},
+    "warehouse": {"min": 5.0, "max": 10.0, "note": "头程海运+海外仓一件代发"}
+  },
+  "handling_usd_per_shipment": {"min": 5.0, "max": 30.0},
+  "compliance": {
+    "direct": [
+      "小额豁免已取消：800 美元以下不再免税，需完整最终买家信息（2026 新规首月清关拒绝率约 4.2%，多数因买家信息不全被扣）",
+      "需美国收件人/进口商(IOR)信息，建议提前备好 Importer 资料"
+    ],
+    "vn": [
+      "转口越南需 HS 编码前 6 位发生实质性改变（改变税则归类）",
+      "货物需在越南停留不少于 30 天并取得原产地证书(CO)",
+      "2026 年 CBP 反规避审查重点国家，资料需齐全；造假按货值 30%-500% 处罚"
+    ],
+    "mx": [
+      "转口墨西哥需符合 USMCA 原产地规则(RVC)方可享受免/优惠税率，否则按 MFN+301+对等全额计",
+      "需出口商声明(Exporter Certification/Statement)或 CO"
+    ],
+    "warehouse": [
+      "海外仓备货需提前完成 FDA/CPSC/FCC 等美国市场合规认证",
+      "库存与资金占用成本需单独评估；退换货需本地处理能力"
+    ],
+    "th": [
+      "转口泰国需 HS 前 6 位发生实质性改变并取得原产地证书(CO)",
+      "CBP 对东南亚转口持续反规避审查，需完整生产/加工证据链；造假按货值 30%-500% 处罚"
+    ],
+    "sg": [
+      "新加坡对多数商品免关税，但转口仍需 CO/提单证明实质性改变，纯过港(停留<短期)不构成原产地",
+      "CBP 反规避审查重点：需证明实际加工/改变归类，而非简单换标"
+    ],
+    "my": [
+      "转口马来西亚需 HS 前 6 位实质性改变并取得 CO；可评估 APTA 协定优惠(需中国-东盟原产地证)"
+    ]
+  }
+}

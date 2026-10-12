@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-"""Run the top-10 pipeline: facilities -> markdown -> docx -> pdf.
+"""Run the top-10 pipeline: facilities -> markdown -> docx -> xlsx -> pdf.
 
 Each child is launched unbuffered (PYTHONUNBUFFERED=1) so its lines land in
 the log in real time. Step banners are printed with flush for the monitor.
@@ -12,8 +11,9 @@ import sys
 from pathlib import Path
 
 PY = sys.executable
-SCRIPTS = Path(r"D:\Program Files\traveldesign\venue-scout\scripts")
-OUT = Path(r"D:\Program Files\traveldesign\venue-scout\data\output")
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS = ROOT / "scripts"
+OUT = ROOT / "data" / "output"
 DOCX = OUT / "团建场地推荐清单.docx"
 PDF = OUT / "团建场地推荐清单_v2.pdf"
 
@@ -56,6 +56,7 @@ def main() -> None:
     # run_step("refresh_facilities", "refresh_facilities.py", [])  # enrich cache exists; skip re-scrape
     run_step("build_summary_md --top 10", "build_summary_md.py", ["--top", "10"])
     run_step("build_summary_docx", "build_summary_docx.py", [])
+    run_step("build_summary_xlsx", "build_summary_xlsx.py", [])
     run_docx_pdf()
     print("PIPELINE TOP10 COMPLETE", flush=True)
 

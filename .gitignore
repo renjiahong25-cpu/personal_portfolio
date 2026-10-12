@@ -25,16 +25,27 @@ node_modules/
 # tools/（构建工具）
 # ============================================
 /tools/blender/cache/
+# 渲染产物不入库（站点素材已固化在 site/src/assets/props/）
+/tools/blender/out/
 
 # ============================================
-# projects/supplychainpolicyagent/（该项目自身设计：
-# 过程文档与运行时产物不入库；锚定到 /projects/ 前缀，
+# projects/supplychainpolicyagent/（锚定到 /projects/ 前缀，
 # 不影响 site/、tools/ 与根 README）
 # ============================================
-/projects/supplychainpolicyagent/data/
+# data/：运行时产物（eval raw/reports、downloads 原件）不入库，
+# 白名单放行 3 个安全小 fixture（离线种子/派生模型/人工金标集）
+/projects/supplychainpolicyagent/data/*
+!/projects/supplychainpolicyagent/data/tariff/
+/projects/supplychainpolicyagent/data/tariff/*
+!/projects/supplychainpolicyagent/data/tariff/route_cost_model.json
+!/projects/supplychainpolicyagent/data/tariff/seed_us_hts.json
+!/projects/supplychainpolicyagent/data/eval/
+/projects/supplychainpolicyagent/data/eval/*
+!/projects/supplychainpolicyagent/data/eval/sets/
+/projects/supplychainpolicyagent/data/eval/sets/*
+!/projects/supplychainpolicyagent/data/eval/sets/eval_atlas_20260909.json
 /projects/supplychainpolicyagent/logs/
-/projects/supplychainpolicyagent/scripts/
-/projects/supplychainpolicyagent/docs/
-# 项目根目录下所有 md（含 PRD、技术架构设计文档、AGENTS.md），仅保留 README.md
+# 项目根目录下所有 md（含 PRD、技术架构设计文档、AGENTS.md），仅保留 README（中/英）
 /projects/supplychainpolicyagent/*.md
 !/projects/supplychainpolicyagent/README.md
+!/projects/supplychainpolicyagent/README.en.md

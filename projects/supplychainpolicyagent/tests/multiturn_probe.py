@@ -5,14 +5,15 @@ T1 基线（新话题）→ T2 缺国家追问（应继承德国）→ T3 换国
 依赖: 后端 uvicorn 运行在 127.0.0.1:8000
 """
 import sys
+from pathlib import Path
 import json
 import uuid
 import time
 
-sys.path.insert(0, r"D:\Program Files\supplychainpolicyagent")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.stdout.reconfigure(encoding="utf-8")
 
-import httpx
+import httpx  # noqa: E402
 
 BASE = "http://127.0.0.1:8000"
 SESSION_ID = f"probe_{uuid.uuid4().hex[:10]}"

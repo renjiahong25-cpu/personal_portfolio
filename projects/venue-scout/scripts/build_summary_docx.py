@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Convert venues_summary.md into a polished .docx (Chinese-safe, embedded images, hyperlinks).
 
 Pipeline:
@@ -9,18 +8,16 @@ Pipeline:
   4. (Optional caller) convert to PDF via Word COM.
 
 Usage:
-    & .venv\Scripts\python.exe scripts\build_summary_docx.py
+    & .venv\\Scripts\\python.exe scripts\build_summary_docx.py
 """
 from __future__ import annotations
 
-import os
 import re
 import sys
 import urllib.request
 from pathlib import Path
 
 from docx import Document
-from docx.enum.section import WD_SECTION
 from docx.enum.table import WD_ALIGN_VERTICAL
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Build a hierarchical .md summary of the 27 passed venues with Ctrip info + images + links.
 
 Reads data/output/latest.json, enriches each venue with Ctrip hotel detail
@@ -6,7 +5,7 @@ Reads data/output/latest.json, enriches each venue with Ctrip hotel detail
 WeChat-friendly markdown document suitable for PDF conversion.
 
 Usage:
-    & .venv\Scripts\python.exe scripts\build_summary_md.py
+    & .venv\\Scripts\\python.exe scripts\build_summary_md.py
 """
 from __future__ import annotations
 
@@ -287,7 +286,7 @@ def venue_md(v: dict, idx: int, prices: dict, enrich: dict) -> str:
     lines = []
     lines.append(f"## {idx}. {v['name']} {stars}")
     if v.get("needs_manual"):
-        lines.append(f"> ⚠️ 会议容量细节待人工核实（会议室每间 10-15 人）")
+        lines.append("> ⚠️ 会议容量细节待人工核实（会议室每间 10-15 人）")
 
     lines.append(f"**简介**：{intro}")
     lines.append("")
@@ -299,7 +298,7 @@ def venue_md(v: dict, idx: int, prices: dict, enrich: dict) -> str:
     elif rooms:
         lines.append(f"- 🛏 住宿：客房 {rooms} 间（容量待确认）")
     else:
-        lines.append(f"- 🛏 住宿：待确认")
+        lines.append("- 🛏 住宿：待确认")
     hid = v.get("sources", {}).get("ctrip_hotel_id")
     lines.append(f"- 🎤 会议：{meeting}" + (f"（携程设施页可确认：[查看](https://hotels.ctrip.com/hotels/{hid}.html)）" if hid else ""))
     ent = enrich.get("fac_ent", "")
@@ -371,7 +370,7 @@ def main() -> None:
     head = [
         "# 团建场地推荐清单（广州五山出发 · 2 小时车程内）",
         "",
-        f"> 数据来源：高德地图 POI + 携程酒店详情 · 筛选条件：住宿 ≥100 人 / 有会议厅 / 周边有漂流·卡丁车·游船等娱乐 / 车程 ≤120 分钟",
+        "> 数据来源：高德地图 POI + 携程酒店详情 · 筛选条件：住宿 ≥100 人 / 有会议厅 / 周边有漂流·卡丁车·游船等娱乐 / 车程 ≤120 分钟",
         f"> {top_note}，按综合评分排序（车程 {drive_range}）。以下每家均已附高德直达导航、地图定位、携程详情链接及实拍图。价格为平日散客参考价（单位 ¥/晚）。",
         "",
         "| # | 场地 | 平均价 | 团购价 | 车程 | 可住 | 娱乐 | 电话 |",

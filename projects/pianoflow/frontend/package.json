@@ -1,0 +1,22 @@
+{
+  "name": "pianoflow-frontend",
+  "private": true,
+  "version": "0.9.0",
+  "type": "module",
+  "description": "PianoFlow AI music workbench - Vue 3 frontend (audio pipeline + piano score)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test:notation": "node tests/notation-highlight.test.mjs"
+  },
+  "dependencies": {
+    "opensheetmusicdisplay": "^2.2.0",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "jsdom": "^30.1.2",
+    "vite": "^6.0.7"
+  }
+}

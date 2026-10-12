@@ -8,7 +8,7 @@ import json
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-import httpx
+import httpx  # noqa: E402
 
 BASE = "http://127.0.0.1:8000"
 TIMEOUT = 180.0

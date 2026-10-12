@@ -14,8 +14,8 @@ We do not validate freshness here — that is reported by the failing op itself.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 import yaml
 

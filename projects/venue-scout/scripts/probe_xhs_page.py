@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """XHS 深探：确认 /search_result SSR 页面内容真实情况。"""
 from __future__ import annotations
 
@@ -58,7 +57,7 @@ def main() -> int:
     log(f"venue-name regex hits: {len(names)} -> {list(dict.fromkeys(names))[:10]}")
 
     # title tags
-    titles = re.findall(r"<title[^>]*>(.*?)</title>", html, re.S)[:3]
+    titles = re.findall(r"<title[^>]*>(.*?)</title>", html, re.DOTALL)[:3]
     log(f"titles: {titles}")
 
     # any xsec / data fields suggesting笔记

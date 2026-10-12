@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """前端事件文件监控（有界，skill Step 5/6 用）。
 
 事件文件：data/output/ui_events.jsonl（前端经 POST /api/ui/events 写入）。

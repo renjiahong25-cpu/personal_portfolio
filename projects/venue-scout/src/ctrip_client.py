@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any, Optional
+from typing import Any
 
 from .http_util import (
     cache_get,
@@ -49,7 +49,7 @@ MEETING_PATTERNS = [
 ]
 
 CAPACITY_PATTERNS = [
-    re.compile(r"(?:容纳|可容| capacity )\s*[约]?(\d{2,5})\s*(?:人|位)", re.I),
+    re.compile(r"(?:容纳|可容| capacity )\s*[约]?(\d{2,5})\s*(?:人|位)", re.IGNORECASE),
     re.compile(r"(\d{2,5})\s*人(?:剧院式|课桌式|宴会式|会议式)"),
     re.compile(r"(?:剧院式|课桌式|宴会式)[^\d]{0,4}(\d{2,5})\s*人"),
     re.compile(r"(\d{2,5})\s*人\s*(?:剧院|课桌|宴会)"),
@@ -280,7 +280,7 @@ class CtripClient:
         r.raise_for_status()
         return r.text
 
-    def _post_json(self, url: str, body: dict) -> Optional[dict]:
+    def _post_json(self, url: str, body: dict) -> dict | None:
         r = self._client.post(url, json=body)
         if r.status_code != 200:
             return None
@@ -341,7 +341,7 @@ class CtripClient:
             cache_set(cache_key, out)
         return out
 
-    def hotel_aggregate(self, hotel_id: str | int) -> Optional[dict]:
+    def hotel_aggregate(self, hotel_id: str | int) -> dict | None:
         cache_key = f"ctrip_agg_{hotel_id}"
         hit = cache_get(cache_key)
         if hit is not None:
@@ -361,7 +361,7 @@ class CtripClient:
         cache_set(cache_key, parsed)
         return parsed
 
-    def hotel_detail_html(self, hotel_id: str | int) -> Optional[str]:
+    def hotel_detail_html(self, hotel_id: str | int) -> str | None:
         url = DETAIL_URL.format(id=hotel_id)
         try:
             return self._get(url)
@@ -377,7 +377,7 @@ class CtripClient:
                     continue
         return None
 
-    def hotel_detail(self, hotel_id: str | int) -> Optional[dict]:
+    def hotel_detail(self, hotel_id: str | int) -> dict | None:
         """Aggregate first; merge HTML text for room_count / capacities."""
         cache_key = f"ctrip_detail_{hotel_id}"
         hit = cache_get(cache_key)

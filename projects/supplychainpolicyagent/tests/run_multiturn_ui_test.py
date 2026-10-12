@@ -24,14 +24,15 @@ import json
 import os
 import subprocess
 import sys
+from pathlib import Path
 import time
 import uuid
 
-sys.path.insert(0, r"D:\Program Files\supplychainpolicyagent")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.stdout.reconfigure(encoding="utf-8")
 
-ROOT = r"D:\Program Files\supplychainpolicyagent"
-PY = r"D:\conda_envs\cross-border-agent\python.exe"
+ROOT = str(Path(__file__).resolve().parent.parent)
+PY = os.getenv("SCP_PYTHON", "python")  # env 可覆盖，默认 PATH 中的 python
 LOG_DIR = os.path.join(ROOT, "logs")
 SHOT_DIR = os.path.join(LOG_DIR, "screenshots")
 BACKEND_URL = "http://127.0.0.1:8000"
@@ -140,15 +141,15 @@ def phase1_backend():
                 with open(os.path.join(LOG_DIR, f), encoding="utf-8", errors="ignore") as fh:
                     lines = fh.read().splitlines()[-30:]
                 log(f"  ---- {f} ----")
-                for l in lines:
-                    log("  " + l)
+                for ln in lines:
+                    log("  " + ln)
             sys.exit(1)
         if http_code(f"{BACKEND_URL}/health") == 200:
             log("  后端就绪 (health=200)")
             return
         time.sleep(5)
     with open(os.path.join(LOG_DIR, "uvicorn.err.log"), encoding="utf-8", errors="ignore") as fh:
-        log("\n".join(["  " + l for l in fh.read().splitlines()[-50:]]))
+        log("\n".join(["  " + ln for ln in fh.read().splitlines()[-50:]]))
     log("RESULT: FAILED (后端 180s 未就绪)")
     sys.exit(1)
 
@@ -167,7 +168,7 @@ def phase2_frontend():
             return
         time.sleep(3)
     with open(os.path.join(LOG_DIR, "vite.err.log"), encoding="utf-8", errors="ignore") as fh:
-        log("\n".join(["  " + l for l in fh.read().splitlines()[-30:]]))
+        log("\n".join(["  " + ln for ln in fh.read().splitlines()[-30:]]))
     log("RESULT: FAILED (前端 60s 未就绪)")
     sys.exit(1)
 

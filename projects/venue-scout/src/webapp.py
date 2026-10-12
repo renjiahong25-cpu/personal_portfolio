@@ -6,17 +6,18 @@ import subprocess
 import sys
 import threading
 import time
-import yaml
+import urllib.parse
 from collections import deque
 from pathlib import Path
 
-import urllib.parse
-from fastapi import FastAPI, HTTPException, Query as FQuery, Request
+import yaml
+from fastapi import FastAPI, HTTPException, Request
+from fastapi import Query as FQuery
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
 from .creds import account_status, ops_needing_login, terminal_lines
 from .models import Query
-from .plan_intake import PLAN_FIELDS, DEFAULTS, merge
+from .plan_intake import DEFAULTS, PLAN_FIELDS, merge
 from .planner import PLANNER_VERSION
 
 
@@ -24,7 +25,7 @@ def _time_now() -> float:
     return time.time()
 
 try:
-    from . import cookie_login as _CL  # noqa: F401  (playwright present)
+    from . import cookie_login as _CL
 except Exception:  # pragma: no cover
     _CL = None
 
@@ -470,8 +471,6 @@ def collect_status():
 def _run_collect_job(payload: dict) -> None:
     import traceback
 
-    from src.report import write_reports
-    from src.store import load_db, load_seeds, save_db, upsert
     from scripts.run_pipeline import run_collect
 
     cfg = None
@@ -521,8 +520,8 @@ def api_collect(payload: dict):
 
 def _collect_gate_check() -> dict:
     """返回需要登录的站点列表。ctrip=enhance 可降级，但按用户约定每次重启后都需有效 cookie。"""
-    from .creds import probe as _probe
     from .creds import load_settings
+    from .creds import probe as _probe
 
     cfg = load_settings()
     missing = []
@@ -545,6 +544,7 @@ _FILES = {
     "pdf_top10": "团建场地推荐清单_v2.pdf",
     "pdf_all27": "团建场地推荐清单_全部27家.pdf",
     "docx": "团建场地推荐清单.docx",
+    "xlsx": "团建场地推荐清单.xlsx",
     "md": "venues_summary.md",
     "json": "latest.json",
     "prices": "latest_prices.json",
@@ -614,7 +614,7 @@ def _plan_for_venue(venue_id: str, answers: dict) -> dict:
     cache_key = f"{venue_id}|{PLANNER_VERSION}|{json.dumps(answers or {}, sort_keys=True, ensure_ascii=False)}"
     with _PLAN_LOCK:
         if cache_key in _PLAN_CACHE:
-            return dict(_PLAN_CACHE[cache_key], **{"cached": True})
+            return dict(_PLAN_CACHE[cache_key], cached=True)
     merged, missing = merge(answers or {})
     if missing:
         return {"status": "need_info", "missing": missing, "fields": PLAN_FIELDS, "defaults": merged}
@@ -640,7 +640,7 @@ def _plan_for_venue(venue_id: str, answers: dict) -> dict:
         if len(_PLAN_CACHE) > 40:
             _PLAN_CACHE.clear()
         _PLAN_CACHE[cache_key] = result
-    return dict(result, **{"cached": False})
+    return dict(result, cached=False)
 
 
 @app.post("/api/plan")
@@ -845,6 +845,7 @@ def api_deliverables():
         "pdf_main": (OUT / "团建场地推荐清单.pdf").exists(),
         "pdf_all27": (OUT / "团建场地推荐清单_全部27家.pdf").exists(),
         "docx": (OUT / "团建场地推荐清单.docx").exists(),
+        "xlsx": (OUT / "团建场地推荐清单.xlsx").exists(),
         "md": (OUT / "venues_summary.md").exists(),
         "json": (OUT / "latest.json").exists(),
         "plan_pdf": bool(plan_files.get("plan_pdf")),

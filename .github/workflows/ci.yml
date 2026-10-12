@@ -26,3 +26,20 @@ jobs:
         run: pytest tests/unit
       - name: compileall
         run: python -c "import compileall,re,sys; sys.exit(0 if compileall.compile_dir('.', quiet=1, rx=re.compile(r'(^|[\\\\/])(\.git|\.venv|frontend)([\\\\/]|$)', re.I)) else 1)"
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: projects/supplychainpolicyagent/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: projects/supplychainpolicyagent/frontend/package-lock.json
+      - name: npm ci
+        run: npm ci
+      - name: build
+        run: npm run build

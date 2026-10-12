@@ -8,10 +8,11 @@ E. L4 缺口引导按钮
 用法: python tests/test_actions_ingest.py
 """
 import sys
+from pathlib import Path
 import asyncio
 import uuid
 
-sys.path.insert(0, r"D:\Program Files\supplychainpolicyagent")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.stdout.reconfigure(encoding="utf-8")
 
 PASSED, FAILED = [], []

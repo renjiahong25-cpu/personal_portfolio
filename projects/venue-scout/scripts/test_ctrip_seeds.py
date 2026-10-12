@@ -7,7 +7,21 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from src.ctrip_client import CtripClient, enrich_meeting_rooms  # noqa: E402
+from src.ctrip_client import CtripClient, enrich_meeting_rooms
+
+
+def rank_hit(h: dict, name: str, aliases: list[str], city: str, district: str) -> tuple:
+    """suggest 结果排序口径（BUG-0009：跨城错配降权）；纯函数，供 tests/ 离线单测。"""
+    hn = h.get("name") or ""
+    hc = h.get("city") or ""
+    name_ok = 0 if any(x and (x in hn or hn in x) for x in [name, *aliases]) else 1
+    city_ok = 0 if city and (city in hn or city in hc) else 1
+    # 增城雅轩: reject 忻州/山西
+    if city == "广州" and ("忻州" in hn or "山西" in hc or hc.startswith("忻")):
+        city_ok = 10
+    if district and district[:2] in hn:
+        city_ok = max(city_ok - 1, -1)
+    return (name_ok, city_ok)
 
 
 def main() -> None:
@@ -32,19 +46,7 @@ def main() -> None:
             print(f"NO_SUGGEST {name}")
             continue
 
-        def rank(h: dict) -> tuple:
-            hn = h.get("name") or ""
-            hc = h.get("city") or ""
-            name_ok = 0 if any(x and (x in hn or hn in x) for x in [name, *aliases]) else 1
-            city_ok = 0 if city and (city in hn or city in hc) else 1
-            # 增城雅轩: reject 忻州/山西
-            if city == "广州" and ("忻州" in hn or "山西" in hc or hc.startswith("忻")):
-                city_ok = 10
-            if district and district[:2] in hn:
-                city_ok = max(city_ok - 1, -1)
-            return (name_ok, city_ok)
-
-        hits.sort(key=rank)
+        hits.sort(key=lambda h: rank_hit(h, name, aliases, city, district))
         # drop clearly wrong city when we have a city and at least one local hit
         if city:
             local = [

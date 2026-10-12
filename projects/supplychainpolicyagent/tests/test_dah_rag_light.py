@@ -3,7 +3,6 @@
 import sys
 import os
 import asyncio
-import time
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("HF_HUB_OFFLINE", "1")
 os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
@@ -106,7 +105,7 @@ def main():
     print("=" * 60)
     print("Test 5: Multi-Granular Index")
     print("=" * 60)
-    from service.dah_rag.multi_granular_index import MultiGranularIndex, IndexLevel
+    from service.dah_rag.multi_granular_index import MultiGranularIndex
     index = MultiGranularIndex()
 
     index.add_document("doc1", "德国海关法规", "德国海关法规详细说明了进口申报流程")

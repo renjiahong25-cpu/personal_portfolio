@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 r"""小红书攻略研究（MediaCrawler 封装）。
 
 按场地生成关键词 → 跑 MediaCrawler 搜索爬取（首次弹浏览器扫码登录，登录态缓存）
@@ -125,7 +124,7 @@ def main() -> int:
     ent_prefs = []
     if sp_file.exists():
         try:
-            ent_prefs = list(((json.loads(sp_file.read_text(encoding="utf-8")).get("ai_answers") or {}).get("ent_prefs") or []))
+            ent_prefs = list((json.loads(sp_file.read_text(encoding="utf-8")).get("ai_answers") or {}).get("ent_prefs") or [])
         except Exception:
             pass
 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 r"""下载按钮深度诊断：有头 Edge（用户可见），对 8 个下载按钮逐个真实点击，
 每步打日志（fetch 状态/blob 大小/对象URL/文件名/下载事件/落盘字节），找出"下载不出来"的断点。
 用法（项目根，激活 venv 后）：.venv\Scripts\python.exe scripts\dl_debug.py
@@ -20,6 +19,7 @@ KINDS = [
     ("pdf_main", "推荐清单 PDF (Top10)"),
     ("pdf_all27", "推荐清单全量 PDF"),
     ("docx", "推荐清单 DOCX"),
+    ("xlsx", "推荐清单 XLSX"),
     ("md", "推荐清单 MD"),
     ("json", "JSON 数据"),
 ]

@@ -1,0 +1,73 @@
+name: PianoFlow Local Review
+version: 1.0.0
+schema: v1
+
+# Free code review: uses an OpenAI-compatible endpoint running on your own
+# machine or LAN (point apiBase at it, e.g. a vLLM/SGLang server). No vendor
+# account, no PAT, no code leaves your network.
+#
+# Schema notes (verified against @continuedev/config-yaml in cli 1.5.47):
+#   model: name + model + provider are required; `label` is NOT a valid key.
+#   rule:  the body field is `rule`, not `content`.
+models:
+  - name: Qwen3.8-27B
+    provider: openai
+    model: Qwen3.8-27B
+    apiBase: http://127.0.0.1:8000/v1
+    apiKey: EMPTY
+    roles:
+      - chat
+      - edit
+      - apply
+
+# The fixed review checklist. Concrete instructions beat vague ones.
+rules:
+  - name: pianoflow-review-checklist
+    alwaysApply: true
+    description: The six things every PianoFlow change must be checked against
+    rule: |
+      Review the change against exactly these six points, in order, and report
+      findings as CRITICAL / HIGH / MEDIUM / LOW with file:line. Say
+      "no findings" explicitly when a point is clean.
+
+      1. Async correctness
+         - No blocking I/O, sleep, requests, or CPU work on the event loop.
+           yt-dlp, librosa and music21 must all go through asyncio.to_thread.
+         - Every asyncio.create_task result is strongly referenced.
+         - Long-lived SSE handlers unsubscribe in a finally block.
+
+      2. Error handling and timeouts
+         - Every outbound HTTP call has a timeout; SSE frames have a keepalive.
+         - Domain errors are typed (core.errors) and mapped to a status code.
+           No stack traces reach the client.
+         - Background tasks always reach a terminal stage.
+
+       3. Paths on a space-containing root
+          - The repo root path contains a space (e.g. "Program Files\pianoflow").
+          - All path building uses pathlib; no string concatenation.
+         - yt-dlp outtmpl and subprocess argv are correctly escaped.
+         - Cache reads resolve inside the cache root (no traversal).
+
+      4. Rate limiting and platform compliance
+         - Bilibili risk control returns HTTP 412 / code -412: map it to a
+           readable 503, never a 500, and never retry immediately.
+         - Searches and downloads are throttled; downloads stay serialised.
+         - Personal-use policy: single track, duration cap, local storage only.
+
+      5. No secrets, no accidental data loss
+         - No tokens, cookies or API keys in code or config.
+         - Cleanup only deletes inside the cache root and never the entry that
+           is currently in use (protected set).
+
+      6. Tests
+         - New behaviour has a test; the network is always mocked.
+         - No test depends on wall-clock timing or on a real platform.
+
+      Project facts that are easy to get wrong:
+      - Music source is Bilibili only. Search is our own client
+        (spi -> buvid3/buvid4 -> /x/web-interface/search/type); downloading is
+        yt-dlp (it implements the signed playurl endpoint).
+      - Cover images go through GET /api/media/cover (hotlink protection).
+      - The UI uses ONE multiplexed SSE stream (/api/events) plus 2s polling;
+        per-task streams would exhaust the browser connection budget.
+      - Quality gate: scripts/gate.ps1 runs ruff, mypy, bandit and pytest.

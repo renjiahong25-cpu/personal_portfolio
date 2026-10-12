@@ -217,7 +217,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useChatStore } from '@/stores/chat'
-import { chatQueryStream, chatActionQuery } from '@/api/chat'
+import { chatQueryStream, chatActionQuery, getHistory } from '@/api/chat'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import StreamingText from '@/components/StreamingText.vue'
 import SourceTree from '@/components/SourceTree.vue'
@@ -402,11 +402,44 @@ const sendFeedback = (msg, type) => {
     })
 }
 
-// 选择历史会话
-const selectHistory = (item) => {
-  chat.currentSessionId = item.session_id
-  // TODO: 加载该会话详情
-  ElMessage.info('已切换到该会话')
+// 选择历史会话：调 /api/chat/history 回放该会话消息（复用现有消息渲染：StreamingText markdown + SourceTree 溯源）
+const selectHistory = async (item) => {
+  const sid = item.session_id
+  if (!sid || chat.streaming) return
+  if (sid === chat.currentSessionId && chat.messages.length) {
+    ElMessage.info('已切换到该会话')
+    return
+  }
+  chat.currentSessionId = sid
+  chat.messages = []
+  try {
+    const res = await getHistory(sid, 100)
+    const rows = (res?.data || res || []).slice()
+    rows.reverse() // 后端按时间倒序 → 转为时间正序渲染
+    const msgs = []
+    rows.forEach((row) => {
+      const ts = row.create_time
+        ? new Date(row.create_time.replace(' ', 'T')).getTime() || Date.now()
+        : Date.now()
+      msgs.push({ role: 'user', content: row.query || '', query: row.query || '', time: ts })
+      msgs.push({
+        role: 'assistant',
+        content: row.response || '',
+        thinking: '',
+        query: row.query || '',
+        sources: row.source_list || [],
+        risk_tips: row.risk_tips || '',
+        time: ts,
+      })
+    })
+    chat.messages = msgs
+    ElMessage.success(`已加载 ${rows.length} 条历史消息`)
+  } catch (e) {
+    console.error('加载会话历史失败', e)
+    ElMessage.error('加载会话历史失败')
+  } finally {
+    scrollToBottom()
+  }
 }
 
 // 溯源选择

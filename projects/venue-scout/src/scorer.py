@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .models import EntertainmentSummary, MeetingRoom, Season, Venue
+from .models import Venue
 
 
 def _lodging_score(v: Venue, min_cap: int) -> tuple[float, bool]:
@@ -18,6 +18,9 @@ def _lodging_score(v: Venue, min_cap: int) -> tuple[float, bool]:
 
 
 def _meeting_score(v: Venue, min_rooms: int, cap_min: int, cap_max: int) -> tuple[float, bool]:
+    if min_rooms <= 0:
+        # 会议需求=none：会议室不在本次场地范围内，不参与硬过滤与加权
+        return 0.0, True
     if not v.meeting_rooms:
         return 0.0, False
     unknown = [r for r in v.meeting_rooms if r.capacity is None]
@@ -88,17 +91,18 @@ def score_venue(v: Venue, q) -> Venue:
 
     weights = {
         "lodging": 0.25,
-        "meeting": 0.30,
+        "meeting": 0.30 if q.min_meeting_rooms > 0 else 0.0,
         "drive": 0.20,
         "entertainment": 0.20,
         "rating": 0.05,
     }
-    total = sum(parts[k] * weights[k] for k in weights)
+    wsum = sum(weights[k] for k in weights if weights[k] > 0) or 1.0
+    total = sum(parts[k] * weights[k] for k in weights if weights[k] > 0) / wsum
     v.score = round(total, 2)
     v.score_breakdown = {k: round(val, 2) for k, val in parts.items()}
     v.pass_hard_filters = all(oks)
     # needs_manual if meeting capacity unverified or none fit 10-15 band
-    if v.meeting_rooms and (
+    if q.min_meeting_rooms > 0 and v.meeting_rooms and (
         any(r.capacity is None for r in v.meeting_rooms)
         or not any(
             r.capacity is not None

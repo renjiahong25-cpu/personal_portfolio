@@ -15,15 +15,13 @@
     7. 保存截图 + 回答全文到 logs/
 """
 import argparse
-import json
 import os
-import re
 import sys
 import time
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-LOG_DIR = r"D:\Program Files\supplychainpolicyagent\logs"
+LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "logs")
 
 PASSED = []
 FAILED = []
@@ -144,7 +142,6 @@ def main():
         if ai_bubble.locator(".thinking-text").count():
             thinking = ai_bubble.locator(".thinking-text").last.inner_text()
         source_count = ai_bubble.locator(".source-tree, .source-item, .source-node").count()
-        structured = ai_bubble.locator(".structured-result").count()
 
         check("AI 回答出现", bool(answer_text.strip()), f"len={len(answer_text)}")
         check("非'暂无规则'式兜底",

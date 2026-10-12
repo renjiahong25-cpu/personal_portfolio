@@ -171,7 +171,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { addSite, runSpider } from '@/api/spider'
+import { addSite, runSpider, getSites } from '@/api/spider'
 import { ElMessage } from 'element-plus'
 import EmptyState from '@/components/EmptyState.vue'
 
@@ -206,59 +206,36 @@ const addForm = ref({
 const logDialog = ref({ visible: false })
 const logLines = ref([])
 
-// 加载站点（示例数据填充）
+// 后端状态值（SpiderSiteStatus）→ 前端展示键
+const SITE_STATUS_KEYS = { 1: 'running', 2: 'paused', 3: 'error', 4: 'pending' }
+
+// 后端 site_to_dict 字段 → 模板字段（status 为 int，需映射；doc_count 后端暂无该字段，兜底 0）
+const normalizeSite = (s) => ({
+  id: s.id,
+  name: s.site_name,
+  url: s.site_url,
+  site_type: s.site_type || 'gov',
+  doc_count: s.doc_count || 0,
+  updated_at: s.last_crawl_time || s.create_time,
+  status: SITE_STATUS_KEYS[s.status] || 'idle',
+  config: s.yaml_config || '',
+})
+
+// 加载站点（真实接口 GET /api/spider/site/list）
 const loadSites = async () => {
   loadingSites.value = true
   try {
-    // 实际根据后端API接入
-    // const res = await getSites()
-    // sites.value = res.data || []
-    // 示例数据
-    sites.value = sampleSites()
+    const res = await getSites()
+    if (res && res.code !== 200) {
+      throw new Error(res.msg || '接口返回异常')
+    }
+    sites.value = (res?.data || []).map(normalizeSite)
   } catch (e) {
+    // 用户可见错误已由 axios 拦截器统一提示，这里仅记录日志
     console.error('加载站点失败', e)
-    ElMessage.error('加载站点失败')
   } finally {
     loadingSites.value = false
   }
-}
-
-// 示例站点数据
-const sampleSites = () => {
-  return [
-    {
-      id: 1,
-      name: '德国海关总署',
-      url: 'https://www.zoll.de',
-      status: 'running',
-      site_type: 'gov',
-      doc_count: 128,
-      updated_at: '2026-09-05T10:30:00',
-      config: 'name: 德国海关总署\nurl: https://www.zoll.de\n' +
-        'allow_domains:\n  - zoll.de\nrules:\n  - name: 清关公告\n' +
-        '    selectors:\n      title: h1\n      content: article\n',
-    },
-    {
-      id: 2,
-      name: '欧盟委员会贸易',
-      url: 'https://trade.ec.europa.eu',
-      status: 'pending',
-      site_type: 'gov',
-      doc_count: 0,
-      updated_at: '2026-09-06T08:00:00',
-      config: 'name: 欧盟委员会贸易\nurl: https://trade.ec.europa.eu\nrules:\n  - name: 规则文章\n    selectors:\n      title: h1\n',
-    },
-    {
-      id: 3,
-      name: '德国联邦经济部',
-      url: 'https://www.bmwi.de',
-      status: 'error',
-      site_type: 'gov',
-      doc_count: 45,
-      updated_at: '2026-09-04T14:20:00',
-      config: 'name: 德国联邦经济部\nurl: https://www.bmwi.de\nrules:\n  - name: 经贸政策\n    selectors:\n      title: h1\n',
-    },
-  ]
 }
 
 // 选择站点
@@ -336,7 +313,14 @@ const submitAdd = async () => {
   }
   adding.value = true
   try {
-    await addSite(addForm.value)
+    // 后端契约 SpiderSiteReq = { site_name, site_url, yaml_config }；
+    // 采集说明作为 YAML 注释并入 yaml_config（无配置时空串触发 AI 冷启动）
+    const desc = addForm.value.description.trim()
+    await addSite({
+      site_name: addForm.value.name,
+      site_url: addForm.value.url,
+      yaml_config: desc ? `# ${desc}\n` : '',
+    })
     ElMessage.success('站点添加成功')
     addDialog.value.visible = false
     loadSites()

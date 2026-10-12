@@ -1,0 +1,67 @@
+﻿# PianoFlow fast inner loop: format, lint, tests, secrets, model integrity.
+#
+# Everything here runs from the repository root in well under a minute.
+# Heavier checks (mypy, bandit, aoci governance) live in scripts/gate.ps1,
+# because they need backend_python as the working directory to pick up
+# pyproject.toml.
+#
+# Run directly, with the project environment's interpreter (PIANOFLOW_PYTHON or
+# PATH; scripts/gate.ps1 resolves it the same three-tier way):
+#   python -m pre_commit run --all-files
+#
+# Every hook is `repo: local` + `language: system` on purpose: the author's
+# machine cannot reach github.com:443, so the usual remote hook repos cannot be
+# cloned. The tools live in the project environment.
+
+repos:
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff (lint + autofix)
+        entry: python -m ruff check --fix --exit-non-zero-on-fix --config backend_python/pyproject.toml
+        language: system
+        types: [python]
+        require_serial: true
+
+      - id: ruff-format
+        name: ruff (format)
+        entry: python -m ruff format --config backend_python/pyproject.toml
+        language: system
+        types: [python]
+        require_serial: true
+
+      - id: pytest
+        name: pytest (unit tests)
+        # The path is named explicitly because this hook runs from the repository
+        # root, where a bare `pytest` also collects stemdeck/tests - a third-party
+        # checkout whose conftest.py collides with backend_python/tests/conftest.py
+        # and aborts collection on ImportPathMismatchError. backend_python/tests is
+        # the only suite this project owns.
+        entry: python -m pytest -q backend_python/tests
+        language: system
+        pass_filenames: false
+        require_serial: true
+        files: ^backend_python/(src|tests)/
+
+      - id: model-manifest
+        name: model weights present and valid
+        entry: python backend_python/scripts/fetch_models.py --verify
+        language: system
+        pass_filenames: false
+        files: ^(models/|backend_python/scripts/fetch_models\.py$)
+        require_serial: true
+
+      - id: no-secrets
+        name: no committed secrets
+        entry: python backend_python/scripts/check_secrets.py
+        language: system
+        pass_filenames: false
+        files: .
+        require_serial: true
+
+      - id: trailing-whitespace
+        name: trailing whitespace
+        entry: python backend_python/scripts/fix_whitespace.py
+        language: system
+        types: [text]
+        require_serial: true

@@ -13,10 +13,10 @@ npm install -g @afumu/web-agent
 web-agent doctor
 ```
 
-或从 [personal_portfolio](https://github.com/renjiahong25-cpu/personal_portfolio) 仓库的源码安装（本包位于 `web-agent/packages/web-agent`）：
+或从 [personal_portfolio](https://github.com/renjiahong25-cpu/personal_portfolio) 仓库的源码安装（本包位于 `projects/web-agent/packages/web-agent`）：
 
 ```bash
-cd personal_portfolio/web-agent
+cd personal_portfolio/projects/web-agent
 npm install -g ./packages/web-agent
 web-agent doctor
 ```
@@ -34,7 +34,7 @@ npx skills add afumu/web-agent --skill web-agent-control
 从源码安装时，在 `web-agent` 仓库目录下执行：
 
 ```bash
-cd personal_portfolio/web-agent
+cd personal_portfolio/projects/web-agent
 npx skills add . --skill web-agent-control
 ```
 

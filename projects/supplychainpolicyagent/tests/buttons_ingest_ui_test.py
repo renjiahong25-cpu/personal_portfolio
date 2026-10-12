@@ -28,15 +28,16 @@ import json
 import os
 import subprocess
 import sys
+from pathlib import Path
 import time
 import urllib.request
 import uuid
 
-sys.path.insert(0, r"D:\Program Files\supplychainpolicyagent")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.stdout.reconfigure(encoding="utf-8")
 
-ROOT = r"D:\Program Files\supplychainpolicyagent"
-PY = r"D:\conda_envs\cross-border-agent\python.exe"
+ROOT = str(Path(__file__).resolve().parent.parent)
+PY = os.getenv("SCP_PYTHON", "python")  # env 可覆盖，默认 PATH 中的 python
 BACKEND_URL = "http://127.0.0.1:8000"
 FRONTEND_URL = "http://127.0.0.1:5173"
 LOG_DIR = os.path.join(ROOT, "logs")
@@ -132,7 +133,7 @@ def phase1_backend():
     while time.time() < deadline:
         if bp.poll() is not None:
             with open(os.path.join(LOG_DIR, "uvicorn.err.log"), encoding="utf-8", errors="ignore") as f:
-                log("\n".join(["  " + l for l in f.read().splitlines()[-40:]]))
+                log("\n".join(["  " + ln for ln in f.read().splitlines()[-40:]]))
             log("RESULT: FAILED (后端进程死亡)")
             sys.exit(1)
         if http_code(f"{BACKEND_URL}/health") == 200:
@@ -265,8 +266,8 @@ def phase3_button_flow(session_id):
         n_btns = btns_t1.count()
         labels = [btns_t1.nth(i).inner_text() for i in range(n_btns)] if n_btns else []
         check("T1/L4缺口出现按钮行", n_btns >= 2, str(labels))
-        check("T1/含AI搜索按钮", any("AI 自动搜索官网并入库" in (l or "") for l in labels), str(labels))
-        check("T1/含不需要按钮", any("不需要" in (l or "") for l in labels), str(labels))
+        check("T1/含AI搜索按钮", any("AI 自动搜索官网并入库" in (lb or "") for lb in labels), str(labels))
+        check("T1/含不需要按钮", any("不需要" in (lb or "") for lb in labels), str(labels))
         check("T1/文案提示AI搜索", "AI" in a1 and "法国" in a1, a1[:80])
 
         # ---- C1: 点击 AI 自动搜索官网并入库 ----
@@ -274,8 +275,8 @@ def phase3_button_flow(session_id):
         check("C1/返回官方源列表", ("impots" in a_c1 or "douane" in a_c1 or "legifrance" in a_c1), a_c1[:80])
         btns_c1 = page.locator(".ai-message .ai-bubble").last.locator(".msg-actions button")
         labels_c1 = [btns_c1.nth(i).inner_text() for i in range(btns_c1.count())] if btns_c1.count() else []
-        check("C1/出现确认入库按钮", any("确认入库" in (l or "") for l in labels_c1), str(labels_c1))
-        check("C1/出现取消按钮", any("取消" in (l or "") for l in labels_c1), str(labels_c1))
+        check("C1/出现确认入库按钮", any("确认入库" in (lb or "") for lb in labels_c1), str(labels_c1))
+        check("C1/出现取消按钮", any("取消" in (lb or "") for lb in labels_c1), str(labels_c1))
 
         # ---- C2: 点击 确认入库 ----
         a_c2 = click_action_button(page, "确认入库", "C2", wait_sec=60)

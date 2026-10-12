@@ -1,0 +1,23 @@
+{
+  "models": [
+    {
+      "name": "basic_pitch",
+      "file": "basic_pitch/nmp.onnx",
+      "url": "https://huggingface.co/AEmotionStudio/basic-pitch-onnx-models/resolve/main/nmp.onnx",
+      "license": "Apache-2.0 (spotify/basic-pitch)",
+      "note": "ICASSP 2022 note multi-pitch model, converted to ONNX by tf2onnx.",
+      "bytes": 230444,
+      "sha256": "2c3c1d144bfa61ad236e92e169c13535c880469a12a047d4e73451f2c059a0ec"
+    },
+    {
+      "name": "bytedance",
+      "file": "bytedance/piano_transcription.onnx",
+      "url": "https://huggingface.co/LanOss/mobimml-piano-transcription/resolve/main/piano_transcription.onnx",
+      "license": "cc-by-4.0 (declared by the uploader; unverified provenance)",
+      "note": "High-resolution piano transcription with pedals: onset F1 96.77, pedal F1 91.86 on MAESTRO (Kong et al. 2020). Third-party ONNX export; the upstream code is Apache-2.0 but these weights were not published by the authors. Load with graph optimisations disabled: ORT's MatMul+BatchNorm fusion mis-infers a rank-3 Gemm in this graph.",
+      "committed": false,
+      "bytes": 154214201,
+      "sha256": "6ec4f07640837df2fcd2cede9c540865acff341def93fbd6432548dee169195a"
+    }
+  ]
+}

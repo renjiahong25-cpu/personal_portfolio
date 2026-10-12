@@ -10,7 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scripts.extract_edge_ctrip_cookie import SETTINGS, to_header, write_yaml_cookie  # noqa: E402
+from scripts.extract_edge_ctrip_cookie import SETTINGS, write_yaml_cookie
 
 CDP = "http://127.0.0.1:9333"
 EDGE = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"

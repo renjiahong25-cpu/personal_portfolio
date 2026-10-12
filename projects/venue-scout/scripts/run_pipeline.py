@@ -11,14 +11,21 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from src import xhs_client
 from src.amap_client import AMapClient
 from src.creds import account_status, terminal_lines
 from src.ctrip_client import CtripClient, enrich_meeting_rooms
-from src.models import EntertainmentSummary, MeetingRoom, NearbyPOI, Query, Season, Venue
+from src.models import (
+    EntertainmentSummary,
+    MeetingRoom,
+    NearbyPOI,
+    Query,
+    Season,
+    Venue,
+)
 from src.report import write_reports
 from src.scorer import score_venue
 from src.store import load_db, load_seeds, save_db, upsert
-from src import xhs_client
 
 
 def load_settings() -> dict:

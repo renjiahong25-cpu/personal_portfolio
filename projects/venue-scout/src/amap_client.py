@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import threading
 import time
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
@@ -63,7 +63,7 @@ class AMapClient:
             cache_set(cache_key, data)
         return data
 
-    def geocode(self, address: str, city: str = "") -> Optional[str]:
+    def geocode(self, address: str, city: str = "") -> str | None:
         params: dict[str, Any] = {"address": address}
         if city:
             params["city"] = city
@@ -123,7 +123,7 @@ class AMapClient:
 
     def driving(
         self, origin: str, destination: str, strategy: int = 0, extensions: str = "base"
-    ) -> Optional[dict]:
+    ) -> dict | None:
         data = self._get(
             DRIVING_URL,
             {
@@ -156,7 +156,7 @@ class AMapClient:
             out["via"] = poly
         return out
 
-    def drive_minutes(self, origin: str, destination: str) -> Optional[int]:
+    def drive_minutes(self, origin: str, destination: str) -> int | None:
         r = self.driving(origin, destination)
         if not r:
             return None

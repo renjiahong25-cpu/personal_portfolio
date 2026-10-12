@@ -7,10 +7,11 @@ D. ChatFlow._handle_ingest_intent 路由（mock service：URL直给/进行中/�
 用法: python tests/test_ingest_intent.py
 """
 import sys
+from pathlib import Path
 import asyncio
 import json
 
-sys.path.insert(0, r"D:\Program Files\supplychainpolicyagent")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.stdout.reconfigure(encoding="utf-8")
 
 PASSED, FAILED = [], []
