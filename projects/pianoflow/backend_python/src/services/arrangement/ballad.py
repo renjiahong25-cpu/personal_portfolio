@@ -72,15 +72,17 @@ class SectionStyle:
 
 
 #: The tuned default: quiet flowing intro, half-broken verse, a full-arp loud chorus,
-#: an arpeggiated bridge, and a fading outro. A section whose *measured* melody
-#: density reaches the chorus level is escalated to this chorus style at arrange time
-#: (the energy detector's labels are coarse: a long "bridge" often holds the repeated
-#: choruses, which is where the tune actually needs the full treatment).
+#: an arpeggiated bridge, a flowing interlude, and a fading outro. A section whose
+#: *measured* melody density reaches the chorus level is escalated to this chorus
+#: style at arrange time (the energy detector's labels are coarse: a long "bridge"
+#: often holds the repeated choruses, which is where the tune actually needs the full
+#: treatment).
 DEFAULT_STYLES: Mapping[str, SectionStyle] = {
     "intro": SectionStyle(TextureName.ARLONG, 2, (46, 64)),
     "verse": SectionStyle(TextureName.HALF, 3, (54, 74)),
     "chorus": SectionStyle(TextureName.ARPFULL, 4, (66, 98)),
     "bridge": SectionStyle(TextureName.ARLONG, 3, (58, 82)),
+    "interlude": SectionStyle(TextureName.ARLONG, 2, (46, 68)),
     "outro": SectionStyle(TextureName.ARLONG, 2, (46, 68)),
 }
 

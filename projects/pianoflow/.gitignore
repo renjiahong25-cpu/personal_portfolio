@@ -3,8 +3,6 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .pytest_cache/
-.mypy_cache/
-.ruff_cache/
 .coverage
 htmlcov/
 .venv/
@@ -15,25 +13,19 @@ node_modules/
 frontend/dist/
 *.local
 
-# Runtime data (local only, never committed).
-#
-# Anchored to the repository root on purpose: an unanchored `cache/` also
-# matched the *source* package backend_python/src/services/cache/, which kept
-# the content-addressed audio cache out of the repository and broke the
-# committed tree. The leading slash limits each rule to the runtime directory.
-/cache/
-/output/
-/logs/
-/data/
+# Runtime data (local only, never committed)
+cache/
+output/
+logs/
+data/
 
-# Native toolchain and model weights, unpacked locally (repository root only,
-# for the same reason as above).
+# Native toolchain and model weights, unpacked locally.
 #
 # fluidsynth's release archive and the SoundFont are 2.6 MB and 206 MB of
 # third-party binary. Neither belongs in history: they are not ours to
 # redistribute, and MuseScore_General.sf2 is GPL. Both are resolved at runtime
 # through PIANOFLOW_FLUIDSYNTH_LOCATION and PIANOFLOW_SOUNDFONT_PATH.
-/tools/
+tools/
 
 # The SoundFont is GPL and 206 MB.
 #

@@ -142,8 +142,8 @@ function inRange(midi) {
   flex-wrap: nowrap;
   align-items: flex-start;
   padding: 12px 8px 6px;
-  background: linear-gradient(180deg, #1c2430, #141a22);
-  border: 1px solid var(--border);
+  background: linear-gradient(180deg, #17171a, #101013);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
   overflow-x: auto;
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.5);
@@ -200,8 +200,9 @@ function inRange(midi) {
 
 /* Active must be unmistakable: it is read at a glance while playing. */
 .key.white.on {
-  background: linear-gradient(180deg, #8fd0ff 0%, #3a9ce8 78%, #1d6fb8 100%);
-  box-shadow: inset 0 -4px 10px rgba(0, 0, 0, 0.35);
+  background: linear-gradient(180deg, #ffffff 0%, #f4f4f5 78%, #d4d4d8 100%);
+  border-color: #fff;
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.55), inset 0 -4px 10px rgba(0, 0, 0, 0.18);
 }
 
 .blacks {
@@ -246,8 +247,8 @@ function inRange(midi) {
 }
 
 .key.black.on {
-  background: linear-gradient(180deg, #7fc4ff 0%, #1f6fb5 40%, #0c4276 100%);
-  box-shadow: 0 0 12px rgba(88, 166, 255, 0.9);
+  background: linear-gradient(180deg, #fafafa 0%, #a1a1aa 40%, #52525b 100%);
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.55);
 }
 
 .label {
@@ -255,11 +256,11 @@ function inRange(midi) {
   z-index: 1;
   margin-bottom: 1px;
   font-size: 8px;
-  color: #8b949e;
+  color: #71717a;
   pointer-events: none;
 }
 
 .key.white.on .label {
-  color: #eaf4ff;
+  color: #18181b;
 }
 </style>

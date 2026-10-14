@@ -53,14 +53,16 @@ def test_a_score_has_one_measure_per_bar() -> None:
 
 
 def test_notes_land_on_the_bar_they_start_in() -> None:
+    # Melody pitches stay inside C4-C5 so the arrange path's register fold
+    # cannot move them under the test.
     grid = grid_at()
     result = arrange(
-        buckets_from(grid, [note(0.0, 0.4, 76), note(2.0, 0.4, 77)], [note(1.0, 0.4, 48)]),
+        buckets_from(grid, [note(0.0, 0.4, 72), note(2.0, 0.4, 71)], [note(1.0, 0.4, 48)]),
         grid,
     )
     score = build_score(result, grid)
-    assert [n.midi for n in score.measures[0].right] == [76]
-    assert [n.midi for n in score.measures[1].right] == [77]
+    assert [n.midi for n in score.measures[0].right] == [72]
+    assert [n.midi for n in score.measures[1].right] == [71]
     assert [n.midi for n in score.measures[0].left] == [48]
 
 
@@ -87,9 +89,9 @@ def test_a_note_crossing_a_barline_is_split_and_tied() -> None:
     grid = grid_at()
     # At 120 BPM a beat is 0.5 s. Starting 0.2 s in and ringing 2.5 s means
     # 5 beats from beat 0.5, which runs 1.5 beats past the 4-beat barline.
-    result = arrange(buckets_from(grid, [note(0.2, 2.5, 79)], [note(0.0, 0.4, 48)]), grid)
+    result = arrange(buckets_from(grid, [note(0.2, 2.5, 71)], [note(0.0, 0.4, 48)]), grid)
     score = build_score(result, grid)
-    pieces = [n for m in score.measures for n in m.right if n.midi == 79]
+    pieces = [n for m in score.measures for n in m.right if n.midi == 71]
     assert len(pieces) == 2
     assert pieces[0].tied_to_next
     assert not pieces[1].tied_to_next
@@ -102,9 +104,9 @@ def test_a_note_crossing_a_barline_is_split_and_tied() -> None:
 
 def test_a_split_note_preserves_its_total_duration() -> None:
     grid = grid_at()
-    result = arrange(buckets_from(grid, [note(0.2, 3.6, 79)], []), grid)
+    result = arrange(buckets_from(grid, [note(0.2, 3.6, 71)], []), grid)
     score = build_score(result, grid)
-    pieces = [n for m in score.measures for n in m.right if n.midi == 79]
+    pieces = [n for m in score.measures for n in m.right if n.midi == 71]
     assert len(pieces) == 2
     assert sum(p.duration_beats for p in pieces) == pytest.approx(7.25)
     assert all(p.tied_to_next for p in pieces[:-1])
@@ -236,9 +238,9 @@ def test_a_score_serialises_for_the_api() -> None:
 
 def test_note_serialises() -> None:
     grid = grid_at()
-    result = arrange(buckets_from(grid, [note(0.0, 0.4, 76)], []), grid)
+    result = arrange(buckets_from(grid, [note(0.0, 0.4, 72)], []), grid)
     payload = build_score(result, grid).measures[0].right[0].to_dict()
-    assert payload["midi"] == 76
+    assert payload["midi"] == 72
     assert payload["tiedToNext"] is False
 
 

@@ -41,22 +41,12 @@ class TestNames:
         assert all(hint.strip() for hint in TRANSCRIBER_HINTS.values())
 
 
-#: Construction of the Transkun transcriber needs an interpreter that has torch.
-#: is_available() - the same check the options endpoint uses - is the portable
-#: way to ask, so a machine without that environment skips instead of failing.
-requires_transkun = pytest.mark.skipif(
-    not TranskunTranscriber.is_available(),
-    reason="the transkun environment is not installed",
-)
-
-
 class TestProtocol:
     """The two implementations share no base class; the protocol is the whole contract."""
 
     def test_basic_pitch_satisfies_it(self):
         assert isinstance(BasicPitchTranscriber(), Transcriber)
 
-    @requires_transkun
     def test_transkun_satisfies_it(self):
         assert isinstance(TranskunTranscriber(), Transcriber)
 
@@ -65,7 +55,6 @@ class TestBuild:
     def test_basic_pitch_needs_nothing_installed(self):
         assert isinstance(_build_transcriber("basic_pitch"), BasicPitchTranscriber)
 
-    @requires_transkun
     def test_transkun_is_built_when_available(self):
         assert isinstance(_build_transcriber("transkun"), TranskunTranscriber)
 
@@ -133,36 +122,47 @@ class TestRequestDefault:
 
 
 class TestUploadPathCarriesTheModel:
-    """The upload endpoint reads options from multipart fields, not JSON.
+    """The upload endpoints read options from multipart fields, not JSON.
 
-    It keeps an explicit whitelist, so a field the JSON path honours and the upload path
-    omits is the worst kind of bug: the upload runs a different model than the user chose
-    and still reports success. Both paths have to carry ``transcriber``.
+    Each module keeps an explicit whitelist (``option_fields``), so a field the JSON path
+    honours and the upload path omits is the worst kind of bug: the upload runs a different
+    model than the user chose and still reports success. Both modules have to carry
+    ``transcriber``.
     """
 
-    @staticmethod
-    def _uploaded_field_names() -> tuple[str, ...]:
-        import inspect
+    def test_both_upload_whitelists_include_transcriber(self):
+        from api.handlers.score import (
+            ScoreArrangeUploadHandler,
+            ScoreTranscribeUploadHandler,
+        )
 
-        from api.handlers.score import ScoreUploadHandler
+        assert "transcriber" in ScoreTranscribeUploadHandler.option_fields
+        assert "transcriber" in ScoreArrangeUploadHandler.option_fields
 
-        source = inspect.getsource(ScoreUploadHandler._options_from_fields)
-        block = source.split("for field_name in (", 1)[1].split(")", 1)[0]
-        return tuple(part.strip().strip('"') for part in block.split(",") if part.strip())
+    def test_the_shared_core_fields_are_on_both_whitelists(self):
+        # validate_request reads fidelity, difficulty, title and previewSeconds for every
+        # request. Anything a module's JSON path honours and its upload omits is a silent
+        # divergence, so the core fields must be whitelisted on both uploads.
+        from api.handlers.score import (
+            ScoreArrangeUploadHandler,
+            ScoreTranscribeUploadHandler,
+        )
 
-    def test_the_upload_whitelist_includes_transcriber(self):
-        assert "transcriber" in self._uploaded_field_names()
+        for field in ("fidelity", "difficulty", "title", "previewSeconds"):
+            assert field in ScoreTranscribeUploadHandler.option_fields, field
+            assert field in ScoreArrangeUploadHandler.option_fields, field
 
-    def test_the_upload_whitelist_matches_what_the_json_path_accepts(self):
-        # validate_request reads fidelity, difficulty, pattern, title, previewSeconds and
-        # transcriber. Anything in one and not the other is a silent divergence.
-        import inspect
+    def test_module_owned_fields_follow_their_module(self):
+        # fillChords only acts in the transcribed mode, so it is owned by the transcribe
+        # upload; pattern/texture are owned by the arrange upload. Crossing the line is a
+        # 400 on the JSON path, so the uploads must not offer the option at all.
+        from api.handlers.score import (
+            ScoreArrangeUploadHandler,
+            ScoreTranscribeUploadHandler,
+        )
 
-        from services.score.service import validate_request
-
-        source = inspect.getsource(validate_request)
-        for field in ("fidelity", "difficulty", "pattern", "title", "previewSeconds"):
-            assert field in self._uploaded_field_names(), field
-        # fillChords is read from the JSON path only, by design: it is a form field the
-        # upload endpoint handles itself rather than passing through this payload.
-        assert source.count("fillChords") >= 1
+        assert "fillChords" in ScoreTranscribeUploadHandler.option_fields
+        assert "fillChords" not in ScoreArrangeUploadHandler.option_fields
+        for field in ("pattern", "texture", "texturePlan", "accompaniment"):
+            assert field in ScoreArrangeUploadHandler.option_fields, field
+            assert field not in ScoreTranscribeUploadHandler.option_fields, field

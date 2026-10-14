@@ -1,4 +1,4 @@
-"""On-disk audio cache: content-addressed, TTL'd and size-capped.
+﻿"""On-disk audio cache: content-addressed, TTL'd and size-capped.
 
 Layout::
 
@@ -16,10 +16,9 @@ import hashlib
 import json
 import logging
 import time
-from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from core.errors import NotFoundError
 
@@ -43,6 +42,8 @@ class CacheEntry:
     last_access_at: float
     #: Original page on the music platform, so the UI can offer "open source".
     webpage_url: str | None = None
+    #: Cover image URL the search leg knew, so the library wall can show art.
+    thumbnail: str | None = None
 
     @property
     def age_seconds(self) -> float:
@@ -62,6 +63,7 @@ class CacheEntry:
             "createdAt": self.created_at,
             "lastAccessAt": self.last_access_at,
             "webpageUrl": self.webpage_url,
+            "thumbnail": self.thumbnail,
         }
 
 
@@ -102,7 +104,7 @@ class CacheManager:
         return self._root
 
     def make_key(self, source: str, source_id: str, audio_format: str) -> str:
-        raw = f"{source}:{source_id}:{audio_format}".encode()
+        raw = f"{source}:{source_id}:{audio_format}".encode("utf-8")
         # Content addressing only: this key names a cache file, it is not a
         # security primitive, so sha1 is deliberate (and bandit is told so).
         return hashlib.sha1(raw, usedforsecurity=False).hexdigest()
@@ -137,7 +139,9 @@ class CacheManager:
             logger.warning("cache metadata without audio file, dropping: %s", key)
             self._forget(key)
             return None
-        refreshed = self._write_meta(entry.__dict__ | {"last_access_at": self._clock()})
+        refreshed = self._write_meta(
+            entry.__dict__ | {"last_access_at": self._clock()}
+        )
         return refreshed
 
     def get_entry(self, key: str) -> CacheEntry:
@@ -173,6 +177,7 @@ class CacheManager:
         duration: float | None,
         audio_file: Path,
         webpage_url: str | None = None,
+        thumbnail: str | None = None,
     ) -> CacheEntry:
         """Move/record a freshly produced audio file into the cache."""
         self._root.mkdir(parents=True, exist_ok=True)
@@ -204,6 +209,7 @@ class CacheManager:
                 "created_at": now,
                 "last_access_at": now,
                 "webpage_url": webpage_url,
+                "thumbnail": thumbnail,
             }
         )
         self.enforce_limits(protect={key})
@@ -240,8 +246,15 @@ class CacheManager:
         meta_file.unlink(missing_ok=True)
 
     # --------------------------------------------------------------- cleanup
-    def cleanup(self, *, protect: set[str] | None = None) -> CleanupReport:
-        """Delete expired entries first, then evict LRU until under the cap."""
+    def cleanup(
+        self, *, protect: set[str] | None = None, purge_expired: bool = True
+    ) -> CleanupReport:
+        """Delete expired entries (when asked), then evict LRU until under the cap.
+
+        ``purge_expired`` is on for the explicit "clean by rules" action. The
+        registration path uses the cap-only flavour: a fresh download must not
+        silently age the rest of the personal library out of existence.
+        """
         protected = protect or set()
         entries = self.entries()
         deleted: list[str] = []
@@ -249,7 +262,10 @@ class CacheManager:
 
         survivors: list[CacheEntry] = []
         for entry in entries:
-            expired = (self._clock() - entry.created_at) > self._ttl_seconds
+            expired = (
+                purge_expired
+                and (self._clock() - entry.created_at) > self._ttl_seconds
+            )
             if expired and entry.key not in protected:
                 self._delete_entry(entry)
                 deleted.append(entry.key)
@@ -270,7 +286,7 @@ class CacheManager:
             freed += candidate.size_bytes
             total -= candidate.size_bytes
 
-        remaining = list(self.entries())
+        remaining = [entry for entry in self.entries()]
         logger.info(
             "cache cleanup: deleted=%d freed=%.2fMiB remaining=%d",
             len(deleted),
@@ -285,7 +301,9 @@ class CacheManager:
         )
 
     def enforce_limits(self, *, protect: set[str] | None = None) -> CleanupReport:
-        return self.cleanup(protect=protect)
+        # Size cap only. TTL purging is an explicit user action (the "clean by
+        # rules" button), never a side effect of storing a new download.
+        return self.cleanup(protect=protect, purge_expired=False)
 
     def clear(self) -> CleanupReport:
         entries = self.entries()
@@ -339,6 +357,7 @@ class CacheManager:
                 created_at=float(payload["created_at"]),
                 last_access_at=float(payload["last_access_at"]),
                 webpage_url=payload.get("webpage_url"),
+                thumbnail=payload.get("thumbnail"),
             )
         except (TypeError, ValueError):
             return None
@@ -359,6 +378,7 @@ class CacheManager:
             created_at=float(payload["created_at"]),
             last_access_at=float(payload["last_access_at"]),
             webpage_url=payload.get("webpage_url"),
+            thumbnail=payload.get("thumbnail"),
         )
         # On-disk schema is snake_case; CacheEntry.to_dict() is the camelCase
         # API projection and must never be used for persistence.
@@ -377,6 +397,7 @@ class CacheManager:
                     "created_at": entry.created_at,
                     "last_access_at": entry.last_access_at,
                     "webpage_url": entry.webpage_url,
+                    "thumbnail": entry.thumbnail,
                 },
                 ensure_ascii=False,
                 indent=2,
@@ -386,4 +407,4 @@ class CacheManager:
         return entry
 
 
-__all__ = ["SECONDS_PER_DAY", "CacheEntry", "CacheManager", "CleanupReport"]
+__all__ = ["CacheEntry", "CleanupReport", "CacheManager", "SECONDS_PER_DAY"]

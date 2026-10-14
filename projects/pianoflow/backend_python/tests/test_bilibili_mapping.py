@@ -38,11 +38,12 @@ def test_cookie_file_is_none_before_bootstrap(extractor: BilibiliExtractor):
     assert extractor.cookie_file() is None
 
 
-def test_explicit_cookie_setting_wins(extractor: BilibiliExtractor, tmp_path: Path):
-    cookie = tmp_path / "user-cookies.txt"
-    settings = dataclasses.replace(extractor._settings, ytdlp_cookie_file=str(cookie))
+def test_explicit_cookie_setting_wins(extractor: BilibiliExtractor):
+    settings = dataclasses.replace(
+        extractor._settings, ytdlp_cookie_file=r"D:\tmp\user-cookies.txt"
+    )
     extractor = BilibiliExtractor(settings)
-    assert extractor.cookie_file() == str(cookie)
+    assert extractor.cookie_file() == r"D:\tmp\user-cookies.txt"
 
 
 def test_injected_client_is_used():

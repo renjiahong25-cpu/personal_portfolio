@@ -63,6 +63,9 @@ export function searchTracks(keyword, platform, limit = 8) {
 }
 
 export function startDownload(track, format = 'wav') {
+  // artist/duration travel with the request: sidecar sources (NetEase/KuGou)
+  // have no metadata step, so the search leg's knowledge is all the cache
+  // entry gets.
   return request('/api/music/download-audio', {
     method: 'POST',
     body: JSON.stringify({
@@ -70,6 +73,8 @@ export function startDownload(track, format = 'wav') {
       sourceId: track.sourceId,
       format,
       title: track.title,
+      artist: track.artist,
+      duration: track.duration,
     }),
     timeout: 15000,
   })
@@ -77,6 +82,14 @@ export function startDownload(track, format = 'wav') {
 
 export function fetchTask(taskId) {
   return request(`/api/music/download-audio/${taskId}`, { timeout: 10000 })
+}
+
+/** Plain LRC text for a downloaded track; the player's lyrics panel renders it. */
+export function fetchLyrics(source, sourceId) {
+  return request(
+    `/api/music/lyrics?source=${encodeURIComponent(source)}&sourceId=${encodeURIComponent(sourceId)}`,
+    { timeout: 20000 },
+  )
 }
 
 export function eventsUrl() {
@@ -96,16 +109,21 @@ export function fetchCacheStatus() {
 }
 
 /**
- * What the score UI may offer: fidelity modes, difficulty levels with their
- * plain-language meaning, the patterns, and the preview cap. Served by the
- * backend so there is one source of truth rather than a copy in the UI.
+ * What the piano-transcription module may offer: faithful fidelity modes, the
+ * transcribers, and the preview cap. Served by the backend so there is one
+ * source of truth rather than a copy in the UI.
  */
-export function fetchScoreOptions() {
-  return request('/api/score/options', { timeout: 10000 })
+export function fetchTranscribeOptions() {
+  return request('/api/score/transcribe/options', { timeout: 10000 })
+}
+
+/** What the pop-to-piano module may offer: adding patterns and textures. */
+export function fetchArrangeOptions() {
+  return request('/api/score/arrange/options', { timeout: 10000 })
 }
 
 /**
- * Generate a score for a cached song.
+ * Transcribe a cached piano recording into a faithful score.
  *
  * The analysis is CPU-bound for seconds (measured 91x realtime, so a full song
  * is a few seconds, but a long preview on a slow machine is longer), so the
@@ -114,11 +132,45 @@ export function fetchScoreOptions() {
  * That budget is sized for the default transcriber. `transkun` measured 20.9 s on
  * 20 s of audio where basic-pitch took 2.0 s - roughly a quarter of realtime - so
  * asking for it on a four-minute song is about a minute of transcription before
- * the arrangement even starts.
+ * the score is written.
  */
-export function analyseScore(options) {
-  const { cacheKey, fidelity, difficulty, pattern, previewSeconds, title, transcriber, texture, texturePlan } = options
-  return request('/api/score/analyse', {
+export function transcribeScore(options) {
+  const { cacheKey, fidelity, difficulty, fillChords, previewSeconds, title, transcriber } = options
+  return request('/api/score/transcribe', {
+    method: 'POST',
+    body: JSON.stringify({
+      cacheKey,
+      fidelity,
+      difficulty,
+      fillChords,
+      previewSeconds,
+      title,
+      transcriber,
+    }),
+    timeout: 900000,
+  })
+}
+
+/**
+ * Turn a cached recording into a playable piano arrangement: the right hand
+ * keeps the transcribed melody, the left hand is rebuilt from patterns or
+ * textures.
+ */
+export function arrangeScore(options) {
+  const {
+    cacheKey,
+    fidelity,
+    difficulty,
+    pattern,
+    previewSeconds,
+    title,
+    transcriber,
+    texture,
+    texturePlan,
+    accompaniment,
+    sectionTextures,
+  } = options
+  return request('/api/score/arrange', {
     method: 'POST',
     body: JSON.stringify({
       cacheKey,
@@ -130,33 +182,60 @@ export function analyseScore(options) {
       transcriber,
       texture,
       texturePlan,
+      accompaniment: accompaniment || undefined,
+      sectionTextures: sectionTextures || undefined,
     }),
     timeout: 900000,
   })
 }
 
 /**
- * Upload a local audio file and generate its score in one round trip.
+ * Upload a local piano recording and transcribe it in one round trip.
  *
  * fetch() cannot set a timeout, and the default is none, so the signal is
  * handled by the same AbortController path as every other request rather than
  * leaving the button stuck on "分析中" forever.
  */
-export async function uploadAndAnalyse(file, options = {}) {
+export async function uploadAndTranscribe(file, options = {}) {
   const form = new FormData()
   form.append('analyse', options.analyse === false ? '0' : '1')
   form.append('fidelity', options.fidelity || 'transcribed')
   form.append('fillChords', options.fillChords ? 'true' : 'false')
   form.append('difficulty', `L${options.difficulty || 3}`)
-  if (options.pattern) form.append('pattern', options.pattern)
   if (options.previewSeconds) form.append('previewSeconds', String(options.previewSeconds))
   // Sent on both paths. The backend reads this field from the multipart form as well as
   // from JSON; omitting it here would run basic-pitch no matter what the user chose.
   if (options.transcriber) form.append('transcriber', options.transcriber)
+  const { signal, timeout = 900000, ...rest } = options
+  return request('/api/score/transcribe/upload', { method: 'POST', body: form, timeout, signal, ...rest })
+}
+
+/** Upload a local recording and arrange it as piano in one round trip. */
+export async function uploadAndArrange(file, options = {}) {
+  const form = new FormData()
+  form.append('analyse', options.analyse === false ? '0' : '1')
+  form.append('fidelity', options.fidelity || 'arranged')
+  form.append('difficulty', `L${options.difficulty || 3}`)
+  if (options.pattern) form.append('pattern', options.pattern)
+  if (options.previewSeconds) form.append('previewSeconds', String(options.previewSeconds))
+  if (options.transcriber) form.append('transcriber', options.transcriber)
   if (options.texture) form.append('texture', options.texture)
   if (options.texturePlan) form.append('texturePlan', options.texturePlan)
+  if (options.accompaniment) form.append('accompaniment', options.accompaniment)
+  if (options.sectionTextures) form.append('sectionTextures', JSON.stringify(options.sectionTextures))
   const { signal, timeout = 900000, ...rest } = options
-  return request('/api/score/upload', { method: 'POST', body: form, timeout, signal, ...rest })
+  return request('/api/score/arrange/upload', { method: 'POST', body: form, timeout, signal, ...rest })
+}
+
+/**
+ * Detect the song's sections (intro/verse/chorus/interlude/bridge/outro) for a
+ * cached track. Runs Whisper once per song (~30-60s), then served from cache.
+ */
+export function fetchArrangeSections(cacheKey) {
+  return request(
+    `/api/score/arrange/sections?cacheKey=${encodeURIComponent(cacheKey)}`,
+    { timeout: 900000 },
+  )
 }
 
 export function scoreMusicXmlUrl() {

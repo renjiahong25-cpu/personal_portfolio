@@ -84,6 +84,34 @@ class CoverProxyTestCase(AsyncHTTPTestCase):
         self.assertEqual(len(self.seen), 1)
         self.assertEqual(self.seen[0].headers["referer"], "https://www.bilibili.com/")
 
+    def test_proxy_forwards_netease_referer(self):
+        self.install_upstream()
+        response = self.fetch(
+            "/api/media/cover?url=https://p3.music.126.net/abc/cover.jpg"
+        )
+
+        self.assertEqual(response.code, 200)
+        self.assertEqual(response.body, PNG)
+        self.assertEqual(self.seen[0].headers["referer"], "https://music.163.com/")
+
+    def test_proxy_forwards_kugou_referer(self):
+        self.install_upstream()
+        response = self.fetch(
+            "/api/media/cover?url=https://m1.kugou.com/upload/cover.jpg"
+        )
+
+        self.assertEqual(response.code, 200)
+        self.assertEqual(response.body, PNG)
+        self.assertEqual(self.seen[0].headers["referer"], "https://www.kugou.com/")
+
+    def test_suffix_spoofing_is_rejected(self):
+        for url in (
+            "https://music.126.net.evil.com/a.jpg",
+            "https://kugou.com.evil.com/a.jpg",
+        ):
+            response = self.fetch(f"/api/media/cover?url={url}", raise_error=False)
+            self.assertEqual(response.code, 400, url)
+
     def test_cover_is_cacheable(self):
         self.install_upstream()
         response = self.fetch("/api/media/cover?url=https://i0.hdslb.com/bfs/archive/cover.jpg")

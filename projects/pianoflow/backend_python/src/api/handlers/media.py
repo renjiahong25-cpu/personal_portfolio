@@ -17,9 +17,14 @@ from .base import BaseHandler, api_endpoint
 
 logger = logging.getLogger(__name__)
 
-#: Only Bilibili's own image CDN may be proxied (SSRF guard).
-ALLOWED_COVER_SUFFIXES = (".hdslb.com",)
-REFERER = "https://www.bilibili.com/"
+#: Only the sources' own image CDNs may be proxied (SSRF guard).
+ALLOWED_COVER_SUFFIXES = (".hdslb.com", ".music.126.net", ".kugou.com")
+#: Per-CDN Referer: Bilibili hotlink-protects its covers, the others do not.
+REFERERS = {
+    ".hdslb.com": "https://www.bilibili.com/",
+    ".music.126.net": "https://music.163.com/",
+    ".kugou.com": "https://www.kugou.com/",
+}
 
 
 class CoverHandler(BaseHandler):
@@ -29,9 +34,15 @@ class CoverHandler(BaseHandler):
     async def get(self) -> None:
         url = self.get_argument("url", "").strip()
         _validate_cover_url(url)
+        host = (urlparse(url).hostname or "").lower()
 
+        referer = next(
+            (v for k, v in REFERERS.items() if host.endswith(k)),
+            None,
+        )
+        headers = {"Referer": referer} if referer else {}
         try:
-            response = await self.services.http.get(url, headers={"Referer": REFERER}, timeout=15.0)
+            response = await self.services.http.get(url, headers=headers, timeout=15.0)
         except Exception as exc:
             raise UpstreamError(f"封面获取失败: {exc}") from exc
 

@@ -163,9 +163,19 @@ def _note_xml(
     if scored.amplitude > 0:
         velocity = round(min(max(scored.amplitude, 0.0), 1.0) * 127)
         lines.append(f'        <sound dynamics="{velocity}"/>')
+    # One <notations> element per note, holding everything that annotates it:
+    # a tied pair and a slur can both live on the same note-head.
+    notations: list[str] = []
     if scored.tied_to_next or scored.tie_start:
         tie_type = "start" if scored.tied_to_next else "stop"
-        lines.append(f'        <notations><tied type="{tie_type}"/></notations>')
+        notations.append(f'<tied type="{tie_type}"/>')
+    if scored.slur_start or scored.slur_stop:
+        slur_type = "start" if scored.slur_start else "stop"
+        notations.append(f'<slur number="1" type="{slur_type}"/>')
+    if notations:
+        lines.append("        <notations>")
+        lines.extend(f"          {item}" for item in notations)
+        lines.append("        </notations>")
     lines.append(f"        <staff>{staff}</staff>")
     lines.append("      </note>")
     return "\n".join(lines)

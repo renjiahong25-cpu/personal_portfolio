@@ -30,6 +30,7 @@ import os
 import subprocess
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from itertools import pairwise
 from pathlib import Path
 
 import numpy as np
@@ -156,6 +157,11 @@ ROOM_WET_DB = -4.5
 #: reported -31 dB/s for a track whose real tail decays at -3.91 dB/s.
 DECAY_FLOOR_DB = 60.0
 
+#: A slurred pair whose note-off lands this far before the next note-on is held
+#: through the gap. The gap is quantisation noise in seconds, not a musical rest:
+#: 50 ms bridges the rounding while staying far below the shortest deliberate gap.
+SLUR_OVERLAP_MAX_SECONDS = 0.05
+
 
 @dataclass(frozen=True)
 class RenderResult:
@@ -185,8 +191,37 @@ class RenderResult:
         }
 
 
+def _slur_overlap(
+    events: list[tuple[float, float, int, int, int, int, int, int, int]],
+) -> list[tuple[float, float, int, int, int, int, int, int, int]]:
+    """Legato in the audio: hold a slurred note through the hairline gap.
+
+    The notation keeps a contiguous slurred pair touching, but quantising beats to
+    seconds can still leave a few milliseconds between the note-off and the next
+    note-on. Held, the string is ringing at the next attack - which is what a slur
+    means; gated, the melody stutters. A tied pair needs no help: it is merged into
+    one strike by :func:`_merge_tied_events`, which runs after this pass.
+    """
+    order: dict[int, list[int]] = {}
+    for index, event in enumerate(events):
+        order.setdefault(event[4], []).append(index)
+
+    for indices in order.values():
+        for first_index, second_index in pairwise(indices):
+            first = events[first_index]
+            second = events[second_index]
+            # Only a note that is part of a slurred run holds; a plain attack
+            # keeps its written length, and with it its staccato.
+            if not (first[7] or first[8]):
+                continue
+            gap = second[0] - (first[0] + first[1])
+            if 0.0 < gap <= SLUR_OVERLAP_MAX_SECONDS:
+                events[first_index] = (first[0], first[1] + gap, *first[2:])
+    return events
+
+
 def _merge_tied_events(
-    events: list[tuple[float, float, int, int, int, int, int]],
+    events: list[tuple[float, float, int, int, int, int, int, int, int]],
 ) -> list[tuple[float, float, int, int]]:
     """Join the two halves of a tied note into one note-on, holding through both.
 
@@ -206,7 +241,7 @@ def _merge_tied_events(
     pending: dict[tuple[int, int], list[tuple[int, float]]] = {}
     merged: list[tuple[float, float, int, int]] = []
 
-    for time, duration, midi, velocity, staff, tie_start, tied_to_next in events:
+    for time, duration, midi, velocity, staff, tie_start, tied_to_next, _slur_start, _slur_stop in events:
         key = (staff, midi)
         target = None
         if tie_start:
@@ -267,7 +302,7 @@ def note_events(
         )
     ][0]
 
-    events: list[tuple[float, float, int, int, int, int, int]] = []
+    events: list[tuple[float, float, int, int, int, int, int, int, int]] = []
     for note, velocity in zip(timeline, values, strict=True):
         # A silent note would be a note the keyboard lights but the ear cannot
         # hear, so a floor is applied.
@@ -280,10 +315,12 @@ def note_events(
                 int(note["staff"]),
                 bool(note["tieStart"]),
                 bool(note["tiedToNext"]),
+                bool(note["slurStart"]),
+                bool(note["slurStop"]),
             )
         )
     events.sort(key=lambda item: (item[0], item[4], item[2]))
-    return _merge_tied_events(events)
+    return _merge_tied_events(_slur_overlap(events))
 
 
 def _pedal_segments(
@@ -535,6 +572,30 @@ def spectral_centroid(y: np.ndarray, sr: int) -> float:
     return float((freqs * spectrum).sum() / total) if total > 0 else 0.0
 
 
+def _with_hands(score: PianoScore, hands: tuple[str, ...]) -> PianoScore:
+    """The score with everything except the requested hands silenced.
+
+    A per-hand preview (melody only, left hand only) is the same pipeline run on
+    a score where the other staff is empty: the notation, the pedal and the room
+    all stay identical, only the sounding material differs. The velocity rules
+    are re-run on the filtered timeline, so a solo preview is balanced for
+    itself rather than for a mix that is not there.
+    """
+    if set(hands) == {"right", "left"}:
+        return score
+    keep_right = "right" in hands
+    keep_left = "left" in hands
+    measures = tuple(
+        dataclasses.replace(
+            measure,
+            right=measure.right if keep_right else (),
+            left=measure.left if keep_left else (),
+        )
+        for measure in score.measures
+    )
+    return dataclasses.replace(score, measures=measures)
+
+
 def render(
     score: PianoScore,
     wav_path: Path,
@@ -548,8 +609,14 @@ def render(
     source_audio: Path | None = None,
     expression: ExpressionProfile | None = None,
     texture_mode: bool = False,
+    hands: tuple[str, ...] = ("right", "left"),
 ) -> RenderResult:
     """Render the score to a mono WAV at the analysis sample rate.
+
+    ``hands`` selects which staff sounds: the default is the full mix,
+    ``("right",)`` the melody alone and ``("left",)`` the accompaniment alone.
+    The selection happens before velocity and pedal, so each preview is a
+    self-consistent performance of its own part.
 
     ``pedal`` adds the sustain pedal one press per bar. It is on by default because
     its absence is audible as a dry, disconnected line; it stays a parameter so the
@@ -564,8 +631,9 @@ def render(
 
     ``texture_mode`` uses a drier mix (less room, less pedal) so the rhythmic
     differences between textures are audible. The default room and pedal blur them
-    together, making eight textures sound identical.
+        together, making eight textures sound identical.
     """
+    score = _with_hands(score, hands)
     events = note_events(score, profile=expression)
     if not events:
         raise ValidationError(

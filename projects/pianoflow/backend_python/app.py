@@ -1,9 +1,8 @@
 """PianoFlow backend entry point.
 
-Run with the project's Python environment (see ``README.md`` for how the
-interpreter is located; ``PIANOFLOW_PYTHON`` overrides)::
+Run with::
 
-    python backend_python/app.py --port 8890
+    D:\\conda_envs\\pianoflow\\python.exe backend_python\\app.py --port 8890
 """
 
 from __future__ import annotations

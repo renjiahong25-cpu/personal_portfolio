@@ -1,9 +1,9 @@
 """End-to-end: vocal stem -> extracted melody -> ballad arrangement -> MIDI + WAV + mix.
 
 Run with the backend environment (no torch needed here; the F0/ASR step shells out
-to the ML environment; see README.md for how the interpreter is located):
+to the ML environment):
 
-    python scripts/arrange_song.py
+    D:\\conda_envs\\pianoflow\\python.exe scripts\arrange_song.py
 
 Outputs under --out:
     melody.mid   the extracted vocal line alone (single track)

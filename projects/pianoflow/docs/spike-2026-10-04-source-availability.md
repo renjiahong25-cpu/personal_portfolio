@@ -152,19 +152,16 @@ B 站图床校验 `Referer`，非 bilibili.com 来源返回 403（实测：`Refe
 
 ---
 
-## 6. 环境事实（作者本机）
-
-具体路径随机器不同，此处只记录形态；项目通过 `PIANOFLOW_*` 环境变量与相对路径
-适配任意布局（见 `backend_python/src/core/config.py`）。
+## 6. 环境事实（本机）
 
 | 项 | 值 |
 |---|---|
-| conda | 独立安装于一个盘符根目录；`~/.config` 之外无特殊配置 |
-| 项目环境 | 独立 conda 环境 `pianoflow`（Python 3.11） |
-| ffmpeg | 独立 conda 环境里的构建，**不在 PATH**，经 `PIANOFLOW_FFMPEG_LOCATION` 或 PATH 自动探测 |
-| Node | LTS 以上（npm 在 Windows 上需用 `npm.cmd`） |
-| qodercli | npm 全局安装（`@qoder-ai/qodercli`） |
-| GitHub | 作者网络下 `github.com:443` 被封，`codeload.github.com` 可达 → 用 tarball 取源码 |
+| conda | `D:\miniconda3`（`C:\Users\14837\miniconda3` 是指向它的 junction） |
+| 项目环境 | `D:\conda_envs\pianoflow`（Python 3.11.17） |
+| ffmpeg | `D:\miniconda3\envs\ffmpeg-gpl\Library\bin\ffmpeg.exe`（需显式配置，不在 PATH） |
+| Node | v24.15.0（npm 需用 `npm.cmd`） |
+| qodercli | 1.1.65（`C:\Users\14837\AppData\Roaming\npm\qodercli.cmd`） |
+| GitHub | `github.com:443` 被封，`codeload.github.com` 可达 → 用 tarball 取源码 |
 
 ---
 

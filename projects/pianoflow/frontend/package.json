@@ -11,6 +11,7 @@
     "test:notation": "node tests/notation-highlight.test.mjs"
   },
   "dependencies": {
+    "gsap": "^3.15.0",
     "opensheetmusicdisplay": "^2.2.0",
     "vue": "^3.5.13"
   },

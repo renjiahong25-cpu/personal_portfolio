@@ -155,3 +155,83 @@ def test_texture_plan_serialises() -> None:
 def test_all_textures_are_combinable_with_bass() -> None:
     for name in TextureName:
         assert TextureName.BASS in COMBINABLE[name]
+
+
+def test_texture_plan_parsing_in_service() -> None:
+    """Test that texture_plan JSON string is parsed correctly in validate_request."""
+    from services.arrangement.textures import TextureName, TexturePlan
+    from services.score.service import validate_request
+
+    # Valid texture plan
+    payload = {
+        "fidelity": "arranged",
+        "difficulty": 3,
+        "texturePlan": '[{"startBar": 0, "endBar": 4, "texture": "block"}, {"startBar": 4, "endBar": 8, "texture": "half"}]',
+    }
+    req = validate_request(payload)
+    assert isinstance(req.texture_plan, TexturePlan)
+    assert req.texture_plan.texture_for_bar(0) == TextureName.BLOCK
+    assert req.texture_plan.texture_for_bar(3) == TextureName.BLOCK
+    assert req.texture_plan.texture_for_bar(4) == TextureName.HALF
+    assert req.texture_plan.texture_for_bar(7) == TextureName.HALF
+    assert req.texture_plan.default_texture == TextureName.HALF
+
+
+def test_texture_plan_rejects_invalid_json() -> None:
+    import pytest
+
+    from core.errors import ValidationError
+    from services.score.service import validate_request
+
+    payload = {
+        "fidelity": "arranged",
+        "difficulty": 3,
+        "texturePlan": "not valid json",
+    }
+    with pytest.raises(ValidationError, match="invalid texturePlan JSON"):
+        validate_request(payload)
+
+
+def test_texture_plan_rejects_non_array() -> None:
+    import pytest
+
+    from core.errors import ValidationError
+    from services.score.service import validate_request
+
+    payload = {
+        "fidelity": "arranged",
+        "difficulty": 3,
+        "texturePlan": '"not an array"',
+    }
+    with pytest.raises(ValidationError, match="texturePlan must be a JSON array"):
+        validate_request(payload)
+
+
+def test_texture_plan_rejects_invalid_section() -> None:
+    import pytest
+
+    from core.errors import ValidationError
+    from services.score.service import validate_request
+
+    payload = {
+        "fidelity": "arranged",
+        "difficulty": 3,
+        "texturePlan": '[{"startBar": 0, "endBar": 4}]',  # missing texture
+    }
+    with pytest.raises(ValidationError, match="each texturePlan section must have a texture"):
+        validate_request(payload)
+
+
+def test_texture_plan_rejects_unknown_texture() -> None:
+    import pytest
+
+    from core.errors import ValidationError
+    from services.score.service import validate_request
+
+    payload = {
+        "fidelity": "arranged",
+        "difficulty": 3,
+        "texturePlan": '[{"startBar": 0, "endBar": 4, "texture": "invalid"}]',
+    }
+    with pytest.raises(ValidationError, match="unsupported texture in texturePlan"):
+        validate_request(payload)

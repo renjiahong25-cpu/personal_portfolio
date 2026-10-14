@@ -3,20 +3,32 @@
 from __future__ import annotations
 
 import logging
-import re
-from pathlib import Path
 
 from core.errors import ValidationError
 
 from .base import BaseHandler, api_endpoint
+from .streaming import send_file_range
 
 logger = logging.getLogger(__name__)
 
 CLEAN_MODES = ("cleanup", "clear")
 
-CONTENT_TYPES = {"wav": "audio/wav", "mp3": "audio/mpeg", "m4a": "audio/mp4"}
-_RANGE_RE = re.compile(r"^bytes=(\d*)-(\d*)$")
-CHUNK_SIZE = 64 * 1024
+#: What each cached format is served as. The browser picks its decoder from this
+#: and nothing else, so a format that is missing here plays as silence rather than
+#: as an error - which is why lossless and streaming-container formats are listed
+#: even though the download path only ever produces wav and mp3 today
+#: (``services.download.audio_service.SUPPORTED_FORMATS``). They are here for the
+#: formats an upload or a hand-placed file can carry, not for formats the app
+#: claims to produce.
+CONTENT_TYPES = {
+    "wav": "audio/wav",
+    "mp3": "audio/mpeg",
+    "m4a": "audio/mp4",
+    "flac": "audio/flac",
+    "ogg": "audio/ogg",
+    "aac": "audio/aac",
+    "opus": "audio/ogg",
+}
 
 
 class CacheStatusHandler(BaseHandler):
@@ -28,68 +40,22 @@ class CacheStatusHandler(BaseHandler):
 
 
 class CacheAudioHandler(BaseHandler):
-    """GET /api/cache/audio/<key> -> play the cached audio (Range aware)."""
+    """GET /api/cache/audio/<key> -> play the cached audio (Range aware).
+
+    The browser is what drives the Range protocol here: an ``<audio>`` element
+    seeks by asking for a window of bytes, and a 60 MB wav cannot be answered by
+    reading the file into memory, so the body is streamed in chunks.
+    """
 
     @api_endpoint
     async def get(self, key: str) -> None:
         entry, path = self.services.cache.resolve_audio(key)
-        size = path.stat().st_size
-        start, end, status = self._parse_range(self.request.headers.get("Range"), size)
-
-        if status == 416:
-            self.set_status(416)
-            self.set_header("Content-Range", f"bytes */{size}")
-            self.finish()
-            return
-
-        self.set_status(status)
-        self.set_header(
-            "Content-Type", CONTENT_TYPES.get(entry.audio_format, "application/octet-stream")
+        await send_file_range(
+            self,
+            path,
+            content_type=CONTENT_TYPES.get(entry.audio_format, "application/octet-stream"),
+            cache_control="private, max-age=3600",
         )
-        self.set_header("Accept-Ranges", "bytes")
-        self.set_header("Content-Length", str(end - start + 1))
-        self.set_header("Cache-Control", "private, max-age=3600")
-        if status == 206:
-            self.set_header("Content-Range", f"bytes {start}-{end}/{size}")
-
-        await self._send_file(path, start, end - start + 1)
-
-    @staticmethod
-    def _parse_range(header: str | None, size: int) -> tuple[int, int, int]:
-        if not header:
-            return 0, size - 1, 200
-        match = _RANGE_RE.match(header.strip())
-        if not match:
-            # An unparsable Range must be ignored, per RFC 9110.
-            return 0, size - 1, 200
-        first, last = match.group(1), match.group(2)
-        try:
-            if first:
-                start = int(first)
-                end = int(last) if last else size - 1
-            else:
-                if not last:
-                    return 0, size - 1, 200
-                start = max(0, size - int(last))
-                end = size - 1
-        except ValueError as exc:
-            raise ValidationError(f"malformed Range header: {header}") from exc
-        end = min(end, size - 1)
-        if start > end or start >= size:
-            return 0, 0, 416
-        return start, end, 206
-
-    async def _send_file(self, path: Path, start: int, length: int) -> None:
-        remaining = length
-        with path.open("rb") as handle:
-            handle.seek(start)
-            while remaining > 0:
-                chunk = handle.read(min(CHUNK_SIZE, remaining))
-                if not chunk:
-                    break
-                self.write(chunk)
-                remaining -= len(chunk)
-                await self.flush()
 
 
 class CacheCleanHandler(BaseHandler):
@@ -108,4 +74,4 @@ class CacheCleanHandler(BaseHandler):
         self.write_json({"mode": mode, **report.to_dict()})
 
 
-__all__ = ["CacheAudioHandler", "CacheCleanHandler", "CacheStatusHandler"]
+__all__ = ["CONTENT_TYPES", "CacheAudioHandler", "CacheCleanHandler", "CacheStatusHandler"]

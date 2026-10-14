@@ -31,6 +31,7 @@ from services.score.render import (
     mix_tracks,
     note_events,
     render,
+    _with_hands,
 )
 
 fluidsynth_exe = Settings().fluidsynth_exe()
@@ -865,3 +866,42 @@ class TestTheTimbreCorrectionIsOffUnlessAskedFor:
 
         assert spectral_centroid(np.zeros(10, dtype=np.float32), SAMPLE_RATE) == 0.0
         assert spectral_centroid(np.zeros(100000, dtype=np.float32), SAMPLE_RATE) == 0.0
+
+
+# ----------------------------------------------------------------- per-hand previews
+
+
+def _onset_pitch(events) -> set[tuple[float, int]]:
+    return {(round(e[0], 3), e[2]) for e in events}
+
+
+class TestPerHandPreviews:
+    """The melody-alone and left-alone previews filter the one score, not two scores."""
+
+    def test_the_full_mix_is_unchanged_by_the_filter(self, tmp_path: Path) -> None:
+        score = two_hand_score(tmp_path)
+        assert _with_hands(score, ("right", "left")) is score
+
+    def _timeline_onsets(self, score, staff: int) -> set[tuple[float, int]]:
+        return {
+            (round(event["time"], 3), event["midi"])
+            for event in score.note_timeline()
+            if event["staff"] == staff
+        }
+
+    def test_melody_only_is_exactly_the_right_staff(self, tmp_path: Path) -> None:
+        score = two_hand_score(tmp_path)
+        melody = note_events(_with_hands(score, ("right",)))
+        assert melody, "the melody preview must not be empty"
+        assert _onset_pitch(melody) == self._timeline_onsets(score, 1)
+
+    def test_left_only_is_exactly_the_left_staff(self, tmp_path: Path) -> None:
+        score = two_hand_score(tmp_path)
+        left = note_events(_with_hands(score, ("left",)))
+        assert left, "the accompaniment preview must not be empty"
+        assert _onset_pitch(left) == self._timeline_onsets(score, 2)
+
+    def test_a_filtered_score_silences_the_other_staff(self, tmp_path: Path) -> None:
+        score = _with_hands(two_hand_score(tmp_path), ("right",))
+        assert all(measure.left == () for measure in score.measures)
+        assert any(measure.right for measure in score.measures)

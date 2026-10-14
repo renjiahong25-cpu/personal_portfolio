@@ -21,14 +21,10 @@ import numpy as np
 import pytest
 
 from core.errors import ValidationError
-from core.paths import PROJECT_ROOT
 from services.audio_analysis import transkun as T
 from services.audio_analysis.polyphony import NoteEvent
 
-#: The reference recording is a downloaded song, so it is not committed; the tests
-#: below skip when it is absent. The path is relative to the repository root, so a
-#: checkout anywhere looks in the same (gitignored) cache directory.
-AUDIO = PROJECT_ROOT / "cache" / "audio" / "cde3a16bbb536a15661e1f25efc98ca059dbde2c.wav"
+AUDIO = Path(r"D:\Program Files\pianoflow\cache\audio\cde3a16bbb536a15661e1f25efc98ca059dbde2c.wav")
 
 
 def _payload(notes: list[dict], *, pseudo: int = 0, raw: int | None = None) -> str:

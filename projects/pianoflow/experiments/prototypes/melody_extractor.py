@@ -207,8 +207,9 @@ def main() -> None:
     """Test melody extraction on the source audio."""
     logging.basicConfig(level=logging.INFO)
 
-    repo_root = Path(__file__).resolve().parents[2]
-    source = repo_root / "cache" / "audio" / "b6cdcdb386a4b3b271d6be75fc874902a81642d8.wav"
+    source = Path(
+        r"D:\Program Files\pianoflow\cache\audio\b6cdcdb386a4b3b271d6be75fc874902a81642d8.wav"
+    )
     y, sr = librosa.load(str(source), sr=22050, mono=True, duration=30)
 
     result = extract_melody_hpss(y, sr)

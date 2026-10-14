@@ -74,15 +74,44 @@ def test_lookup_drops_entry_when_audio_missing(tmp_path):
     assert cache.entries() == []
 
 
-def test_cleanup_deletes_expired_entries_only(tmp_path):
+def test_register_does_not_purge_expired_entries(tmp_path):
+    # Registration enforces the size cap only: the personal library must not
+    # silently age out every time a new song lands (that is what deleted the
+    # user's cache without anyone touching a button).
     cache, clock = make_manager(tmp_path, max_bytes=10 * 1024 * 1024, ttl_days=1)
     register(cache, cache, "old")
     clock["now"] += 86400 * 2
-    # registering triggers the TTL sweep, so "old" is already gone here
     register(cache, cache, "fresh")
 
+    assert {e.source_id for e in cache.entries()} == {"old", "fresh"}
+
+    # The explicit "clean by rules" action still purges expired entries.
+    report = cache.cleanup()
+    assert report.deleted == [cache.make_key("bilibili", "old", "wav")]
     assert [e.source_id for e in cache.entries()] == ["fresh"]
-    assert cache.cleanup().deleted == []
+
+
+def test_register_persists_the_thumbnail(tmp_path):
+    cache, _ = make_manager(tmp_path, max_bytes=10 * 1024 * 1024)
+    produced = cache.root / "incoming-x.wav"
+    cache.root.mkdir(parents=True, exist_ok=True)
+    produced.write_bytes(b"0" * 512)
+
+    entry = cache.register(
+        source="netease",
+        source_id="x",
+        audio_format="wav",
+        title="t",
+        artist=None,
+        duration=None,
+        audio_file=produced,
+        thumbnail="https://p3.music.126.net/cover.jpg",
+    )
+
+    assert entry.thumbnail == "https://p3.music.126.net/cover.jpg"
+    assert entry.to_dict()["thumbnail"] == "https://p3.music.126.net/cover.jpg"
+    # Round-trip through the on-disk metadata.
+    assert cache.get_entry(entry.key).thumbnail == "https://p3.music.126.net/cover.jpg"
 
 
 def test_enforce_limits_evicts_least_recently_used(tmp_path):

@@ -1,7 +1,6 @@
 # PianoFlow backend - phase 1 (audio source pipeline)
-# Python 3.11. Install with the project environment's interpreter (see
-# README.md for how it is located):
-#   python -m pip install -r requirements.txt
+# Python 3.11. Install with:
+#   D:\conda_envs\pianoflow\python.exe -m pip install -r requirements.txt
 
 tornado>=6.4,<7
 yt-dlp>=2025.1

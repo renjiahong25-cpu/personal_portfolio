@@ -60,13 +60,11 @@ logger = logging.getLogger(__name__)
 
 WORKER = Path(__file__).resolve().parents[3] / "scripts" / "vocal_melody_worker.py"
 
-#: Where the ML environment is expected. Resolution order (see :func:`_worker_python`):
-#: the ``PIANOFLOW_ML_PYTHON`` environment variable first, then these well-known conda
-#: locations. No machine-specific paths: a machine that put conda envs somewhere else
-#: sets the variable.
+#: Where the ML environment is expected. Overridable, because a machine that put conda
+#: envs somewhere else should not have to edit code.
 DEFAULT_PYTHON_CANDIDATES = (
+    Path(r"D:\conda_envs\pop2piano\python.exe"),
     Path.home() / ".conda" / "envs" / "pop2piano" / "python.exe",
-    Path.home() / "miniconda3" / "envs" / "pop2piano" / "python.exe",
     Path("/opt/conda/envs/pop2piano/bin/python"),
 )
 

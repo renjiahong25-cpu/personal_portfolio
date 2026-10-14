@@ -63,13 +63,11 @@ logger = logging.getLogger(__name__)
 
 WORKER = Path(__file__).resolve().parents[3] / "scripts" / "transkun_worker.py"
 
-#: Where the isolated environment is expected. Resolution order (see
-#: :func:`_worker_python`): the ``PIANOFLOW_TRANSKUN_PYTHON`` environment
-#: variable first, then these well-known conda locations. No machine-specific
-#: paths: a machine that put conda envs somewhere else sets the variable.
+#: Where the isolated environment is expected. Overridable, because a machine that put
+#: conda envs somewhere else should not have to edit code.
 DEFAULT_PYTHON_CANDIDATES = (
+    Path(r"D:\conda_envs\transkun\python.exe"),
     Path.home() / ".conda" / "envs" / "transkun" / "python.exe",
-    Path.home() / "miniconda3" / "envs" / "transkun" / "python.exe",
     Path("/opt/conda/envs/transkun/bin/python"),
 )
 

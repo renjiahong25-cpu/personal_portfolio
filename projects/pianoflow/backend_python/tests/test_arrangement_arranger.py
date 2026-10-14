@@ -7,14 +7,20 @@ import itertools
 import pytest
 
 from services.arrangement.arranger import (
+    ACCOMPANIMENT_LEVELS,
     FIDELITIES,
+    MELODY_RANGE_HIGH,
+    MELODY_RANGE_LOW,
     arrange,
     choose_pattern,
     chord_for_bar,
     describe_left_hand,
+    fold_melody_to_range,
     simplify_melody,
+    _thin_by_role,
 )
 from services.arrangement.grid import BarGrid
+from services.arrangement.patterns import PlacedNote, Role
 from services.arrangement.quality import assess_bars
 from services.audio_analysis.models import ChordEvent
 from services.audio_analysis.polyphony import NoteEvent
@@ -82,21 +88,24 @@ def test_hybrid_keeps_clean_bars_and_rewrites_the_failed_run() -> None:
     ]
 
 
-def test_the_melody_is_preserved_verbatim_under_the_added_chord_tones() -> None:
+def test_the_melody_is_preserved_under_the_added_chord_tones() -> None:
     """Harmonising the right hand must not touch the melody itself.
 
     The user's complaint was that the right hand was 100% single notes, and the
     agreed fix was to fill chord tones in *below* the transcribed melody. That is
-    only safe if the melody is untouched: not re-pitched, not re-timed, not
-    re-voiced. Measured on 星辰大海 the transcribed right hand is the actual vocal
-    line, so any edit to it is an edit to the song.
+    only safe if the melody is untouched: not re-timed, not re-voiced. The one
+    sanctioned edit is the register: the user asked for the melody to sit in
+    C4-C5, so a note an octave too high comes back folded down. The pitch class
+    - the actual tune - must never change.
 
     So the assertion is not "the count grew" but "every original note is still
-    there, unchanged" - additions are allowed, modifications are not.
+    there, at its own time and volume, in its own pitch class" - additions are
+    allowed, modifications are not.
     """
     grid = grid_at()
     buckets = good_buckets(grid)
     melody = [note(0.0, 1.0, 81), note(1.0, 1.0, 83)]
+    expected = {n.midi for n in fold_melody_to_range(melody)}
     buckets[0] = (melody, buckets[0][1])
     for fidelity in FIDELITIES:
         for difficulty in (2, 3, 4):
@@ -104,12 +113,13 @@ def test_the_melody_is_preserved_verbatim_under_the_added_chord_tones() -> None:
                 buckets, grid, chords=chords_per_bar(), fidelity=fidelity, difficulty=difficulty
             )
             got = list(result.bars[0].right)
-            # Each original note survives, at its own time, pitch and volume.
             for original in melody:
+                # The faithful path does not fold; the arranged path folds into C4-C5.
+                allowed = {original.midi} if fidelity == "transcribed" else expected
                 assert any(
                     n.start == original.start
                     and n.duration == original.duration
-                    and n.midi == original.midi
+                    and n.midi in allowed
                     and n.amplitude == original.amplitude
                     for n in got
                 ), f"melody note {original} was altered at {fidelity}/L{difficulty}"
@@ -130,7 +140,9 @@ def test_l1_adds_no_chord_tones_to_the_melody() -> None:
     result = arrange(buckets, grid, chords=chords_per_bar(), fidelity="arranged", difficulty=1)
     got = result.bars[0].right
     assert len(got) == len(melody), f"L1 added notes to the melody: {len(got)} vs {len(melody)}"
-    assert {(n.start, n.midi) for n in got} == {(n.start, n.midi) for n in melody}
+    # The register may be folded into C4-C5; the pitch classes may not move.
+    assert {(n.start, n.midi % 12) for n in got} == {(n.start, n.midi % 12) for n in melody}
+    assert all(MELODY_RANGE_LOW <= n.midi <= MELODY_RANGE_HIGH for n in got)
 
 
 def test_the_added_tones_sit_below_the_melody_and_never_beside_it() -> None:
@@ -142,17 +154,18 @@ def test_the_added_tones_sit_below_the_melody_and_never_beside_it() -> None:
     result = arrange(buckets, grid, chords=chords_per_bar(), fidelity="arranged", difficulty=4)
     bar = result.bars[0]
     top = max(n.midi for n in bar.right)
-    assert top == 81, "the melody must remain the highest sounding note"
-    added = [n.midi for n in bar.right if n.midi != 81]
+    # G5 folds to G4: the melody is still the highest note, one octave down.
+    assert top == 69, "the folded melody must remain the highest sounding note"
+    added = [n.midi for n in bar.right if n.midi != 69]
     assert added, "L4 should have added chord tones"
     for pitch in added:
         assert pitch < top
         assert top - pitch >= 3, f"added tone {pitch} is a second from the melody {top}"
-    # The filler is quieter than the melody, or the ear stops following the tune.
-    for original in bar.right:
-        if original.midi == 81:
-            continue
-        assert original.amplitude < 0.6
+        # The filler is quieter than the melody, or the ear stops following the tune.
+        for original in bar.right:
+            if original.midi == 69:
+                continue
+            assert original.amplitude < 0.6
 
 
 def test_the_melody_grows_with_difficulty() -> None:
@@ -161,14 +174,16 @@ def test_the_melody_grows_with_difficulty() -> None:
     Most bars are kept as played, so selecting L1 changed almost nothing - a
     beginner still had to play the transcribed melody. Difficulty now thins the
     melody at the easy end *and* harmonises it at the hard end, so every level is
-    distinguishable: L1 < L2 < L3 < L4 in right-hand note count.
+    distinguishable: L1 < L2 < L3 < L4 in right-hand note count. (The melody is
+    protected from the density cap, so the top end differentiates through the
+    filling the budget still leaves: a sixteen-per-bar line would saturate both.)
     """
     grid = grid_at()
     buckets: dict[int, tuple[list[NoteEvent], list[NoteEvent]]] = {}
     for index in range(grid.bar_count()):
         start = index * 2.0
-        # A busy melody: four notes per beat, so thinning has something to cut.
-        melody = [note(start + i * 0.125, 0.2, 72 + i % 8) for i in range(16)]
+        # A busy melody: two notes per beat, so thinning has something to cut.
+        melody = [note(start + i * 0.25, 0.2, 72 + i % 8) for i in range(8)]
         buckets[index] = (melody, [note(start + j * 0.5, 0.4, 48) for j in range(4)])
     counts = {}
     for difficulty in (1, 2, 3, 4):
@@ -216,6 +231,125 @@ def test_simplify_melody_never_returns_nothing() -> None:
 
 def test_simplify_melody_handles_an_empty_hand() -> None:
     assert simplify_melody([], grid_at(), 1) == []
+
+
+class TestMelodyRangeFold:
+    """The arranged melody must sit in the C4-C5 comfort range the user asked for."""
+
+    def test_high_notes_fold_down_an_octave(self) -> None:
+        # C6 -> C5 and G5 -> G4: whole octaves, pitch classes untouched.
+        folded = fold_melody_to_range([note(0.0, 0.5, 88), note(1.0, 0.5, 79)])
+        assert [n.midi for n in folded] == [64, 67]
+
+    def test_low_notes_fold_up_an_octave(self) -> None:
+        folded = fold_melody_to_range([note(0.0, 0.5, 52)])
+        assert folded[0].midi == 64
+
+    def test_notes_in_the_range_do_not_move(self) -> None:
+        folded = fold_melody_to_range([note(0.0, 0.5, 60), note(0.5, 0.5, 72)])
+        assert [n.midi for n in folded] == [60, 72]
+
+    def test_the_pitch_classes_are_preserved(self) -> None:
+        source = [note(0.0, 0.5, 84), note(0.5, 0.5, 55)]
+        folded = fold_melody_to_range(source)
+        assert [n.midi % 12 for n in folded] == [n.midi % 12 for n in source]
+
+    def test_every_folded_note_sits_in_the_comfortable_range(self) -> None:
+        source = [note(i * 0.1, 0.09, 48 + i * 4) for i in range(12)]
+        folded = fold_melody_to_range(source)
+        assert all(MELODY_RANGE_LOW <= n.midi <= MELODY_RANGE_HIGH for n in folded)
+
+    def test_folding_keeps_times_and_gains(self) -> None:
+        folded = fold_melody_to_range([note(0.25, 0.5, 88, amplitude=0.42)])
+        assert (folded[0].start, folded[0].duration, folded[0].amplitude) == (0.25, 0.5, 0.42)
+
+    def test_the_arranged_melody_lands_in_the_comfortable_range(self) -> None:
+        grid = grid_at()
+        buckets = good_buckets(grid)
+        buckets[0] = ([note(0.0, 1.0, 88), note(1.0, 1.0, 83)], buckets[0][1])
+        result = arrange(buckets, grid, chords=chords_per_bar(), fidelity="arranged")
+        # C6 and A5 come back as C5 and A4 - the tune, one register down.
+        right_mids = {n.midi for n in result.bars[0].right}
+        assert {64, 71} <= right_mids, "the folded melody notes must survive"
+        assert 88 not in right_mids
+
+    def test_the_faithful_path_never_folds(self) -> None:
+        # "不要有八度折叠，要严格忠于原来的音频" - that promise covers the
+        # faithful path; the arranged path is the one the range applies to.
+        grid = grid_at()
+        buckets = good_buckets(grid)
+        buckets[0] = ([note(0.0, 1.0, 88), note(1.0, 1.0, 83)], buckets[0][1])
+        result = arrange(buckets, grid, chords=chords_per_bar(), fidelity="transcribed")
+        got = {n.midi for n in result.bars[0].right}
+        assert 88 in got and 83 in got, "the faithful path must keep the original register"
+
+
+class TestBarMelody:
+    """The melody field separates the tune from the chord-tone filling."""
+
+    def test_the_melody_is_the_tune_without_the_filling(self) -> None:
+        grid = grid_at()
+        buckets = good_buckets(grid)
+        result = arrange(
+            buckets, grid, chords=chords_per_bar(), fidelity="arranged", difficulty=4
+        )
+        for bar in result.bars:
+            melody_keys = {(n.start, n.midi, n.duration) for n in bar.melody}
+            right_keys = {(n.start, n.midi, n.duration) for n in bar.right}
+            # Every melody note is still in the right hand, unchanged...
+            assert melody_keys <= right_keys
+            # ...and at L4 over chords the right hand carries more than the tune.
+        assert sum(len(b.right) for b in result.bars) > sum(len(b.melody) for b in result.bars)
+
+    def test_the_melody_only_score_carries_no_filling(self) -> None:
+        from dataclasses import replace
+
+        from services.arrangement.piano_score import build_score
+
+        grid = grid_at()
+        buckets = good_buckets(grid)
+        arrangement = arrange(
+            buckets, grid, chords=chords_per_bar(), fidelity="arranged", difficulty=4
+        )
+        full_right = sum(len(b.right) for b in arrangement.bars)
+        melody_right = sum(len(b.melody) for b in arrangement.bars)
+        assert melody_right < full_right, "L4 over chords must have added filling"
+        melody_only = replace(
+            arrangement,
+            bars=[replace(b, right=b.melody, left=()) for b in arrangement.bars],
+        )
+        score = build_score(melody_only, grid)
+        assert score.note_count == melody_right
+
+    def test_the_faithful_melody_is_the_whole_right_hand(self) -> None:
+        grid = grid_at()
+        buckets = good_buckets(grid)
+        result = arrange(buckets, grid, chords=chords_per_bar(), fidelity="transcribed")
+        for bar in result.bars:
+            assert bar.melody == bar.right
+
+    def test_the_density_cap_never_cuts_the_melody(self) -> None:
+        # A line dense enough to blow any L3 budget: the filling and the left hand
+        # give way, the tune stays whole. This guards the complaint 仅旋律 sounding
+        # like "中间少了很多音" - the cap used to put melody and filling in one pot,
+        # and the filling (two notes per melody note) out-voted the tune.
+        grid = grid_at()
+        buckets: dict[int, tuple[list[NoteEvent], list[NoteEvent]]] = {}
+        for index in range(grid.bar_count()):
+            start = index * 2.0
+            buckets[index] = (
+                [note(start + i * 0.125, 0.2, 72 + i % 6) for i in range(16)],
+                [note(start + j * 0.25, 0.2, 48 + j % 4) for j in range(8)],
+            )
+        result = arrange(
+            buckets, grid, chords=chords_per_bar(), fidelity="arranged", difficulty=3
+        )
+        assert sum(len(b.left) for b in result.bars) < 32, "the cap should have cut the left"
+        for bar in result.bars:
+            melody_keys = {(n.start, n.midi, n.duration) for n in bar.melody}
+            right_keys = {(n.start, n.midi, n.duration) for n in bar.right}
+            assert melody_keys <= right_keys, f"bar {bar.index}: the cap cut a melody note"
+            assert len(bar.melody) == 16, "the whole line must survive"
 
 
 def test_a_bar_with_no_detected_chord_is_kept_as_played() -> None:
@@ -474,3 +608,90 @@ def test_texture_mode_rejects_unknown_texture() -> None:
             chords=chords_per_bar(),
             texture="does-not-exist",  # type: ignore[arg-type]
         )
+
+
+class TestAccompanimentDensity:
+    """The left-hand density level: light thins the generated figure along its role
+    tiers and plays it quieter - both are what keep the right hand audible. A kept,
+    transcribed bar is never touched, because thinning the recording is not a
+    density choice."""
+
+    def test_thin_by_role_keeps_skeleton_and_chord_for_light(self) -> None:
+        placed = [
+            PlacedNote(0.0, 1.0, 45, Role.SKELETON),
+            PlacedNote(0.0, 1.0, 52, Role.CHORD),
+            PlacedNote(0.0, 1.0, 57, Role.COLOR),
+            PlacedNote(1.5, 0.5, 52, Role.ORNAMENT),
+        ]
+        light = _thin_by_role(placed, ACCOMPANIMENT_LEVELS["light"])
+        assert [n.role for n in light] == [Role.SKELETON, Role.CHORD]
+        standard = _thin_by_role(placed, ACCOMPANIMENT_LEVELS["standard"])
+        assert len(standard) == 4
+
+    def test_thin_by_role_never_returns_nothing(self) -> None:
+        """A figure made of nothing but cut roles survives uncut, not silent."""
+        placed = [PlacedNote(0.0, 1.0, 60, Role.ORNAMENT)]
+        assert _thin_by_role(placed, ACCOMPANIMENT_LEVELS["light"]) == placed
+
+    def test_light_thins_the_generated_left_hand(self) -> None:
+        from services.arrangement.textures import TextureName
+
+        grid = grid_at()
+        buckets: dict[int, tuple[list[NoteEvent], list[NoteEvent]]] = {}
+        for index in range(grid.bar_count()):
+            start = index * 2.0
+            buckets[index] = ([note(start, 0.8, 76)], [note(start, 0.4, 48)])
+        kwargs = dict(
+            chords=chords_per_bar(), fidelity="arranged", difficulty=4,
+            texture=TextureName.RHYTHM,
+        )
+        standard = arrange(buckets, grid, accompaniment="standard", **kwargs)
+        light = arrange(buckets, grid, accompaniment="light", **kwargs)
+        std_count = sum(len(bar.left) for bar in standard.bars)
+        light_count = sum(len(bar.left) for bar in light.bars)
+        assert light_count < std_count
+        # The skeleton survives, so the figure keeps its pulse.
+        assert light_count >= grid.bar_count()
+
+    def test_light_plays_the_generated_hand_quieter(self) -> None:
+        grid = grid_at()
+        kwargs = dict(
+            chords=chords_per_bar(), fidelity="arranged", difficulty=4,
+            pattern="block_chord",
+        )
+        standard = arrange(good_buckets(grid), grid, accompaniment="standard", **kwargs)
+        light = arrange(good_buckets(grid), grid, accompaniment="light", **kwargs)
+        std_amp = standard.bars[0].left[0].amplitude
+        light_amp = light.bars[0].left[0].amplitude
+        assert abs(light_amp - std_amp * 0.75) < 1e-9
+
+    def test_full_keeps_every_note_but_plays_louder(self) -> None:
+        grid = grid_at()
+        kwargs = dict(
+            chords=chords_per_bar(), fidelity="arranged", difficulty=4,
+            pattern="block_chord",
+        )
+        standard = arrange(good_buckets(grid), grid, accompaniment="standard", **kwargs)
+        full = arrange(good_buckets(grid), grid, accompaniment="full", **kwargs)
+        assert sum(len(b.left) for b in standard.bars) == sum(len(b.left) for b in full.bars)
+        assert abs(full.bars[0].left[0].amplitude - standard.bars[0].left[0].amplitude * 1.25) < 1e-9
+
+    def test_kept_bars_keep_the_recording_balance(self) -> None:
+        grid = grid_at()
+        result = arrange(
+            good_buckets(grid), grid, chords=chords_per_bar(),
+            fidelity="as-played", accompaniment="light",
+        )
+        # The level gain reaches only the generated hand, so a kept bar stays at the
+        # base gain even at light.
+        assert abs(result.bars[0].left[0].amplitude - 0.6 * 0.45) < 1e-9
+
+    def test_unknown_accompaniment_is_rejected(self) -> None:
+        grid = grid_at()
+        with pytest.raises(ValueError):
+            arrange(good_buckets(grid), grid, accompaniment="nonsense")  # type: ignore[arg-type]
+
+    def test_the_arrangement_reports_its_density_level(self) -> None:
+        grid = grid_at()
+        result = arrange(good_buckets(grid), grid, chords=chords_per_bar(), accompaniment="light")
+        assert result.to_dict()["accompaniment"] == "light"

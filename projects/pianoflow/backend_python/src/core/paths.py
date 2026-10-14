@@ -1,8 +1,8 @@
-r"""Project path resolution.
+"""Project path resolution.
 
-Every path in PianoFlow is derived from the repository root so that a root
-whose path contains a space (``Program Files\pianoflow`` on the original
-machine) never has to be hard-coded or string-concatenated anywhere else.
+Every path in PianoFlow is derived from the repository root so that the
+``D:\\Program Files\\pianoflow`` layout (note the space) never has to be
+hard-coded or string-concatenated anywhere else.
 """
 
 from __future__ import annotations

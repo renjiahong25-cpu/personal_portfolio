@@ -9,11 +9,22 @@ from __future__ import annotations
 
 import pytest
 
-from services.score.render import _merge_tied_events
+from services.score.render import _merge_tied_events, _slur_overlap
 
 
-def event(time, duration, midi, *, velocity=90, staff=1, tie_start=False, tied=False):
-    return (time, duration, midi, velocity, staff, tie_start, tied)
+def event(
+    time,
+    duration,
+    midi,
+    *,
+    velocity=90,
+    staff=1,
+    tie_start=False,
+    tied=False,
+    slur_start=False,
+    slur_stop=False,
+):
+    return (time, duration, midi, velocity, staff, tie_start, tied, slur_start, slur_stop)
 
 
 def test_a_tied_note_is_struck_once_and_held_through_both_halves() -> None:
@@ -116,3 +127,50 @@ def test_a_real_gap_is_still_not_joined() -> None:
         [event(3.0, 1.0, 60, tied=True), event(4.01, 2.0, 60, tie_start=True)]
     )
     assert len(merged) == 2
+
+
+def test_a_slurred_note_holds_through_a_hairline_gap() -> None:
+    """Different pitches in a slur are held so the string rings at the next attack."""
+    held = _slur_overlap(
+        [
+            event(3.0, 1.0, 60, slur_start=True),
+            event(4.03, 2.0, 62, slur_stop=True),
+        ]
+    )
+    assert held[0][1] == pytest.approx(1.03)
+    assert held[1][1] == 2.0
+
+
+def test_a_plain_note_is_not_extended_by_the_slur_pass() -> None:
+    """A note with no slur keeps its written length, and with it its staccato."""
+    held = _slur_overlap(
+        [
+            event(3.0, 1.0, 60),
+            event(4.03, 2.0, 62),
+        ]
+    )
+    assert held[0][1] == 1.0
+
+
+def test_a_real_gap_is_not_bridged_by_the_slur_pass() -> None:
+    held = _slur_overlap(
+        [
+            event(3.0, 1.0, 60, slur_start=True),
+            event(4.2, 2.0, 62, slur_stop=True),
+        ]
+    )
+    assert held[0][1] == 1.0
+
+
+def test_the_slur_hold_does_not_reach_another_hand() -> None:
+    held = _slur_overlap(
+        [
+            event(3.0, 1.0, 60, slur_start=True),
+            event(4.03, 1.0, 55, staff=2),
+            event(4.03, 2.0, 62, slur_stop=True),
+        ]
+    )
+    # The right-hand slurred note holds to its own next right-hand attack.
+    assert held[0][1] == pytest.approx(1.03)
+    # The left-hand note keeps its written length.
+    assert held[1][1] == 1.0

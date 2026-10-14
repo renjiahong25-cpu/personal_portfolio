@@ -1,15 +1,23 @@
 """Endpoints that turn cached or uploaded audio into a playable piano score.
 
-The analyse response carries ``score.notes``: every note with its exact start
-time, duration, pitch and hand. Follow-along mode needs it, because a piano key
-can only be pressed at the moment its note actually sounds, and the per-measure
-note counts the score view used to have cannot say when that is.
+Two product modules, one pipeline:
 
-Two entry points, one pipeline:
+* **Piano transcription** - a piano recording, turned into a faithful score.
+  - ``POST /api/score/transcribe``           cached song
+  - ``POST /api/score/transcribe/upload``    a local file (multipart)
+  - ``GET  /api/score/transcribe/options``   what the UI may offer
+* **Pop to piano** - a recording, turned into a playable arrangement: the right
+  hand keeps the transcribed melody, the left hand is rebuilt from patterns or
+  textures.
+  - ``POST /api/score/arrange``              cached song
+  - ``POST /api/score/arrange/upload``       a local file (multipart)
+  - ``GET  /api/score/arrange/options``      what the UI may offer
 
-* ``POST /api/score/analyse`` with a cache key - the phase 1 song
-* ``POST /api/score/upload``  multipart - a local file, which is normalised into
-  the cache first and then scored by exactly the same code
+Both modules resolve the audio (a cache key, or an upload normalised into the
+cache) and hand it to the same ``generate_score`` call, so a local file behaves
+identically to a downloaded song. The split lives in the validation: each
+module's ``validate_*_request`` refuses the other module's options, so a request
+can never run a different pipeline than the one its URL promised.
 
 The analysis runs in a thread. It is CPU-bound for seconds (measured 91x realtime
 on the test piece, so a 4 minute song is a few seconds) and running it on the
@@ -21,20 +29,50 @@ from __future__ import annotations
 import asyncio
 import functools
 import logging
+import re
 import tempfile
 from pathlib import Path
 from typing import Protocol
 
 from core.config import Settings
 from core.errors import NotFoundError, ValidationError
-from services.score.service import ScoreRequest, ScoreResult, generate_score, validate_request
+from services.arrangement.arranger import ACCOMPANIMENT_NAMES
+from services.arrangement.sections import (
+    DEFAULT_SECTION_TEXTURES,
+    INTRO_TEXTURE_NO_MOTIF,
+    SECTION_LABELS,
+)
+from services.score.service import (
+    ACCOMPANIMENT_HINTS,
+    ARRANGE_FIDELITIES,
+    DEFAULT_ACCOMPANIMENT,
+    DEFAULT_TRANSCRIBER,
+    DIFFICULTY_HINTS,
+    FIDELITY_HINTS,
+    MAX_PREVIEW_SECONDS,
+    PATTERN_NAMES,
+    TRANSCRIBE_FIDELITIES,
+    TRANSCRIBER_HINTS,
+    TRANSCRIBER_NAMES,
+    ScoreRequest,
+    ScoreResult,
+    generate_score,
+    get_section_analysis,
+    validate_arrange_request,
+    validate_transcribe_request,
+)
 from services.score.upload import UploadResult, store_upload
 
 from .base import BaseHandler, api_endpoint
+from .streaming import send_file_range
 
 logger = logging.getLogger(__name__)
 
 CACHE_KEY_PATTERN = r"([0-9a-f]{40})"
+#: A cache key (sha1, from ``CacheManager.make_key``) or an upload id (sha256,
+#: from ``services.score.upload.hash_file``). Hex only, so a key can be pasted
+#: into a filename without escaping anything.
+OUTPUT_KEY_PATTERN = re.compile(r"^[0-9a-f]{40}$|^[0-9a-f]{64}$")
 #: Refuse an upload body larger than this before reading it into memory.
 UPLOAD_BODY_LIMIT = 100 * 1024 * 1024
 #: Give the whole request a ceiling; the audio limit plus conversion headroom.
@@ -49,6 +87,22 @@ def _score_dir(settings: Settings) -> Path:
     return Path(settings.cache_dir).parent / "scores"
 
 
+def _transcriber_options() -> dict[str, object]:
+    """The transcriber block both module options endpoints share.
+
+    Offering a model that cannot run is worse than not offering it, so the UI is
+    told plainly whether Transkun is installed on this machine.
+    """
+    from services.audio_analysis.transkun import TranskunTranscriber
+
+    return {
+        "transcribers": list(TRANSCRIBER_NAMES),
+        "transcriberHints": TRANSCRIBER_HINTS,
+        "defaultTranscriber": DEFAULT_TRANSCRIBER,
+        "transkunAvailable": TranskunTranscriber.is_available(),
+    }
+
+
 class ScoreRunner(Protocol):
     """The analysis entry point, as the handler calls it.
 
@@ -59,6 +113,14 @@ class ScoreRunner(Protocol):
     def __call__(
         self, audio_path: Path, request: ScoreRequest, *, output_dir: Path | None = ...
     ) -> ScoreResult: ...
+
+
+class RequestValidator(Protocol):
+    """A module's request validator: JSON or form fields in, ScoreRequest out."""
+
+    def __call__(
+        self, payload: dict[str, object], *, default_title: str = ""
+    ) -> ScoreRequest: ...
 
 
 async def _run_analysis(
@@ -82,44 +144,160 @@ async def _run_analysis(
     )
 
 
-class ScoreAnalyseHandler(BaseHandler):
-    """POST /api/score/analyse {"cacheKey": ..., "fidelity": ..., ...}"""
+def _resolve_cached_audio(handler: BaseHandler, key: str) -> tuple[Path, str]:
+    """Resolve a cache key to a file on disk, plus the cached title as default.
+
+    A missing title must not fail the request: the score is still valid, it is
+    just named after the file rather than the song.
+    """
+    try:
+        _entry, path = handler.services.cache.resolve_audio(key)
+    except KeyError as exc:
+        raise NotFoundError(f"no cached audio for key {key}") from exc
+    if not path.is_file():
+        raise NotFoundError(f"cached audio is missing on disk: {path.name}")
+    try:
+        entry = handler.services.cache.get_entry(key)
+    except Exception:  # noqa: BLE001 - a missing title must not fail the request
+        title = ""
+    else:
+        title = str(getattr(entry, "title", "") or "")
+    return path, title
+
+
+def _resolve_output(
+    handler: BaseHandler, suffix: str, label: str, missing_message: str
+) -> Path:
+    """Find the generated file for ``suffix``, addressing it by cache key.
+
+    Every score output is written as ``<cache key>.<suffix>``, because the
+    pipeline names its files after the audio it analysed (``service.py``). So
+    ``?cacheKey=<key>`` resolves one song's file exactly. That is the whole point:
+    "whichever file is newest" can only ever serve one song, and a player with two
+    tabs open on two scores - or one tab comparing a stale score against a fresh
+    one - gets whichever was written last, which is not the audio the notation on
+    screen belongs to.
+
+    A caller that does not know the key keeps the old behaviour. That is not
+    nostalgia: the download and the MusicXML links are opened straight from a
+    browser address bar or a bookmark, with no payload to carry a key in.
+    """
+    key = (handler.get_query_argument("cacheKey", "") or "").strip()
+    if key:
+        if not OUTPUT_KEY_PATTERN.match(key):
+            raise ValidationError(
+                "cacheKey must be a 40- or 64-character hex cache key",
+                details={"cacheKey": key},
+            )
+        target = _score_dir(handler.services.settings) / f"{key}.{suffix}"
+        if not target.is_file():
+            raise NotFoundError(f"no {label} was generated for cache key {key}")
+        return target
+
+    directory = _score_dir(handler.services.settings)
+    if not directory.is_dir():
+        raise NotFoundError("no score has been generated yet")
+    # ``st_mtime_ns``, not ``st_mtime``: the float cannot distinguish two writes
+    # within ~25 microseconds on Windows (FILETIME is past a double's mantissa),
+    # so back-to-back generations would tie and "newest" would fall back to the
+    # directory order, which is not the order the files were written in.
+    candidates = sorted(
+        directory.glob(f"*.{suffix}"), key=lambda p: p.stat().st_mtime_ns, reverse=True
+    )
+    if not candidates:
+        raise NotFoundError(missing_message)
+    return candidates[0]
+
+
+class ScoreTranscribeHandler(BaseHandler):
+    """POST /api/score/transcribe {"cacheKey": ..., "fidelity": "transcribed"|"as-played", ...}
+
+    The piano module: the recording is a piano performance and the score stays
+    faithful to it. Arranging fidelities and options are refused here, not
+    defaulted away.
+    """
 
     @api_endpoint
     async def post(self) -> None:
         payload = self.json_body()
         key = self.require_str(payload, "cacheKey")
-        try:
-            _entry, path = self.services.cache.resolve_audio(key)
-        except KeyError as exc:
-            raise NotFoundError(f"no cached audio for key {key}") from exc
-        if not path.is_file():
-            raise NotFoundError(f"cached audio is missing on disk: {path.name}")
-
-        title = self._title_from_cache(key)
-        request = validate_request(payload, default_title=title)
+        path, title = _resolve_cached_audio(self, key)
+        request = validate_transcribe_request(payload, default_title=title)
         result = await _run_analysis(path, request, self.services.settings)
         body = result.to_dict()
         body["request"] = request.to_dict()
         body["cacheKey"] = key
         self.write_json(body)
 
-    def _title_from_cache(self, key: str) -> str:
-        """Use the cached song title, so the score is named without being asked."""
-        try:
-            entry = self.services.cache.get_entry(key)
-        except Exception:  # noqa: BLE001 - a missing title must not fail the request
-            return ""
-        return str(getattr(entry, "title", "") or "")
+
+class ScoreArrangeHandler(BaseHandler):
+    """POST /api/score/arrange {"cacheKey": ..., "fidelity": "hybrid"|"arranged", ...}
+
+    The pop-to-piano module: the right hand keeps the transcribed melody, the
+    left hand is rebuilt from patterns or textures. Faithful fidelities are
+    refused here; they belong to /api/score/transcribe.
+    """
+
+    @api_endpoint
+    async def post(self) -> None:
+        payload = self.json_body()
+        key = self.require_str(payload, "cacheKey")
+        path, title = _resolve_cached_audio(self, key)
+        request = validate_arrange_request(payload, default_title=title)
+        result = await _run_analysis(path, request, self.services.settings)
+        body = result.to_dict()
+        body["request"] = request.to_dict()
+        body["cacheKey"] = key
+        self.write_json(body)
 
 
-class ScoreUploadHandler(BaseHandler):
-    """POST /api/score/upload  multipart/form-data
+class ScoreArrangeSectionsHandler(BaseHandler):
+    """GET /api/score/arrange/sections?cacheKey=... - the song's detected sections.
+
+    Runs Whisper once per song for the vocal evidence (30-60 s on CPU) and then
+    returns the labelled sections with the evidence behind each label, so the UI
+    can show the user *why* a section was called what before they pick textures.
+    After the first run the result is served from the per-file cache.
+    """
+
+    @api_endpoint
+    async def get(self) -> None:
+        key = self.get_query_argument("cacheKey", None)
+        if not key:
+            raise ValidationError("missing required query parameter 'cacheKey'")
+        path, _title = _resolve_cached_audio(self, key)
+        loop = asyncio.get_running_loop()
+        analysis = await asyncio.wait_for(
+            loop.run_in_executor(
+                None,
+                functools.partial(
+                    get_section_analysis,
+                    path,
+                    settings=self.services.settings,
+                ),
+            ),
+            timeout=ANALYSIS_TIMEOUT_SECONDS,
+        )
+        body = analysis.to_dict()
+        body["cacheKey"] = key
+        self.write_json(body)
+
+
+class _ScoreUploadHandler(BaseHandler):
+    """Shared multipart upload: store the file in the cache, analyse on request.
 
     Accepts either ``audio`` alone (store and return a key) or ``audio`` plus the
-    analysis options (store and analyse in one round trip). The frontend uses the
-    one-shot form so a local file behaves exactly like a downloaded song.
+    module's analysis options (store and analyse in one round trip). Subclasses
+    pick the module by setting ``validator`` and ``option_fields``.
+
+    The option list is an explicit whitelist per module: a field the JSON path
+    honours and the upload path silently drops is worse than one that is absent,
+    so an arranging option sent to the transcribe upload is dropped by the same
+    rule as any unknown field rather than changing the pipeline that runs.
     """
+
+    validator: object = None
+    option_fields: tuple[str, ...] = ()
 
     @api_endpoint
     async def post(self) -> None:
@@ -159,7 +337,8 @@ class ScoreUploadHandler(BaseHandler):
         if self._wants_analysis():
             options = self._options_from_fields()
             options.setdefault("title", result.original_name.rsplit(".", 1)[0])
-            request = validate_request(options)
+            validate: RequestValidator = self.validator  # type: ignore[assignment]
+            request = validate(options)
             analysis = await _run_analysis(result.path, request, settings)
             payload = analysis.to_dict()
             payload["request"] = request.to_dict()
@@ -174,135 +353,210 @@ class ScoreUploadHandler(BaseHandler):
         return value is None or value.strip().lower() not in ("0", "false", "no")
 
     def _options_from_fields(self) -> dict[str, object]:
-        """Read the analysis options out of the multipart form fields.
+        """Read the module's analysis options out of the multipart form fields.
 
-        ``transcriber`` is in this list because a field that the JSON path honours and the
-        upload path silently drops is worse than one that is absent: the upload would run
-        a different model than the user picked and still report success.
+        ``fillChords`` arrives as a string on this path, so it is converted to a
+        real bool here: the validator refuses anything that is not one, and a
+        "false" that read as truthy would flip the pipeline silently.
         """
         options: dict[str, object] = {}
-        for field_name in (
-            "fidelity",
-            "difficulty",
-            "pattern",
-            "title",
-            "previewSeconds",
-            "transcriber",
-            "texture",
-            "texturePlan",
-        ):
+        for field_name in self.option_fields:
             value = self.get_body_argument(field_name, None)
-            if value is not None and value.strip():
-                options[field_name] = value.strip()
+            if value is None or not value.strip():
+                continue
+            value = value.strip()
+            if field_name == "fillChords":
+                options[field_name] = value.lower() in ("1", "true", "yes")
+            else:
+                options[field_name] = value
         return options
+
+
+class ScoreTranscribeUploadHandler(_ScoreUploadHandler):
+    """POST /api/score/transcribe/upload - the piano module's upload.
+
+    ``fillChords`` is whitelisted here (the piano module owns it) and absent from
+    the arrange upload, so each module runs exactly the pipeline its options
+    describe.
+    """
+
+    validator = staticmethod(validate_transcribe_request)
+    option_fields = (
+        "fidelity",
+        "difficulty",
+        "fillChords",
+        "transcriber",
+        "previewSeconds",
+        "title",
+    )
+
+
+class ScoreArrangeUploadHandler(_ScoreUploadHandler):
+    """POST /api/score/arrange/upload - the pop-to-piano module's upload."""
+
+    validator = staticmethod(validate_arrange_request)
+    option_fields = (
+        "fidelity",
+        "difficulty",
+        "pattern",
+        "transcriber",
+        "previewSeconds",
+        "title",
+        "texture",
+        "texturePlan",
+        "accompaniment",
+        "sectionTextures",
+    )
 
 
 class ScoreMusicXmlHandler(BaseHandler):
     """GET /api/score/musicxml?cacheKey=... - the notated score, for OSMD."""
 
+    suffix = "musicxml"
+    label = "score"
+    missing_message = "no score has been generated yet"
+
     @api_endpoint
     async def get(self) -> None:
-        path = self._latest_score_path("musicxml")
+        path = _resolve_output(self, self.suffix, self.label, self.missing_message)
         self.set_header("Content-Type", "application/vnd.recordare.musicxml+xml; charset=UTF-8")
         self.set_header("Cache-Control", "private, max-age=60")
         self.write(path.read_text(encoding="utf-8"))
         await self.flush()
 
-    def _latest_score_path(self, suffix: str) -> Path:
-        directory = _score_dir(self.services.settings)
-        if not directory.is_dir():
-            raise NotFoundError("no score has been generated yet")
-        candidates = sorted(
-            directory.glob(f"*.{suffix}"), key=lambda p: p.stat().st_mtime, reverse=True
-        )
-        if not candidates:
-            raise NotFoundError("no score has been generated yet")
-        return candidates[0]
-
 
 class ScoreMidiHandler(BaseHandler):
-    """GET /api/score/midi - the playable two-track version."""
+    """GET /api/score/midi - the playable two-track version (Range aware)."""
+
+    suffix = "mid"
+    label = "MIDI file"
+    missing_message = "no score has been generated yet"
 
     @api_endpoint
     async def get(self) -> None:
-        directory = _score_dir(self.services.settings)
-        if not directory.is_dir():
-            raise NotFoundError("no score has been generated yet")
-        candidates = sorted(directory.glob("*.mid"), key=lambda p: p.stat().st_mtime, reverse=True)
-        if not candidates:
-            raise NotFoundError("no score has been generated yet")
-        target = candidates[0]
-        self.set_header("Content-Type", "audio/midi")
-        self.set_header("Content-Disposition", f'attachment; filename="{target.name}"')
-        with target.open("rb") as handle:
-            while chunk := handle.read(64 * 1024):
-                self.write(chunk)
-                await self.flush()
+        target = _resolve_output(self, self.suffix, self.label, self.missing_message)
+        # A download, not inline playback, but an interrupted download must be
+        # resumable: the same 206 handling the audio routes use, on the same file.
+        await send_file_range(
+            self,
+            target,
+            content_type="audio/midi",
+            cache_control="private, max-age=60",
+            content_disposition=f'attachment; filename="{target.name}"',
+        )
 
 
-class ScorePianoHandler(BaseHandler):
-    """GET /api/score/piano - the piano track generated from the last score.
+class _ScoreTrackHandler(BaseHandler):
+    """The generated track of one kind, served inline for the audio element.
 
-    This is the default follow-along audio. It is synthesised from ``score.notes``,
-    the same list that positions the notes on the staff and lights the keyboard
-    keys, so what the player hears cannot drift away from what they read.
+    The score pipeline renders three kinds of track - the full mix
+    (``*.piano.wav``), the melody alone (``*.melody.wav``) and the
+    accompaniment alone (``*.left.wav``) - and each is served by its own route.
+    All three are synthesised from ``score.notes``, the same list that positions
+    the notes on the staff and lights the keyboard keys, so what the player hears
+    cannot drift away from what they read.
 
-    When no synth is installed there is nothing to serve, and the UI falls back to
-    the source recording rather than showing a player with no audio behind it.
+    Addressing: ``?cacheKey=<key>`` names one song's file exactly. Without it the
+    route falls back to "whichever file is newest", which is what the UI used
+    before a player existed and is still right for a bare browser hit - but it can
+    only ever serve one song, so two tabs on two scores would fight over it. The
+    cache-busting token the score payload puts on each URL changes whenever the
+    content does, which is what makes the addressed URL worth having.
+
+    The body is streamed with the same Range handling as the cache audio route:
+    a rendered track is tens of megabytes, the player seeks by asking for a byte
+    window, and reading the file into memory would hold the whole thing per
+    client.
+
+    When no synth is installed there is nothing to serve, and the UI falls back
+    to the source recording rather than showing a player with no audio behind it.
     """
 
+    #: The file suffix the pipeline writes for this kind of track. The render
+    #: names its output ``<key>.<suffix>``, and the tracks end in ``.wav``.
+    suffix = "piano.wav"
+    #: The user-facing name, for the not-found message.
+    label = "piano track"
+
     @api_endpoint
     async def get(self) -> None:
-        directory = _score_dir(self.services.settings)
-        if not directory.is_dir():
-            raise NotFoundError("no score has been generated yet")
-        candidates = sorted(
-            directory.glob("*.piano.wav"), key=lambda p: p.stat().st_mtime, reverse=True
-        )
-        if not candidates:
-            raise NotFoundError(
-                "no piano track is available; install fluidsynth and a SoundFont to get one"
-            )
-        target = candidates[0]
+        target = _resolve_output(self, self.suffix, self.label, self._missing_message())
         # Inline, not an attachment: this is played by the audio element.
-        self.set_header("Content-Type", "audio/wav")
-        self.set_header("Content-Length", str(target.stat().st_size))
-        self.set_header("Cache-Control", "private, max-age=60")
-        self.set_header("Accept-Ranges", "bytes")
-        self.write(target.read_bytes())
-        await self.flush()
+        await send_file_range(
+            self, target, content_type="audio/wav", cache_control="private, max-age=60"
+        )
+
+    def _missing_message(self) -> str:
+        return f"no {self.label} is available; install fluidsynth and a SoundFont to get one"
 
 
-class ScoreOptionsHandler(BaseHandler):
-    """GET /api/score/options - what the UI may offer, from one source of truth."""
+class ScorePianoHandler(_ScoreTrackHandler):
+    """GET /api/score/piano - the full mix, the default follow-along audio."""
+
+    suffix = "piano.wav"
+    label = "piano track"
+
+
+class ScoreMelodyHandler(_ScoreTrackHandler):
+    """GET /api/score/melody - the right hand alone, for previewing the tune."""
+
+    suffix = "melody.wav"
+    label = "melody track"
+
+
+class ScoreLeftHandHandler(_ScoreTrackHandler):
+    """GET /api/score/left - the left hand alone, for previewing the accompaniment."""
+
+    suffix = "left.wav"
+    label = "left-hand track"
+
+
+class ScoreTranscribeOptionsHandler(BaseHandler):
+    """GET /api/score/transcribe/options - what the piano module may offer."""
+
+    @api_endpoint
+    async def get(self) -> None:
+        self.write_json(
+            {
+                "fidelities": list(TRANSCRIBE_FIDELITIES),
+                "fidelityHints": {
+                    fidelity: FIDELITY_HINTS[fidelity] for fidelity in TRANSCRIBE_FIDELITIES
+                },
+                "difficulties": DIFFICULTY_HINTS,
+                "maxPreviewSeconds": MAX_PREVIEW_SECONDS,
+                **_transcriber_options(),
+            }
+        )
+
+
+class ScoreArrangeOptionsHandler(BaseHandler):
+    """GET /api/score/arrange/options - what the pop-to-piano module may offer."""
 
     @api_endpoint
     async def get(self) -> None:
         from services.arrangement.textures import TEXTURE_LABELS
-        from services.audio_analysis.transkun import TranskunTranscriber
-        from services.score.service import (
-            DEFAULT_TRANSCRIBER,
-            DIFFICULTY_HINTS,
-            FIDELITIES,
-            MAX_PREVIEW_SECONDS,
-            PATTERN_NAMES,
-            TRANSCRIBER_HINTS,
-            TRANSCRIBER_NAMES,
-        )
 
         self.write_json(
             {
-                "fidElities": list(FIDELITIES),
+                "fidelities": list(ARRANGE_FIDELITIES),
+                "fidelityHints": {
+                    fidelity: FIDELITY_HINTS[fidelity] for fidelity in ARRANGE_FIDELITIES
+                },
                 "difficulties": DIFFICULTY_HINTS,
                 "patterns": list(PATTERN_NAMES),
                 "textures": {t.value: label for t, label in TEXTURE_LABELS.items()},
+                "accompaniments": list(ACCOMPANIMENT_NAMES),
+                "accompanimentHints": ACCOMPANIMENT_HINTS,
+                "defaultAccompaniment": DEFAULT_ACCOMPANIMENT,
+                "sectionLabels": list(SECTION_LABELS),
+                # Machine-readable: the intro is the one conditional default, so
+                # its no-motif value travels under its own key.
+                "sectionTexturesDefaults": {
+                    **dict(DEFAULT_SECTION_TEXTURES),
+                    "introNoMotif": INTRO_TEXTURE_NO_MOTIF,
+                },
                 "maxPreviewSeconds": MAX_PREVIEW_SECONDS,
-                "transcribers": list(TRANSCRIBER_NAMES),
-                "transcriberHints": TRANSCRIBER_HINTS,
-                "defaultTranscriber": DEFAULT_TRANSCRIBER,
-                # Offering a model that cannot run is worse than not offering it, so the
-                # UI is told plainly whether Transkun is installed on this machine.
-                "transkunAvailable": TranskunTranscriber.is_available(),
+                **_transcriber_options(),
             }
         )
 
@@ -310,10 +564,16 @@ class ScoreOptionsHandler(BaseHandler):
 __all__ = [
     "ANALYSIS_TIMEOUT_SECONDS",
     "UPLOAD_BODY_LIMIT",
-    "ScoreAnalyseHandler",
+    "ScoreArrangeHandler",
+    "ScoreArrangeOptionsHandler",
+    "ScoreArrangeSectionsHandler",
+    "ScoreArrangeUploadHandler",
+    "ScoreLeftHandHandler",
+    "ScoreMelodyHandler",
     "ScoreMidiHandler",
     "ScoreMusicXmlHandler",
-    "ScoreOptionsHandler",
     "ScorePianoHandler",
-    "ScoreUploadHandler",
+    "ScoreTranscribeHandler",
+    "ScoreTranscribeOptionsHandler",
+    "ScoreTranscribeUploadHandler",
 ]

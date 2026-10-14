@@ -1,8 +1,14 @@
 {
   "version": 1,
   "created_at": "2026-10-04T02:47:18Z",
-  "updated_at": "2026-10-04T05:03:38Z",
+  "updated_at": "2026-10-09T03:26:46Z",
   "files": {
+    ".continue/config.yaml": {
+      "role": "index",
+      "sha256": "9e6a7f13f2631dd462988fb563fc9feeff8a5b5d51b27161daccf886a2c1e7d4",
+      "size": 3233,
+      "normalized_sha256": "9e6a7f13f2631dd462988fb563fc9feeff8a5b5d51b27161daccf886a2c1e7d4"
+    },
     ".gitattributes": {
       "role": "index",
       "sha256": "21fa16a2122e2b0360b47502c577428b645437e08e9e87ffba661f84853cb476",
@@ -11,15 +17,15 @@
     },
     ".gitignore": {
       "role": "index",
-      "sha256": "a1a844c257fe3962ef270fa1112f43687e7fd0e37294eeaffd992a1a39a45d1a",
-      "size": 276,
-      "normalized_sha256": "a1a844c257fe3962ef270fa1112f43687e7fd0e37294eeaffd992a1a39a45d1a"
+      "sha256": "08605f54ef367d594ceb2f3ea8e2e78a2d5efa6a7548e92b7bc7269deeff7d4e",
+      "size": 2026,
+      "normalized_sha256": "08605f54ef367d594ceb2f3ea8e2e78a2d5efa6a7548e92b7bc7269deeff7d4e"
     },
     ".pre-commit-config.yaml": {
       "role": "index",
-      "sha256": "850d400fa3ea013f6bde5ae0cf3954d36eeb41b1a2127cc72fffd37e66938916",
-      "size": 2245,
-      "normalized_sha256": "850d400fa3ea013f6bde5ae0cf3954d36eeb41b1a2127cc72fffd37e66938916"
+      "sha256": "ff42bd1555cb193cbfd73ef1f417a98f0f52d7cd6d5dbbb5c8ea46da02091d2a",
+      "size": 2500,
+      "normalized_sha256": "ff42bd1555cb193cbfd73ef1f417a98f0f52d7cd6d5dbbb5c8ea46da02091d2a"
     },
     "AGENTS.md": {
       "role": "index",
@@ -29,9 +35,9 @@
     },
     "PianoFlow AI音乐工作台技术栈结论文档.md": {
       "role": "index",
-      "sha256": "689a75bc2729abd409d08cd33919d91ff35d0979e66a2781a6414b2da828a8ea",
-      "size": 22338,
-      "normalized_sha256": "689a75bc2729abd409d08cd33919d91ff35d0979e66a2781a6414b2da828a8ea"
+      "sha256": "6bc710b1f77dfe3dca6fc97d4dcfa13ef680f9e8db8cf420a289077f72caaea6",
+      "size": 25938,
+      "normalized_sha256": "6bc710b1f77dfe3dca6fc97d4dcfa13ef680f9e8db8cf420a289077f72caaea6"
     },
     "README.md": {
       "role": "index",
@@ -41,9 +47,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "12cbc237b863041b3ab7b6c6330091964cb014a20e624ec1f88de6056aed56c2",
-      "size": 21,
-      "normalized_sha256": "12cbc237b863041b3ab7b6c6330091964cb014a20e624ec1f88de6056aed56c2"
+      "sha256": "e4385b1cdc40427d698dc4aba9c8eb27de30997f19c6bf451b93f20b6688becc",
+      "size": 45514,
+      "normalized_sha256": "e4385b1cdc40427d698dc4aba9c8eb27de30997f19c6bf451b93f20b6688becc"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -59,15 +65,15 @@
     },
     "backend_python/app.py": {
       "role": "index",
-      "sha256": "3d28917d43e4d1abef24aa2b4f5af586e3cb8539f6eb2d3b7567c8080a1f3a98",
-      "size": 2026,
-      "normalized_sha256": "3d28917d43e4d1abef24aa2b4f5af586e3cb8539f6eb2d3b7567c8080a1f3a98"
+      "sha256": "34c4d45ad700f6222d3f10ae6ef036be6bfe33b79ec546e10808eecf537e8bec",
+      "size": 2689,
+      "normalized_sha256": "34c4d45ad700f6222d3f10ae6ef036be6bfe33b79ec546e10808eecf537e8bec"
     },
     "backend_python/pyproject.toml": {
       "role": "index",
-      "sha256": "2043c1838b71324291cd8af26f7b67281eaaac2e0b003bbe22aaec4462417d45",
-      "size": 2356,
-      "normalized_sha256": "2043c1838b71324291cd8af26f7b67281eaaac2e0b003bbe22aaec4462417d45"
+      "sha256": "b61344892a0f44eac59733edd78e931873a8c00b4076d146f0311286adaa273f",
+      "size": 2950,
+      "normalized_sha256": "b61344892a0f44eac59733edd78e931873a8c00b4076d146f0311286adaa273f"
     },
     "backend_python/pytest.ini": {
       "role": "index",
@@ -83,21 +89,39 @@
     },
     "backend_python/scripts/check_secrets.py": {
       "role": "index",
-      "sha256": "e2443670a7062a0d70933ee83e49351dc5f45c25682e7ba011372cf949cffdf0",
-      "size": 3534,
-      "normalized_sha256": "e2443670a7062a0d70933ee83e49351dc5f45c25682e7ba011372cf949cffdf0"
+      "sha256": "227cea170f7b690b474431d116474ab7b3976010eea050c22f5c3219e838c422",
+      "size": 4132,
+      "normalized_sha256": "227cea170f7b690b474431d116474ab7b3976010eea050c22f5c3219e838c422"
     },
     "backend_python/scripts/fetch_models.py": {
       "role": "index",
-      "sha256": "e2c3faae744e6ae43240ae8d9b7f7cf1d7d5929e04f00c3c042421ebec62ad0c",
-      "size": 4170,
-      "normalized_sha256": "e2c3faae744e6ae43240ae8d9b7f7cf1d7d5929e04f00c3c042421ebec62ad0c"
+      "sha256": "2d40d71f942781eac49ae901ea033200c387171cfd05af1329a82c4cef14ec7e",
+      "size": 6969,
+      "normalized_sha256": "2d40d71f942781eac49ae901ea033200c387171cfd05af1329a82c4cef14ec7e"
     },
     "backend_python/scripts/fix_whitespace.py": {
       "role": "index",
       "sha256": "f3023f3053514e315e3d58eac50f97dad0fa520731eaa9fd877e279419e2ea96",
       "size": 1288,
       "normalized_sha256": "f3023f3053514e315e3d58eac50f97dad0fa520731eaa9fd877e279419e2ea96"
+    },
+    "backend_python/scripts/make_notation_fixture.py": {
+      "role": "index",
+      "sha256": "103d118f01bdb8f0de439a74effc5a7b0692f0e8742ff3cd0c4da6c5314f0422",
+      "size": 4265,
+      "normalized_sha256": "103d118f01bdb8f0de439a74effc5a7b0692f0e8742ff3cd0c4da6c5314f0422"
+    },
+    "backend_python/scripts/transkun_worker.py": {
+      "role": "index",
+      "sha256": "cbd6c456a6334687e892737ac20f797bb57a8035c3191c3035670afa209d1381",
+      "size": 6561,
+      "normalized_sha256": "cbd6c456a6334687e892737ac20f797bb57a8035c3191c3035670afa209d1381"
+    },
+    "backend_python/scripts/vocal_melody_worker.py": {
+      "role": "index",
+      "sha256": "bc86e05b72a13499e938239ed48b3de5bcc068f531acc046d428c8b971ccc7ce",
+      "size": 4739,
+      "normalized_sha256": "bc86e05b72a13499e938239ed48b3de5bcc068f531acc046d428c8b971ccc7ce"
     },
     "backend_python/src/__init__.py": {
       "role": "index",
@@ -147,11 +171,17 @@
       "size": 7704,
       "normalized_sha256": "eaca2504f02eca2e34724c636366bdc2dbbc2866ef7d65788ee5696cf18bfc6b"
     },
+    "backend_python/src/api/handlers/score.py": {
+      "role": "index",
+      "sha256": "f936a06570edf43200d3a49671f6ac0c37595274706afab4ac683a224963f570",
+      "size": 12479,
+      "normalized_sha256": "f936a06570edf43200d3a49671f6ac0c37595274706afab4ac683a224963f570"
+    },
     "backend_python/src/api/routes.py": {
       "role": "index",
-      "sha256": "eb337a3b33a5393d80cc2c22a3681920f707d5b873046b99420018dcf5f2383d",
-      "size": 2896,
-      "normalized_sha256": "eb337a3b33a5393d80cc2c22a3681920f707d5b873046b99420018dcf5f2383d"
+      "sha256": "9c7e9fc6c85e98088a0f07ed61d255290d2008a103da134a565799f3b411bc1d",
+      "size": 5549,
+      "normalized_sha256": "9c7e9fc6c85e98088a0f07ed61d255290d2008a103da134a565799f3b411bc1d"
     },
     "backend_python/src/container.py": {
       "role": "index",
@@ -167,9 +197,9 @@
     },
     "backend_python/src/core/config.py": {
       "role": "index",
-      "sha256": "c8db079e858f438a52a25e4e7481208bdc12b18a4e67ffb0765bd303b2e19066",
-      "size": 6060,
-      "normalized_sha256": "c8db079e858f438a52a25e4e7481208bdc12b18a4e67ffb0765bd303b2e19066"
+      "sha256": "039958e2432d2f0821e5e6c1e9dc3d103f5cb6e11e33aa5343956d7141472185",
+      "size": 8382,
+      "normalized_sha256": "039958e2432d2f0821e5e6c1e9dc3d103f5cb6e11e33aa5343956d7141472185"
     },
     "backend_python/src/core/errors.py": {
       "role": "index",
@@ -201,6 +231,150 @@
       "size": 2,
       "normalized_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
     },
+    "backend_python/src/services/arrangement/arranger.py": {
+      "role": "index",
+      "sha256": "c65299c25e0cccc1da5db45f70949d62db0cd68533a53309e7af228045a71a9a",
+      "size": 24452,
+      "normalized_sha256": "c65299c25e0cccc1da5db45f70949d62db0cd68533a53309e7af228045a71a9a"
+    },
+    "backend_python/src/services/arrangement/ballad.py": {
+      "role": "index",
+      "sha256": "3518bbbfbe57deda4cf1a253d4d8114f0b68baf4389107978c61605f29503b77",
+      "size": 18554,
+      "normalized_sha256": "3518bbbfbe57deda4cf1a253d4d8114f0b68baf4389107978c61605f29503b77"
+    },
+    "backend_python/src/services/arrangement/expression.py": {
+      "role": "index",
+      "sha256": "8f8323495de713c1221d628bb157d755d069c0d287427b4248c5adf7d0827c63",
+      "size": 8215,
+      "normalized_sha256": "8f8323495de713c1221d628bb157d755d069c0d287427b4248c5adf7d0827c63"
+    },
+    "backend_python/src/services/arrangement/grid.py": {
+      "role": "index",
+      "sha256": "fcbeebcde13e00103f0f2bc5aa7fbf63df8c6d39612611368a2bce894a5c18d6",
+      "size": 6343,
+      "normalized_sha256": "fcbeebcde13e00103f0f2bc5aa7fbf63df8c6d39612611368a2bce894a5c18d6"
+    },
+    "backend_python/src/services/arrangement/hand_split.py": {
+      "role": "index",
+      "sha256": "a270a5d539cd842c8b3b96f8d3cfa5c1664ccdc85e6d2fb379948ad1259f8765",
+      "size": 21030,
+      "normalized_sha256": "a270a5d539cd842c8b3b96f8d3cfa5c1664ccdc85e6d2fb379948ad1259f8765"
+    },
+    "backend_python/src/services/arrangement/harmony.py": {
+      "role": "index",
+      "sha256": "28c8ae80c4204a2dbde239b11744e9909d97568f1dd0b281fc5cb1723dca01d9",
+      "size": 19937,
+      "normalized_sha256": "28c8ae80c4204a2dbde239b11744e9909d97568f1dd0b281fc5cb1723dca01d9"
+    },
+    "backend_python/src/services/arrangement/patterns.py": {
+      "role": "index",
+      "sha256": "58b7dabc8a2e4820cc666bcaaeef88dad85578f8d271522cf7952ee60c24139f",
+      "size": 8311,
+      "normalized_sha256": "58b7dabc8a2e4820cc666bcaaeef88dad85578f8d271522cf7952ee60c24139f"
+    },
+    "backend_python/src/services/arrangement/piano_midi.py": {
+      "role": "index",
+      "sha256": "95c45e1a2d534ce39bbc582d3a1b06940585fb909dd78307cc8c0082f99efd70",
+      "size": 11151,
+      "normalized_sha256": "95c45e1a2d534ce39bbc582d3a1b06940585fb909dd78307cc8c0082f99efd70"
+    },
+    "backend_python/src/services/arrangement/piano_musicxml.py": {
+      "role": "index",
+      "sha256": "528e25bcd60db6d090f7171b8fd6e1656a9f3be7d4b97b58d69ceb25f558ed9b",
+      "size": 16273,
+      "normalized_sha256": "528e25bcd60db6d090f7171b8fd6e1656a9f3be7d4b97b58d69ceb25f558ed9b"
+    },
+    "backend_python/src/services/arrangement/piano_score.py": {
+      "role": "index",
+      "sha256": "661aa0f691f24412d39c13d896f647c2694083d396dc21f4eb49a431a825690d",
+      "size": 16641,
+      "normalized_sha256": "661aa0f691f24412d39c13d896f647c2694083d396dc21f4eb49a431a825690d"
+    },
+    "backend_python/src/services/arrangement/quality.py": {
+      "role": "index",
+      "sha256": "d4dbce130ffa09516993a362c9dad3328e4ee57e18315679fe0cc9ff97cd099b",
+      "size": 8798,
+      "normalized_sha256": "d4dbce130ffa09516993a362c9dad3328e4ee57e18315679fe0cc9ff97cd099b"
+    },
+    "backend_python/src/services/arrangement/textures.py": {
+      "role": "index",
+      "sha256": "2acbabba3bf0dfa10bcb72fd346bbb55eb510e3d2dec01893a46e0256aea89f0",
+      "size": 13821,
+      "normalized_sha256": "2acbabba3bf0dfa10bcb72fd346bbb55eb510e3d2dec01893a46e0256aea89f0"
+    },
+    "backend_python/src/services/arrangement/vocal_melody.py": {
+      "role": "index",
+      "sha256": "360a290ebe8eb1641a8cdf1a0aafe87c3e3974e596d03f2412f620956a737ea5",
+      "size": 29293,
+      "normalized_sha256": "360a290ebe8eb1641a8cdf1a0aafe87c3e3974e596d03f2412f620956a737ea5"
+    },
+    "backend_python/src/services/arrangement/voicing.py": {
+      "role": "index",
+      "sha256": "5c6ac0fc9e2a55eff9240383f01ee3c258b7337f22a18559d9c3e6d935af6c50",
+      "size": 12651,
+      "normalized_sha256": "5c6ac0fc9e2a55eff9240383f01ee3c258b7337f22a18559d9c3e6d935af6c50"
+    },
+    "backend_python/src/services/audio_analysis/chords.py": {
+      "role": "index",
+      "sha256": "cca29f30503d8106a2b276fcbd027af1dfef988662b8a816d7f14b696136f877",
+      "size": 4714,
+      "normalized_sha256": "cca29f30503d8106a2b276fcbd027af1dfef988662b8a816d7f14b696136f877"
+    },
+    "backend_python/src/services/audio_analysis/dynamics.py": {
+      "role": "index",
+      "sha256": "f3d67eb2481f2a03feb2c78073e43a2ad90726a15115a1754d2b1ff9a49b8a84",
+      "size": 14999,
+      "normalized_sha256": "f3d67eb2481f2a03feb2c78073e43a2ad90726a15115a1754d2b1ff9a49b8a84"
+    },
+    "backend_python/src/services/audio_analysis/highres.py": {
+      "role": "index",
+      "sha256": "80d1e230ef8025455259f44f534d2b2bf2e7b39a6f06aa953776fb2bb04d52cc",
+      "size": 19397,
+      "normalized_sha256": "80d1e230ef8025455259f44f534d2b2bf2e7b39a6f06aa953776fb2bb04d52cc"
+    },
+    "backend_python/src/services/audio_analysis/models.py": {
+      "role": "index",
+      "sha256": "bdab8abb19eb93c98fec00ed5d009175c3ef0dab417a2fa296c61505c3dcceff",
+      "size": 5010,
+      "normalized_sha256": "bdab8abb19eb93c98fec00ed5d009175c3ef0dab417a2fa296c61505c3dcceff"
+    },
+    "backend_python/src/services/audio_analysis/ornaments.py": {
+      "role": "index",
+      "sha256": "f3c61daaf97d8310507d4a05f75572539f1978805f6ef5fffcf684ea92862f68",
+      "size": 8315,
+      "normalized_sha256": "119f7586ecb65ffdca6a13acf21bc7988a61d3cc1cf0fd9cb6f25e5529fc4630"
+    },
+    "backend_python/src/services/audio_analysis/pipeline.py": {
+      "role": "index",
+      "sha256": "1c5870bf2075660695b702ee6fcecfd90662b115105b7cadb9c0ab0ec1420769",
+      "size": 4067,
+      "normalized_sha256": "1c5870bf2075660695b702ee6fcecfd90662b115105b7cadb9c0ab0ec1420769"
+    },
+    "backend_python/src/services/audio_analysis/pitch.py": {
+      "role": "index",
+      "sha256": "639e96c5d6cdcd48d8d878ba8398c274ea39e8f957486aa02491ac2ec08cdbe8",
+      "size": 7375,
+      "normalized_sha256": "639e96c5d6cdcd48d8d878ba8398c274ea39e8f957486aa02491ac2ec08cdbe8"
+    },
+    "backend_python/src/services/audio_analysis/polyphony.py": {
+      "role": "index",
+      "sha256": "a7ae8c3b323b426f90c65ea7fc7275921202ce73f3168caafcecd792000bde3c",
+      "size": 21388,
+      "normalized_sha256": "a7ae8c3b323b426f90c65ea7fc7275921202ce73f3168caafcecd792000bde3c"
+    },
+    "backend_python/src/services/audio_analysis/room.py": {
+      "role": "index",
+      "sha256": "3582e7d4203627f106ce65a566ba7ae52fbe9a315ee31eea6466fd3ad6560951",
+      "size": 27899,
+      "normalized_sha256": "3582e7d4203627f106ce65a566ba7ae52fbe9a315ee31eea6466fd3ad6560951"
+    },
+    "backend_python/src/services/audio_analysis/transkun.py": {
+      "role": "index",
+      "sha256": "6b2e14e609a88b958b81318f93ba64e35b5e4f36ff751ea1a571a046cae95479",
+      "size": 9385,
+      "normalized_sha256": "6b2e14e609a88b958b81318f93ba64e35b5e4f36ff751ea1a571a046cae95479"
+    },
     "backend_python/src/services/download/__init__.py": {
       "role": "index",
       "sha256": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6",
@@ -209,9 +383,9 @@
     },
     "backend_python/src/services/download/audio_service.py": {
       "role": "index",
-      "sha256": "2e9126172f6051178f381b4feb135c820b52186cd907b1d9e35ca1fb3958c42a",
-      "size": 13415,
-      "normalized_sha256": "2e9126172f6051178f381b4feb135c820b52186cd907b1d9e35ca1fb3958c42a"
+      "sha256": "96d5060b7a1a041c1e5bde1e6ee7e29c67ad4f0a0cec41fb6d0f22f0ee567c3c",
+      "size": 14222,
+      "normalized_sha256": "96d5060b7a1a041c1e5bde1e6ee7e29c67ad4f0a0cec41fb6d0f22f0ee567c3c"
     },
     "backend_python/src/services/media_headers.py": {
       "role": "index",
@@ -255,6 +429,30 @@
       "size": 5811,
       "normalized_sha256": "b9d6b4e98cbfab874cecd4e07222303412c927a837d8250470049174f698366b"
     },
+    "backend_python/src/services/score/__init__.py": {
+      "role": "index",
+      "sha256": "852bae3307da5b50b06c958a74aed7fb25ee20bac4d3e6560029932528f1f6e6",
+      "size": 34,
+      "normalized_sha256": "852bae3307da5b50b06c958a74aed7fb25ee20bac4d3e6560029932528f1f6e6"
+    },
+    "backend_python/src/services/score/render.py": {
+      "role": "index",
+      "sha256": "1b2a95b0a65fb7f69c5fdcf0f006e4e774d8a6a344339d5fac809ab042fc3043",
+      "size": 34883,
+      "normalized_sha256": "1b2a95b0a65fb7f69c5fdcf0f006e4e774d8a6a344339d5fac809ab042fc3043"
+    },
+    "backend_python/src/services/score/service.py": {
+      "role": "index",
+      "sha256": "10316d6a34198841f49252b3d6f8831219b64869eff94babfc37fe6fff9ea378",
+      "size": 25218,
+      "normalized_sha256": "10316d6a34198841f49252b3d6f8831219b64869eff94babfc37fe6fff9ea378"
+    },
+    "backend_python/src/services/score/upload.py": {
+      "role": "index",
+      "sha256": "4d065c57df0dc8d7351c252e2689a025ef21276ab3ee23a74e79350e40c18535",
+      "size": 8279,
+      "normalized_sha256": "4d065c57df0dc8d7351c252e2689a025ef21276ab3ee23a74e79350e40c18535"
+    },
     "backend_python/src/tasks/__init__.py": {
       "role": "index",
       "sha256": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6",
@@ -291,6 +489,72 @@
       "size": 14137,
       "normalized_sha256": "1d61da6aef48b76bd3789c585cde389575df60b73ceaa218448c695d7916d779"
     },
+    "backend_python/tests/test_arrangement_arranger.py": {
+      "role": "observe",
+      "sha256": "4c60426728460f3654088cd9eeaa583104b5df182d4c607fef07f18c2d655eb3",
+      "size": 17959,
+      "normalized_sha256": "4c60426728460f3654088cd9eeaa583104b5df182d4c607fef07f18c2d655eb3"
+    },
+    "backend_python/tests/test_arrangement_grid.py": {
+      "role": "observe",
+      "sha256": "f38869cdfa27c343a3e418fa56d3fc3d06966cf96e43135a8105fa6c2ada06e4",
+      "size": 4425,
+      "normalized_sha256": "f38869cdfa27c343a3e418fa56d3fc3d06966cf96e43135a8105fa6c2ada06e4"
+    },
+    "backend_python/tests/test_arrangement_hand_split.py": {
+      "role": "observe",
+      "sha256": "95c84fb841c91142942ef9e221eafdd000892c22523098267724dd5cf2ba7c92",
+      "size": 9760,
+      "normalized_sha256": "95c84fb841c91142942ef9e221eafdd000892c22523098267724dd5cf2ba7c92"
+    },
+    "backend_python/tests/test_arrangement_patterns.py": {
+      "role": "observe",
+      "sha256": "f5a6ea22a761f64e04324e8af8875bd4fb96e567604c53e667f35e6b71340473",
+      "size": 5665,
+      "normalized_sha256": "f5a6ea22a761f64e04324e8af8875bd4fb96e567604c53e667f35e6b71340473"
+    },
+    "backend_python/tests/test_arrangement_piano_midi_ties.py": {
+      "role": "observe",
+      "sha256": "32e426ab4765eb597b63ab4cb22c3f59a85eda12eac9259eeba0ee644a9d5ec7",
+      "size": 6121,
+      "normalized_sha256": "32e426ab4765eb597b63ab4cb22c3f59a85eda12eac9259eeba0ee644a9d5ec7"
+    },
+    "backend_python/tests/test_arrangement_piano_score.py": {
+      "role": "observe",
+      "sha256": "e667f73003c7795b604bd7c679cddebcea42edb9cab6e7c6e8e381ad6e7aca74",
+      "size": 9556,
+      "normalized_sha256": "e667f73003c7795b604bd7c679cddebcea42edb9cab6e7c6e8e381ad6e7aca74"
+    },
+    "backend_python/tests/test_arrangement_quality.py": {
+      "role": "observe",
+      "sha256": "c34d921e3f99586d45762b89fdfee0901180d27e36a644156b403d61b966e7eb",
+      "size": 8119,
+      "normalized_sha256": "c34d921e3f99586d45762b89fdfee0901180d27e36a644156b403d61b966e7eb"
+    },
+    "backend_python/tests/test_arrangement_textures.py": {
+      "role": "observe",
+      "sha256": "b04f834b3d41409d1adff01b877375fd0b0267a182358ea350d572bea17b5dad",
+      "size": 4868,
+      "normalized_sha256": "b04f834b3d41409d1adff01b877375fd0b0267a182358ea350d572bea17b5dad"
+    },
+    "backend_python/tests/test_arrangement_writers.py": {
+      "role": "observe",
+      "sha256": "80b23a97aae5f5d3dcfb8771cad18380d714383041fd1d5534495d51420f70bb",
+      "size": 26583,
+      "normalized_sha256": "80b23a97aae5f5d3dcfb8771cad18380d714383041fd1d5534495d51420f70bb"
+    },
+    "backend_python/tests/test_audio_analysis.py": {
+      "role": "observe",
+      "sha256": "86cb662e53205a7fa47081650904f9b84e964841d456242898025f6c681d18d8",
+      "size": 9118,
+      "normalized_sha256": "86cb662e53205a7fa47081650904f9b84e964841d456242898025f6c681d18d8"
+    },
+    "backend_python/tests/test_ballad.py": {
+      "role": "observe",
+      "sha256": "4eaa3c029b2e6a0c286e26b3bdbd83a2c5e2715adbb649b58f0794bf9d2bd977",
+      "size": 11279,
+      "normalized_sha256": "4eaa3c029b2e6a0c286e26b3bdbd83a2c5e2715adbb649b58f0794bf9d2bd977"
+    },
     "backend_python/tests/test_bilibili_client.py": {
       "role": "observe",
       "sha256": "49fa7ca15671ab7954bb1cc8c21aa0bc7195ac07c580ebaf3099c74b5096afb9",
@@ -321,11 +585,83 @@
       "size": 4413,
       "normalized_sha256": "c4a4c423238db241363e65f1b0b161816d51362e8a0c5bbcc0a5aa622d7fde5c"
     },
+    "backend_python/tests/test_expression.py": {
+      "role": "observe",
+      "sha256": "b9fb74dd27d9fde3d2067ab5a7a671bcbad8e739c5900fbfc1cfe92f65f2ce91",
+      "size": 9874,
+      "normalized_sha256": "b9fb74dd27d9fde3d2067ab5a7a671bcbad8e739c5900fbfc1cfe92f65f2ce91"
+    },
+    "backend_python/tests/test_faithful_transcription.py": {
+      "role": "observe",
+      "sha256": "d9bb24c51590155fd92e26240b2254b24c3b3badb8adb4020708e0f016dfd946",
+      "size": 15550,
+      "normalized_sha256": "d9bb24c51590155fd92e26240b2254b24c3b3badb8adb4020708e0f016dfd946"
+    },
+    "backend_python/tests/test_follow_along_render.py": {
+      "role": "observe",
+      "sha256": "8e57e690744d30731bde19e70bb164f89170ee6dac7081a5a291fef1d2ec91b3",
+      "size": 38389,
+      "normalized_sha256": "8e57e690744d30731bde19e70bb164f89170ee6dac7081a5a291fef1d2ec91b3"
+    },
+    "backend_python/tests/test_highres.py": {
+      "role": "observe",
+      "sha256": "370daac6a09756501638d6c6a6bdfa0dd90fbdc740629e73eea0429c551ff809",
+      "size": 11637,
+      "normalized_sha256": "370daac6a09756501638d6c6a6bdfa0dd90fbdc740629e73eea0429c551ff809"
+    },
     "backend_python/tests/test_media_cover.py": {
       "role": "observe",
       "sha256": "27b039aa74f94307d16c81a0fdee64058b218f63e75ac7ebbf3c03cfc57155cc",
       "size": 4176,
       "normalized_sha256": "27b039aa74f94307d16c81a0fdee64058b218f63e75ac7ebbf3c03cfc57155cc"
+    },
+    "backend_python/tests/test_polyphony.py": {
+      "role": "observe",
+      "sha256": "f94279170f293e3efc736869800d43efc61f37ee5b6ed0f35a9e69e69e0b4dcf",
+      "size": 12632,
+      "normalized_sha256": "f94279170f293e3efc736869800d43efc61f37ee5b6ed0f35a9e69e69e0b4dcf"
+    },
+    "backend_python/tests/test_render_tied_notes.py": {
+      "role": "observe",
+      "sha256": "d6a8133e952a07f28c1f3c56b73ba15805c1e65b6f7ea7d551bb44f039ddacd0",
+      "size": 3866,
+      "normalized_sha256": "d6a8133e952a07f28c1f3c56b73ba15805c1e65b6f7ea7d551bb44f039ddacd0"
+    },
+    "backend_python/tests/test_review_fixes.py": {
+      "role": "observe",
+      "sha256": "d1175e8f542c4695d32f5c2180b9acafd655e6557cd949531e81446b449d07c9",
+      "size": 7541,
+      "normalized_sha256": "d1175e8f542c4695d32f5c2180b9acafd655e6557cd949531e81446b449d07c9"
+    },
+    "backend_python/tests/test_room.py": {
+      "role": "observe",
+      "sha256": "2f0b560aff51179ec525826bc0f08637df93c6cc6c2f3210db21f88d0a85eba0",
+      "size": 14881,
+      "normalized_sha256": "ef9ed4ae9d54a0b98ab113f3072eec04f298689f27fcff030713c864c0763bc3"
+    },
+    "backend_python/tests/test_score_api.py": {
+      "role": "observe",
+      "sha256": "cfebd1b391082ff33b8ccab77c52791254b5f9b5ad1471abb2f6e3390f296bc9",
+      "size": 17340,
+      "normalized_sha256": "cfebd1b391082ff33b8ccab77c52791254b5f9b5ad1471abb2f6e3390f296bc9"
+    },
+    "backend_python/tests/test_score_service.py": {
+      "role": "observe",
+      "sha256": "6860f78e283939deb16619a087cd8dafc49b53e1314da48f7c0884040a1fb6ba",
+      "size": 10324,
+      "normalized_sha256": "6860f78e283939deb16619a087cd8dafc49b53e1314da48f7c0884040a1fb6ba"
+    },
+    "backend_python/tests/test_score_upload.py": {
+      "role": "observe",
+      "sha256": "b8312a0ab2d878684105a27e31bf478ab957710f71c213df44604e4fc04785b3",
+      "size": 7218,
+      "normalized_sha256": "b8312a0ab2d878684105a27e31bf478ab957710f71c213df44604e4fc04785b3"
+    },
+    "backend_python/tests/test_static_assets.py": {
+      "role": "observe",
+      "sha256": "b80038390c97681c0f086f65fdf4b2711dfe443bb144ab35f320f92027d735b9",
+      "size": 1764,
+      "normalized_sha256": "b80038390c97681c0f086f65fdf4b2711dfe443bb144ab35f320f92027d735b9"
     },
     "backend_python/tests/test_task_manager.py": {
       "role": "observe",
@@ -339,11 +675,59 @@
       "size": 1314,
       "normalized_sha256": "91827ce7d0d6078d2290e46d8c84b3b338abf38d94a033128a236813d12ba5b8"
     },
+    "backend_python/tests/test_transcriber_choice.py": {
+      "role": "observe",
+      "sha256": "bf22add7899461b9614423889bbe4fb6c453b5cfdf9e09763a8227ac35c35780",
+      "size": 6869,
+      "normalized_sha256": "bf22add7899461b9614423889bbe4fb6c453b5cfdf9e09763a8227ac35c35780"
+    },
+    "backend_python/tests/test_transkun.py": {
+      "role": "observe",
+      "sha256": "7353c0233addd6d07a1d86bd87292e2520bba63e3bea9a2736bb2d6b0234a5e8",
+      "size": 12367,
+      "normalized_sha256": "7353c0233addd6d07a1d86bd87292e2520bba63e3bea9a2736bb2d6b0234a5e8"
+    },
+    "backend_python/tests/test_vocal_melody.py": {
+      "role": "observe",
+      "sha256": "0d29ea3ca422b2261497f21291e4fe650fc428eb891ed6b797c2e4959b514597",
+      "size": 8851,
+      "normalized_sha256": "0d29ea3ca422b2261497f21291e4fe650fc428eb891ed6b797c2e4959b514597"
+    },
     "docs/spike-2026-10-04-source-availability.md": {
       "role": "index",
-      "sha256": "82c388c41dec68ae0846bd8580a3321038a0f752286a0d3b012f73af7247f350",
-      "size": 9523,
-      "normalized_sha256": "82c388c41dec68ae0846bd8580a3321038a0f752286a0d3b012f73af7247f350"
+      "sha256": "512991e373ec2f33885d934c5a2688a3088d26f3e1398fe483e649141cd55eda",
+      "size": 9522,
+      "normalized_sha256": "512991e373ec2f33885d934c5a2688a3088d26f3e1398fe483e649141cd55eda"
+    },
+    "experiments/README.md": {
+      "role": "index",
+      "sha256": "48b112a2e0b589e244afe76c3e153811510ab3d522f5504653ca4c96ed0d8e5b",
+      "size": 2411,
+      "normalized_sha256": "67cdd45a8881de298a8fff59840a4427a3a2829ef9630a106e8437814bdaa7b5"
+    },
+    "experiments/probes/test_tunescript_pipeline.py": {
+      "role": "observe",
+      "sha256": "ea2daebbd183010bb17deaba933dd81a42d8732391a1852a836d0f0afcc411f8",
+      "size": 13299,
+      "normalized_sha256": "ea2daebbd183010bb17deaba933dd81a42d8732391a1852a836d0f0afcc411f8"
+    },
+    "experiments/prototypes/demucs_separator.py": {
+      "role": "index",
+      "sha256": "d637501dda35e83a1544755e63102515c228a4ade4f6dfc2f72bc83cb59d7104",
+      "size": 6663,
+      "normalized_sha256": "d637501dda35e83a1544755e63102515c228a4ade4f6dfc2f72bc83cb59d7104"
+    },
+    "experiments/prototypes/melody_extractor.py": {
+      "role": "index",
+      "sha256": "202635bfd3ade6ba5ceefc0392308e8e49dc7e22298aa4d0ca724ecf3041e46b",
+      "size": 7525,
+      "normalized_sha256": "202635bfd3ade6ba5ceefc0392308e8e49dc7e22298aa4d0ca724ecf3041e46b"
+    },
+    "experiments/prototypes/tunescript_fusion.py": {
+      "role": "index",
+      "sha256": "326f885b421df9bb91f6f545152e8999cca8e05ee3e54fe40dca903e6f349491",
+      "size": 26580,
+      "normalized_sha256": "326f885b421df9bb91f6f545152e8999cca8e05ee3e54fe40dca903e6f349491"
     },
     "frontend/index.html": {
       "role": "index",
@@ -353,27 +737,27 @@
     },
     "frontend/package-lock.json": {
       "role": "index",
-      "sha256": "4ec980221e90c7f5f09b87a252ba7e8dc76d44f3770302922a5ad1e95b919039",
-      "size": 44055,
-      "normalized_sha256": "4ec980221e90c7f5f09b87a252ba7e8dc76d44f3770302922a5ad1e95b919039"
+      "sha256": "7d142c02347ed2fc025294ebf963c30797bdcbfeda4972cdde80fbebfdc3eba0",
+      "size": 94213,
+      "normalized_sha256": "7d142c02347ed2fc025294ebf963c30797bdcbfeda4972cdde80fbebfdc3eba0"
     },
     "frontend/package.json": {
       "role": "index",
-      "sha256": "2059143341dc09ea3fbb630a6f564b3dda325eaaa3e51eed659eeca2a82a0c3d",
-      "size": 422,
-      "normalized_sha256": "2059143341dc09ea3fbb630a6f564b3dda325eaaa3e51eed659eeca2a82a0c3d"
+      "sha256": "bcdc83c3605d9a5efb224c9eb657e2a52928d189f4082d580eaa730e96e081c8",
+      "size": 546,
+      "normalized_sha256": "bcdc83c3605d9a5efb224c9eb657e2a52928d189f4082d580eaa730e96e081c8"
     },
     "frontend/src/App.vue": {
       "role": "index",
-      "sha256": "771e51f8743dbc24050f6604c434714a4bb70b9e6afd1170dedb4e8762da85b9",
-      "size": 1901,
-      "normalized_sha256": "771e51f8743dbc24050f6604c434714a4bb70b9e6afd1170dedb4e8762da85b9"
+      "sha256": "ace939898ff3b423eea0e9e10b45ca391be2ad0c046b96190e82ac135bd705b0",
+      "size": 2103,
+      "normalized_sha256": "ace939898ff3b423eea0e9e10b45ca391be2ad0c046b96190e82ac135bd705b0"
     },
     "frontend/src/api.js": {
       "role": "index",
-      "sha256": "a75cf57f033df689e3e8aa3f3afddeb2a31b7a135d549e0735d2ed23a7142966",
-      "size": 3847,
-      "normalized_sha256": "a75cf57f033df689e3e8aa3f3afddeb2a31b7a135d549e0735d2ed23a7142966"
+      "sha256": "960e892a2d711d20c409cc1d67a206c848b8e9067d230eb7d3c69070fdc81e7a",
+      "size": 6905,
+      "normalized_sha256": "960e892a2d711d20c409cc1d67a206c848b8e9067d230eb7d3c69070fdc81e7a"
     },
     "frontend/src/components/CacheView.vue": {
       "role": "index",
@@ -386,6 +770,24 @@
       "sha256": "b14adb33ea757a748ce3ad6877d0d1c70435de6a6efc3972bdf4cb3c6b5f2edd",
       "size": 846,
       "normalized_sha256": "b14adb33ea757a748ce3ad6877d0d1c70435de6a6efc3972bdf4cb3c6b5f2edd"
+    },
+    "frontend/src/components/PianoKeyboard.vue": {
+      "role": "index",
+      "sha256": "2e2f0fdf19079c226a993056fe1108eaecd1e142f4d93ff5ae907e7c04229ac8",
+      "size": 7750,
+      "normalized_sha256": "2e2f0fdf19079c226a993056fe1108eaecd1e142f4d93ff5ae907e7c04229ac8"
+    },
+    "frontend/src/components/ScorePanel.vue": {
+      "role": "index",
+      "sha256": "426cc2276e376a0e20f01ad99a1eebf25cbc6617767b9be632f9a1df6f01079a",
+      "size": 20561,
+      "normalized_sha256": "426cc2276e376a0e20f01ad99a1eebf25cbc6617767b9be632f9a1df6f01079a"
+    },
+    "frontend/src/components/ScoreView.vue": {
+      "role": "index",
+      "sha256": "bc156c3a8d181db8f1bfb9cb02b3faf71042060838e080a99bdae224deb93515",
+      "size": 12354,
+      "normalized_sha256": "bc156c3a8d181db8f1bfb9cb02b3faf71042060838e080a99bdae224deb93515"
     },
     "frontend/src/components/SearchView.vue": {
       "role": "index",
@@ -417,11 +819,23 @@
       "size": 820,
       "normalized_sha256": "7c45b631f82bff42f6e041971d8428f7c5cca6244e14f09daa46adc62b1beb2d"
     },
+    "frontend/src/notationHighlight.js": {
+      "role": "index",
+      "sha256": "db9cd6acae81c5fecf90e515a9892409f50c2b5fc131451afc7340961631b654",
+      "size": 5805,
+      "normalized_sha256": "db9cd6acae81c5fecf90e515a9892409f50c2b5fc131451afc7340961631b654"
+    },
     "frontend/src/style.css": {
       "role": "index",
       "sha256": "b32f5ca845854a4c880a7914225aeec37c01f9f9d1979d3c07e00f3e26e54592",
       "size": 9437,
       "normalized_sha256": "b32f5ca845854a4c880a7914225aeec37c01f9f9d1979d3c07e00f3e26e54592"
+    },
+    "frontend/tests/notation-highlight.test.mjs": {
+      "role": "observe",
+      "sha256": "24f559c6bf244a041fcd14fe8baf3b9d886e9578bcc81ba708e7cd61a9012382",
+      "size": 12308,
+      "normalized_sha256": "24f559c6bf244a041fcd14fe8baf3b9d886e9578bcc81ba708e7cd61a9012382"
     },
     "frontend/vite.config.js": {
       "role": "index",
@@ -436,9 +850,15 @@
     },
     "models/manifest.json": {
       "role": "index",
-      "sha256": "1004d641f7e78b60b657fcfaafc1e3b7601ded0fd8208e02630d96838259a1c9",
-      "size": 454,
-      "normalized_sha256": "e3ccf17b2e61a171121cd904e920938e426eeaa53f931bb07c6d8f0b92b55b4c"
+      "sha256": "913c15440a815c141e9c90369b3301690b5de51facaa8de34f2ac35dc3ebd480",
+      "size": 1233,
+      "normalized_sha256": "90c513ec1076c2b04a2d53182c98a1a6ce0d1f5ea138a63efb1b99465bddfb04"
+    },
+    "scripts/arrange_song.py": {
+      "role": "index",
+      "sha256": "811bd07645cc8f0e039be556bbd57d7ed6cfc9ba8547869b5c0f8303ca8a3c20",
+      "size": 10231,
+      "normalized_sha256": "811bd07645cc8f0e039be556bbd57d7ed6cfc9ba8547869b5c0f8303ca8a3c20"
     },
     "scripts/gate.ps1": {
       "role": "index",

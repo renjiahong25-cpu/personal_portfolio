@@ -22,10 +22,7 @@ from services.score.upload import (
 def ffmpeg_dir() -> str | None:
     from core.config import Settings
 
-    # from_env, not a bare Settings(): production resolves ffmpeg through the
-    # PIANOFLOW_FFMPEG_LOCATION tier, so the helper must honour it too or the
-    # tests skip on a machine that only exposes ffmpeg via that variable.
-    return Settings.from_env().ffmpeg_dir_or_none()
+    return Settings().ffmpeg_dir_or_none()
 
 
 def write_tone(path: Path, *, seconds: float = 2.0, sr: int = 22050) -> Path:

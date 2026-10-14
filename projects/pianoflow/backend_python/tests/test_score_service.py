@@ -9,12 +9,17 @@ import pytest
 
 from core.errors import ValidationError
 from services.score.service import (
+    ACCOMPANIMENT_HINTS,
+    DEFAULT_ACCOMPANIMENT,
     DIFFICULTY_HINTS,
+    FIDELITY_HINTS,
     MAX_PREVIEW_SECONDS,
     PATTERN_NAMES,
     ScoreRequest,
     generate_score,
+    validate_arrange_request,
     validate_request,
+    validate_transcribe_request,
 )
 
 
@@ -38,6 +43,32 @@ def write_tone_wav(path: Path, *, seconds: float = 4.0, sr: int = 22050) -> Path
     return path
 
 
+import services.score.service as score_service
+
+
+@pytest.fixture(autouse=True)
+def _section_analysis_is_stubbed(monkeypatch):
+    """Section detection re-transcribes the audio and runs Whisper on it.
+
+    The pipeline tests stub it so a unit run does not pay 30-60 s per test, and
+    they use a sung "verse" section on purpose: it never triggers the
+    instrumental-melody lift, so the outputs stay identical to the pre-detection
+    behaviour every other assertion in this file relies on.
+    """
+
+    from services.arrangement.sections import Section, SectionAnalysis, VocalEvidence
+
+    def fake(audio_path, *, settings=None, transcriber="basic_pitch"):
+        return SectionAnalysis(
+            sections=(Section(0, 4, "verse", 0.8, evidence={"vocalCoverage": 0.5}),),
+            vocal=VocalEvidence(coverage=(0.5,) * 4, available=True),
+            duration_seconds=4.0,
+            transcriber=transcriber,
+        )
+
+    monkeypatch.setattr(score_service, "get_section_analysis", fake)
+
+
 def test_the_defaults_are_a_reasonable_piano_arrangement() -> None:
     """Default is ``arranged``, not ``hybrid``.
 
@@ -52,6 +83,8 @@ def test_the_defaults_are_a_reasonable_piano_arrangement() -> None:
     assert request.difficulty == 3
     assert request.pattern == ""
     assert request.preview_seconds == 0.0
+    # The product default is the lightest density: the full figure buried the melody.
+    assert request.accompaniment == DEFAULT_ACCOMPANIMENT == "light"
 
 
 def test_a_difficulty_may_be_given_as_l3() -> None:
@@ -61,7 +94,7 @@ def test_a_difficulty_may_be_given_as_l3() -> None:
 
 
 def test_every_supported_fidelity_is_accepted() -> None:
-    for fidelity in ("as-played", "hybrid", "arranged"):
+    for fidelity in ("as-played", "hybrid", "arranged", "transcribed"):
         assert validate_request({"fidelity": fidelity}).fidelity == fidelity
 
 
@@ -79,6 +112,70 @@ def test_an_unknown_fidelity_is_refused_with_the_supported_list() -> None:
 def test_an_unknown_pattern_is_refused() -> None:
     with pytest.raises(ValidationError):
         validate_request({"pattern": "disco"})
+
+
+def test_every_supported_accompaniment_is_accepted() -> None:
+    for level in ("light", "standard", "full"):
+        assert validate_request({"accompaniment": level}).accompaniment == level
+
+
+def test_an_unknown_accompaniment_is_refused_with_the_supported_list() -> None:
+    with pytest.raises(ValidationError) as excinfo:
+        validate_request({"accompaniment": "loud"})
+    assert "supported" in excinfo.value.details
+
+
+def test_every_accompaniment_has_a_hint_for_the_ui() -> None:
+    """A density level the UI cannot explain is a level nobody picks on purpose."""
+    assert set(ACCOMPANIMENT_HINTS) == {"light", "standard", "full"}
+    assert all(hint.strip() for hint in ACCOMPANIMENT_HINTS.values())
+
+
+def test_section_textures_are_parsed_from_an_object() -> None:
+    request = validate_request({"sectionTextures": {"verse": "half", "chorus": "arpfull"}})
+    assert request.section_textures == {"verse": "half", "chorus": "arpfull"}
+
+
+def test_section_textures_are_parsed_from_a_json_string() -> None:
+    """The upload path sends form fields, so the string spelling must work too."""
+    request = validate_request({"sectionTextures": '{"verse": "half"}'})
+    assert request.section_textures == {"verse": "half"}
+
+
+def test_an_unknown_section_label_is_refused() -> None:
+    with pytest.raises(ValidationError) as excinfo:
+        validate_request({"sectionTextures": {"solo": "half"}})
+    assert "supported" in excinfo.value.details
+
+
+def test_an_unknown_texture_in_section_textures_is_refused() -> None:
+    with pytest.raises(ValidationError):
+        validate_request({"sectionTextures": {"verse": "disco"}})
+
+
+def test_section_textures_must_be_an_object() -> None:
+    with pytest.raises(ValidationError):
+        validate_request({"sectionTextures": "not-json"})
+    with pytest.raises(ValidationError):
+        validate_request({"sectionTextures": [1, 2]})
+
+
+def test_section_textures_clash_with_manual_textures() -> None:
+    with pytest.raises(ValidationError):
+        validate_request({"texture": "block", "sectionTextures": {"verse": "half"}})
+    with pytest.raises(ValidationError):
+        validate_request(
+            {
+                "texturePlan": '[{"startBar": 0, "endBar": 8, "texture": "block"}]',
+                "sectionTextures": {"verse": "half"},
+            }
+        )
+
+
+def test_the_transcribe_module_refuses_section_textures() -> None:
+    with pytest.raises(ValidationError) as excinfo:
+        validate_transcribe_request({"sectionTextures": {"verse": "half"}})
+    assert "arrange" in excinfo.value.details["hint"]
 
 
 def test_an_out_of_range_difficulty_is_refused() -> None:
@@ -127,6 +224,81 @@ def test_the_default_title_fills_an_absent_one() -> None:
 def test_a_very_long_title_is_truncated() -> None:
     request = validate_request({"title": "x" * 500})
     assert len(request.title) == 200
+
+
+def test_the_transcribe_module_defaults_to_the_faithful_original() -> None:
+    assert validate_transcribe_request({}).fidelity == "transcribed"
+
+
+def test_the_transcribe_module_keeps_as_played() -> None:
+    assert validate_transcribe_request({"fidelity": "as-played"}).fidelity == "as-played"
+
+
+def test_the_transcribe_module_refuses_arranging_fidelities() -> None:
+    for fidelity in ("hybrid", "arranged"):
+        with pytest.raises(ValidationError) as excinfo:
+            validate_transcribe_request({"fidelity": fidelity})
+        assert "arrange" in excinfo.value.details["hint"]
+
+
+def test_the_transcribe_module_refuses_arranging_options() -> None:
+    for field in ("pattern", "texture", "texturePlan"):
+        with pytest.raises(ValidationError) as excinfo:
+            validate_transcribe_request({field: "broken_chord"})
+        assert "arrange" in excinfo.value.details["hint"]
+
+
+def test_the_transcribe_module_refuses_the_density_option() -> None:
+    """Thinning a recording is not a faithful transcription, so it is refused here."""
+    with pytest.raises(ValidationError) as excinfo:
+        validate_transcribe_request({"accompaniment": "light"})
+    assert "arrange" in excinfo.value.details["hint"]
+
+
+def test_the_transcribe_module_still_checks_shared_fields() -> None:
+    with pytest.raises(ValidationError):
+        validate_transcribe_request({"difficulty": 9})
+    assert validate_transcribe_request({"difficulty": "L2"}).difficulty == 2
+
+
+def test_the_arrange_module_defaults_to_fully_arranged() -> None:
+    assert validate_arrange_request({}).fidelity == "arranged"
+
+
+def test_the_arrange_module_keeps_hybrid() -> None:
+    assert validate_arrange_request({"fidelity": "hybrid"}).fidelity == "hybrid"
+
+
+def test_the_arrange_module_refuses_faithful_fidelities() -> None:
+    for fidelity in ("transcribed", "as-played"):
+        with pytest.raises(ValidationError) as excinfo:
+            validate_arrange_request({"fidelity": fidelity})
+        assert "transcribe" in excinfo.value.details["hint"]
+
+
+def test_the_arrange_module_refuses_the_filling_option() -> None:
+    """fillChords only acts in the transcribed mode, so it is refused, not ignored."""
+    with pytest.raises(ValidationError) as excinfo:
+        validate_arrange_request({"fillChords": True})
+    assert "transcribe" in excinfo.value.details["hint"]
+
+
+def test_the_arrange_module_still_checks_shared_fields() -> None:
+    with pytest.raises(ValidationError):
+        validate_arrange_request({"pattern": "disco"})
+    assert validate_arrange_request({"pattern": "alberti_bass"}).pattern == "alberti_bass"
+
+
+def test_the_arrange_module_owns_the_density_option() -> None:
+    assert validate_arrange_request({"accompaniment": "full"}).accompaniment == "full"
+    # Absent means the product default, not a refusal.
+    assert validate_arrange_request({}).accompaniment == DEFAULT_ACCOMPANIMENT
+
+
+def test_every_fidelity_has_a_hint_for_the_ui() -> None:
+    """A mode the UI cannot explain is a mode nobody picks on purpose."""
+    assert set(FIDELITY_HINTS) == {"transcribed", "as-played", "hybrid", "arranged"}
+    assert all(hint.strip() for hint in FIDELITY_HINTS.values())
 
 
 def test_every_difficulty_has_a_hint_for_the_ui() -> None:
@@ -218,6 +390,28 @@ def test_the_response_carries_every_stage_the_ui_shows(tmp_path: Path) -> None:
     for key in ("grid", "handSplit", "quality", "arrangement", "key", "chords", "score"):
         assert key in payload, key
     assert payload["score"]["measureCount"] == len(result.score.measures)
+
+
+def test_the_arrange_module_reports_detected_sections(tmp_path: Path) -> None:
+    audio = write_tone_wav(tmp_path / "tone.wav", seconds=4.0)
+    result = generate_score(audio, ScoreRequest())
+    assert [s["label"] for s in result.sections] == ["verse"]
+    assert isinstance(result.to_dict()["sectionMelody"], dict)
+
+
+def test_the_transcribe_module_does_not_run_section_detection(tmp_path: Path, monkeypatch) -> None:
+    """The faithful module never segments and never lifts anything."""
+    calls: list[object] = []
+
+    def recording(audio_path, **kwargs):
+        calls.append((audio_path, kwargs))
+
+    monkeypatch.setattr(score_service, "get_section_analysis", recording)
+    audio = write_tone_wav(tmp_path / "tone.wav", seconds=4.0)
+    result = generate_score(audio, ScoreRequest(fidelity="transcribed"))
+    assert not calls
+    assert list(result.sections) == []
+    assert result.to_dict()["sectionMelody"] == {}
 
 
 def test_a_preview_truncates_and_says_so(tmp_path: Path) -> None:

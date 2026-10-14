@@ -336,6 +336,30 @@ class ApiTestCase(AsyncHTTPTestCase):
         cleared = json.loads(self.post_json("/api/cache/clean", {"mode": "clear"}).body)
         self.assertEqual(cleared["remainingEntries"], 0)
 
+    def test_lyrics_endpoint_passes_the_word_level_through(self):
+        async def fake_lyrics(source_id: str):
+            return {"lrc": "[00:12] 从前从前", "klyric": "[[0,260,4]]"}
+
+        self.extractor.lyrics = fake_lyrics
+        response = self.fetch("/api/music/lyrics?source=fake&sourceId=BV1")
+        self.assertEqual(response.code, 200)
+        body = json.loads(response.body)
+        self.assertEqual(body["source"], "fake")
+        self.assertEqual(body["lrc"], "[00:12] 从前从前")
+        self.assertEqual(body["klyric"], "[[0,260,4]]")
+
+    def test_lyrics_endpoint_empty_when_the_source_has_none(self):
+        response = self.fetch("/api/music/lyrics?source=fake&sourceId=BV1")
+        self.assertEqual(response.code, 200)
+        body = json.loads(response.body)
+        self.assertEqual(body["lrc"], "")
+        self.assertNotIn("klyric", body)
+        self.assertNotIn("krc", body)
+
+    def test_lyrics_endpoint_requires_both_parameters(self):
+        response = self.fetch("/api/music/lyrics?source=fake", raise_error=False)
+        self.assertEqual(response.code, 400)
+
     def test_malformed_json_body(self):
         response = self.fetch(
             "/api/music/search",

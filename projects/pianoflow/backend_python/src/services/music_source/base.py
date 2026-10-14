@@ -64,6 +64,26 @@ class Extractor(abc.ABC):
     async def search(self, keyword: str, limit: int) -> list[Track]:
         """Return up to ``limit`` tracks matching ``keyword``."""
 
+    async def audio_url(self, source_id: str) -> str | None:
+        """A direct, playable audio URL for the track.
+
+        ``None`` means "no direct route" and the download leg falls back to
+        yt-dlp on :meth:`canonical_url` (the Bilibili case, where the URL is
+        signed). Sidecar-backed sources return the platform's CDN link, which
+        is fetched over plain HTTP.
+        """
+        return None
+
+    async def lyrics(self, source_id: str) -> dict[str, Any] | None:
+        """Lyrics for the track, or None when the platform has none.
+
+        Returns a dict with ``lrc`` (plain LRC text) plus optional per-word
+        payloads the immersive player can consume: ``klyric`` (NetEase karaoke
+        JSON) and/or ``krc`` (KuGou karaoke text). Sources without a word
+        level only fill ``lrc``; the client falls back to even-splitting.
+        """
+        return None
+
     async def health(self) -> dict[str, Any]:
         """Cheap reachability probe used by ``GET /api/health``."""
         return {"name": self.name, "available": True, "supportsDownload": self.supports_download}

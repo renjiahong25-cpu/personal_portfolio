@@ -7,8 +7,6 @@ never silently change backend behaviour.
 from __future__ import annotations
 
 import os
-import shutil
-import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -16,44 +14,14 @@ from .paths import PROJECT_ROOT
 
 _ENV_PREFIX = "PIANOFLOW_"
 
+#: Absolute ffmpeg directory discovered on this machine. yt-dlp needs an
+#: explicit ``ffmpeg_location`` because the conda envs are not on ``PATH``.
+_DEFAULT_FFMPEG_DIR = r"D:\miniconda3\envs\ffmpeg-gpl\Library\bin"
 
-def _ffmpeg_dir_default() -> str:
-    """ffmpeg directory, without relying on any one machine's layout.
-
-    Fallback chain (the ``PIANOFLOW_FFMPEG_LOCATION`` environment variable wins
-    over all of it - see :meth:`Settings.from_env`):
-
-    1. ``ffmpeg`` on ``PATH``;
-    2. the conda-style ``Library/bin`` (Windows) or ``bin`` (POSIX) sibling of
-       the running interpreter, which is where ``conda install ffmpeg`` puts it;
-    3. ``tools/ffmpeg/bin`` inside the repository, where ``bootstrap.ps1``
-       unpacks the official build.
-    """
-    found = shutil.which("ffmpeg")
-    if found:
-        return str(Path(found).parent)
-    for candidate in (
-        Path(sys.executable).resolve().parent.parent / "Library" / "bin",
-        Path(sys.executable).resolve().parent,
-    ):
-        if (candidate / ("ffmpeg.exe" if os.name == "nt" else "ffmpeg")).is_file():
-            return str(candidate)
-    return str(PROJECT_ROOT / "tools" / "ffmpeg" / "bin")
-
-
-def _fluidsynth_dir_default() -> str:
-    """fluidsynth directory, same three-tier chain as ffmpeg.
-
-    ``fluidsynth`` on ``PATH`` first, then the repository-local
-    ``tools/fluidsynth/bin`` that ``bootstrap.ps1`` unpacks the release into.
-    The DLLs sit beside the executable and are added to the child's ``PATH``
-    rather than relying on the synth being installed.
-    """
-    found = shutil.which("fluidsynth")
-    if found:
-        return str(Path(found).parent)
-    return str(PROJECT_ROOT / "tools" / "fluidsynth" / "bin")
-
+#: Where the fluidsynth release archive was unpacked. Its DLLs sit beside the
+#: executable and must be on the loader path, so the directory is added to
+#: ``PATH`` for the child process rather than relying on it being installed.
+_DEFAULT_FLUIDSYNTH_DIR = str(PROJECT_ROOT / "tools" / "fluidsynth" / "bin")
 
 GIB = 1024**3
 MIB = 1024**2
@@ -106,7 +74,9 @@ class Settings:
 
     # --- cache policy -----------------------------------------------------
     cache_max_bytes: int = 2 * GIB
-    cache_ttl_days: int = 7
+    # Personal library: keep downloads for a month, not a week. The 7-day
+    # default silently aged the whole library out of the "local cache" page.
+    cache_ttl_days: int = 30
 
     # --- download policy / compliance -------------------------------------
     # Phase 1 is personal-study-only: one track at a time, throttled, and
@@ -126,15 +96,11 @@ class Settings:
     search_max_limit: int = 20
 
     # --- external tools ---------------------------------------------------
-    #: Directory holding ffmpeg, so yt-dlp's post-processing does not need it
-    #: on ``PATH``. Resolved at import time by :func:`_ffmpeg_dir_default`;
-    #: set ``PIANOFLOW_FFMPEG_LOCATION`` to override.
-    ffmpeg_location: str = _ffmpeg_dir_default()
+    ffmpeg_location: str = _DEFAULT_FFMPEG_DIR
     #: fluidsynth renders the follow-along piano track from the score. Like
-    #: ffmpeg it is not guaranteed to be on ``PATH``, so the binary directory
-    #: is resolved by :func:`_fluidsynth_dir_default` and the SoundFont is
-    #: resolved relative to the project.
-    fluidsynth_location: str = _fluidsynth_dir_default()
+    #: ffmpeg it is not on ``PATH``, so the binary directory is configured and
+    #: the SoundFont is resolved relative to the project.
+    fluidsynth_location: str = _DEFAULT_FLUIDSYNTH_DIR
     soundfont_path: str = str(PROJECT_ROOT / "models" / "soundfonts" / "MuseScore_General.sf2")
 
     # --- transcription model ----------------------------------------------
@@ -147,6 +113,18 @@ class Settings:
     #: Interpreter of the separate conda environment that has torch for Transkun.
     #: Empty means "look for it", which is why the transcriber module holds the search.
     transkun_python: str = ""
+
+    # --- online music sidecars (NetEase Cloud / KuGou) --------------------
+    # Local Node services under tools/sidecars that own the platforms' signing
+    # and risk-control logic. Their ports are pinned in the .env files written
+    # by tools/sidecars/install.ps1, so these defaults are stable.
+    netease_sidecar_url: str = "http://127.0.0.1:4000"
+    kugou_sidecar_url: str = "http://127.0.0.1:5000"
+    #: Raw ``Cookie`` header values exported from a logged-in browser, one per
+    #: file (first non-comment line wins). NetEase works for free tracks
+    #: without one; KuGou refuses search without one.
+    netease_cookie_file: str = str(PROJECT_ROOT / "data" / "cookies" / "netease.txt")
+    kugou_cookie_file: str = str(PROJECT_ROOT / "data" / "cookies" / "kugou.txt")
 
     # --- Bilibili risk control -------------------------------------------
     #: Optional Netscape-format cookie file (exported from a logged-in browser).
@@ -194,6 +172,10 @@ class Settings:
             transkun_python=_env_str("TRANSKUN_PYTHON", cls.transkun_python),
             ytdlp_cookie_file=_env_str("YTDLP_COOKIE_FILE", cls.ytdlp_cookie_file),
             bilibili_cookie_file=_env_str("BILIBILI_COOKIE_FILE", cls.bilibili_cookie_file),
+            netease_sidecar_url=_env_str("NETEASE_SIDECAR_URL", cls.netease_sidecar_url),
+            kugou_sidecar_url=_env_str("KUGOU_SIDECAR_URL", cls.kugou_sidecar_url),
+            netease_cookie_file=_env_str("NETEASE_COOKIE_FILE", cls.netease_cookie_file),
+            kugou_cookie_file=_env_str("KUGOU_COOKIE_FILE", cls.kugou_cookie_file),
             enable_external_ai=_env_bool("ENABLE_EXTERNAL_AI", cls.enable_external_ai),
         )
 

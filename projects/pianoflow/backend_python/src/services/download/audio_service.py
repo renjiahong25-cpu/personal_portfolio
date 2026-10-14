@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import httpx
+
 from core.config import Settings
 from core.errors import (
     AppError,
@@ -24,6 +26,7 @@ from core.errors import (
     ValidationError,
 )
 from services.cache.manager import CacheEntry, CacheManager
+from services.download.direct import fetch_audio_url, transcode_to_wav
 from services.music_source.base import Extractor
 from services.music_source.registry import ExtractorRegistry
 from services.music_source.ytdlp_client import resolve_metadata, run_download
@@ -48,6 +51,12 @@ class DownloadRequest:
     source_id: str
     audio_format: str = "wav"
     title: str | None = None
+    #: Metadata the search leg already knew. The direct-URL leg has no
+    #: metadata step, so without these the cache entry would be bare.
+    artist: str | None = None
+    duration: float | None = None
+    #: Cover image URL, persisted so the library wall can render art.
+    thumbnail: str | None = None
 
     def to_meta(self) -> dict[str, Any]:
         return {
@@ -55,6 +64,9 @@ class DownloadRequest:
             "sourceId": self.source_id,
             "format": self.audio_format,
             "title": self.title,
+            "artist": self.artist,
+            "duration": self.duration,
+            "thumbnail": self.thumbnail,
         }
 
 
@@ -65,11 +77,13 @@ class AudioDownloadService:
         cache: CacheManager,
         tasks: TaskManager,
         extractors: ExtractorRegistry,
+        http: httpx.AsyncClient,
     ) -> None:
         self._settings = settings
         self._cache = cache
         self._tasks = tasks
         self._extractors = extractors
+        self._http = http
         self._concurrency = asyncio.Semaphore(max(1, settings.download_max_concurrency))
         self._last_started_at: float | None = None
         self._running_uids: set[str] = set()
@@ -199,11 +213,6 @@ class AudioDownloadService:
         self, task_id: str, request: DownloadRequest, extractor: Extractor
     ) -> dict[str, Any]:
         cache = self._cache
-        url = extractor.canonical_url(request.source_id)
-        # Prefer the platform's own cookie jar (real buvid3/buvid4) over nothing:
-        # yt-dlp downloads hit the same risk control as search does.
-        cookie_file = getattr(extractor, "cookie_file", lambda: None)() or None
-
         cached = cache.lookup(request.source, request.source_id, request.audio_format)
         if cached is not None:
             self._tasks.update(
@@ -212,6 +221,79 @@ class AudioDownloadService:
                 message="cache hit",
             )
             return self._result(cached, cache.root, from_cache=True)
+
+        # Sidecar-backed sources (NetEase/KuGou) hand back a plain CDN URL:
+        # fetch it directly instead of paying for a yt-dlp round trip. Bilibili
+        # returns None (signed URL) and falls through to the yt-dlp path below.
+        direct_url = await extractor.audio_url(request.source_id)
+        if direct_url is not None:
+            return await self._pipeline_direct(task_id, request, extractor, direct_url)
+        return await self._pipeline_ytdlp(task_id, request, extractor)
+
+    async def _pipeline_direct(
+        self,
+        task_id: str,
+        request: DownloadRequest,
+        extractor: Extractor,
+        direct_url: str,
+    ) -> dict[str, Any]:
+        cache = self._cache
+        key = cache.make_key(request.source, request.source_id, request.audio_format)
+        self._tasks.update(
+            task_id,
+            stage=TaskStage.DOWNLOADING,
+            percent=_DOWNLOAD_FLOOR,
+            message="downloading audio",
+        )
+
+        def on_progress(ratio: float) -> None:
+            self._tasks.update_from_thread(
+                task_id,
+                stage=TaskStage.DOWNLOADING,
+                percent=_DOWNLOAD_FLOOR + _DOWNLOAD_SPAN * ratio,
+                message="downloading audio",
+            )
+
+        native = cache.root / f"{key}.mp3"
+        await fetch_audio_url(self._http, direct_url, native, on_progress=on_progress)
+
+        if request.audio_format == "mp3":
+            audio_file = native
+        else:
+            self._tasks.update(
+                task_id,
+                stage=TaskStage.TRANSCODING,
+                percent=85.0,
+                message=f"transcoding to {request.audio_format}",
+            )
+            converted = cache.root / f"{key}.{request.audio_format}"
+            await asyncio.to_thread(
+                transcode_to_wav, self._settings.ffmpeg_dir_or_none(), native, converted
+            )
+            native.unlink(missing_ok=True)
+            audio_file = converted
+
+        entry = cache.register(
+            source=request.source,
+            source_id=request.source_id,
+            audio_format=request.audio_format,
+            title=request.title or request.source_id,
+            artist=request.artist,
+            duration=request.duration,
+            audio_file=audio_file,
+            webpage_url=extractor.canonical_url(request.source_id),
+            thumbnail=request.thumbnail,
+        )
+        return self._result(entry, cache.root, from_cache=False)
+
+    async def _pipeline_ytdlp(
+        self, task_id: str, request: DownloadRequest, extractor: Extractor
+    ) -> dict[str, Any]:
+        cache = self._cache
+        url = extractor.canonical_url(request.source_id)
+        # Prefer the platform's own cookie jar (real buvid3/buvid4) over nothing:
+        # yt-dlp downloads hit the same risk control as search does.
+        cookie_file = getattr(extractor, "cookie_file", lambda: None)() or None
 
         self._tasks.update(
             task_id,
@@ -226,9 +308,11 @@ class AudioDownloadService:
             retries=self._settings.ytdlp_retries,
             cookie_file=cookie_file,
         )
-        duration = _as_float(info.get("duration"))
+        # The search leg already knew these; the platform's metadata wins when
+        # it has its own reading of them.
+        duration = _as_float(info.get("duration")) or request.duration
         title = str(info.get("title") or request.title or request.source_id)
-        uploader = info.get("uploader") or info.get("channel")
+        uploader = info.get("uploader") or info.get("channel") or request.artist
 
         if duration and duration > self._settings.max_audio_seconds:
             raise ComplianceError(
@@ -296,6 +380,7 @@ class AudioDownloadService:
             duration=duration,
             audio_file=audio_file,
             webpage_url=url,
+            thumbnail=request.thumbnail,
         )
         return self._result(entry, cache.root, from_cache=False)
 

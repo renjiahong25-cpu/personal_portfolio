@@ -5,13 +5,13 @@
 # because they need backend_python as the working directory to pick up
 # pyproject.toml.
 #
-# Run directly, with the project environment's interpreter (PIANOFLOW_PYTHON or
-# PATH; scripts/gate.ps1 resolves it the same three-tier way):
-#   python -m pre_commit run --all-files
+# Run directly:
+#   $env:PYTHON = "D:\conda_envs\pianoflow\python.exe"
+#   & "D:\conda_envs\pianoflow\python.exe" -m pre_commit run --all-files
 #
-# Every hook is `repo: local` + `language: system` on purpose: the author's
-# machine cannot reach github.com:443, so the usual remote hook repos cannot be
-# cloned. The tools live in the project environment.
+# Every hook is `repo: local` + `language: system` on purpose: this machine
+# cannot reach github.com:443, so the usual remote hook repos cannot be cloned.
+# The tools are already installed in the `pianoflow` conda env.
 
 repos:
   - repo: local

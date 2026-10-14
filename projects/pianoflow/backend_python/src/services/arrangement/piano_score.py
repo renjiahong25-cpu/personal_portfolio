@@ -54,6 +54,10 @@ class ScoredNote:
     tied_to_next: bool = False
     #: Set on the first half of a split note.
     tie_start: bool = False
+    #: First note of a legato run of changing pitch: the score draws a slur here.
+    slur_start: bool = False
+    #: Last note of the same run: the slur ends here.
+    slur_stop: bool = False
 
     @property
     def end_beat(self) -> float:
@@ -160,6 +164,8 @@ class PianoScore:
                             # budget is about presses.
                             "tiedToNext": note.tied_to_next,
                             "tieStart": note.tie_start,
+                            "slurStart": note.slur_start,
+                            "slurStop": note.slur_stop,
                         }
                     )
         events.sort(key=lambda e: (e["time"], e["staff"], e["midi"]))
@@ -178,6 +184,13 @@ class PianoScore:
             1 for m in self.measures for staff in (m.right, m.left) for n in staff if n.tied_to_next
         )
 
+    @property
+    def slur_count(self) -> int:
+        """Number of legato runs, one per slur that starts."""
+        return sum(
+            1 for m in self.measures for staff in (m.right, m.left) for n in staff if n.slur_start
+        )
+
     def to_dict(self) -> dict[str, object]:
         return {
             "title": self.title,
@@ -190,6 +203,7 @@ class PianoScore:
             "measureCount": len(self.measures),
             "noteCount": self.note_count,
             "tiedNoteCount": self.tied_count,
+            "slurCount": self.slur_count,
             "phaseSeconds": round(self.phase_seconds, 4),
             "barSeconds": round(self.bar_seconds, 4),
             #: Every note with its exact time, so the UI can light the right piano
@@ -294,6 +308,107 @@ def _layout(notes: list[NoteEvent], grid: BarGrid, beats_per_bar: int) -> list[S
     return sorted(laid_out, key=lambda n: (n.bar, n.beat, n.midi))
 
 
+#: Onsets this close, in beats, are the same instant. Mirrors the XML writer's
+#: grouping tolerance, so a run the writer sees as one chord is one run here too.
+_LEGATO_ONSET_TOLERANCE = 1e-3
+#: A next onset this far past a note's written end still counts as "played
+#: continuously". Quantisation keeps a truly contiguous pair exact, so this is a
+#: rounding guard rather than a musical window - a real gap (even one sixteenth)
+#: is a lift of the fingers and must not be tied or slurred.
+_LEGATO_GAP_BEATS = 0.02
+
+
+def _legato_marks(notes: list[ScoredNote], beats_per_bar: int) -> list[ScoredNote]:
+    """Mark slurs on one hand's legato runs, per the notation standard.
+
+    The standard, as the user stated it: 连着弹的要连在一起 - specifically, notes
+    of *different* pitch that begin without a lift of the fingers are a legato
+    line, and the score must draw the slur. A note held across a barline is
+    already a tie from :func:`_split_across_bars`, and a same-pitch repeat is a
+    re-strike by design (see the MIDI writer's "a repeated note is not cut
+    short"): neither gets a slur here, and a repeat also *breaks* the legato
+    run, because a slur means the fingers stay down.
+
+    Only monophonic onsets take marks: a slur over a chord group would not say
+    which voice it belongs to, so a chord (two or more notes at one onset)
+    breaks the run.
+    """
+    if not notes:
+        return notes
+    ordered = sorted(notes, key=lambda n: (n.bar, n.beat, n.midi))
+
+    # Group onsets the way the XML writer does, so "one attack" means the same
+    # thing at both ends.
+    groups: list[list[ScoredNote]] = []
+    for note in ordered:
+        if (
+            groups
+            and note.bar == groups[-1][0].bar
+            and abs(note.beat - groups[-1][0].beat) <= _LEGATO_ONSET_TOLERANCE
+        ):
+            groups[-1].append(note)
+        else:
+            groups.append([note])
+
+    def start_beat(note: ScoredNote) -> float:
+        return note.bar * beats_per_bar + note.beat
+
+    # Contiguous monophonic runs. A chord group closes the run without starting
+    # a new one: the legato line simply stops at the chord.
+    runs: list[list[ScoredNote]] = []
+    current: list[ScoredNote] = []
+    for group in groups:
+        if len(group) != 1:
+            if current:
+                runs.append(current)
+                current = []
+            continue
+        note = group[0]
+        if current:
+            previous = current[-1]
+            gap = start_beat(note) - (start_beat(previous) + previous.duration_beats)
+            if -_LEGATO_GAP_BEATS <= gap <= _LEGATO_GAP_BEATS:
+                current.append(note)
+                continue
+            runs.append(current)
+            current = []
+        current.append(note)
+    if current:
+        runs.append(current)
+
+    updates: dict[int, dict[str, bool]] = {}
+
+    def set_fields(note: ScoredNote, **fields: bool) -> None:
+        updates.setdefault(id(note), {}).update(fields)
+
+    for run in runs:
+        # A same-pitch adjacency is a repeat: the fingers leave the key, so it
+        # ends one legato segment and starts the next.
+        segment: list[ScoredNote] = []
+        for note in run:
+            if segment and segment[-1].midi == note.midi:
+                _slur_segment(segment, set_fields)
+                segment = [note]
+            else:
+                segment.append(note)
+        _slur_segment(segment, set_fields)
+
+    if not updates:
+        return notes
+    return [
+        dataclasses.replace(note, **updates[id(note)]) if id(note) in updates else note
+        for note in notes
+    ]
+
+
+def _slur_segment(segment: list[ScoredNote], set_fields) -> None:
+    """One run of changing pitch, no repeats inside: the slur belongs to it."""
+    if len(segment) < 2:
+        return
+    set_fields(segment[0], slur_start=True)
+    set_fields(segment[-1], slur_stop=True)
+
+
 def _fold_scored_span(
     notes: list[ScoredNote], cap: int, *, allow_deletion: bool = True, allow_folding: bool = True
 ) -> list[ScoredNote]:
@@ -370,17 +485,23 @@ def build_score(
     # this, the faithful pass folded 52 notes and deleted 32 through this path and the
     # re-voicer's - a mode that claims to retain what was played, changing 84 notes.
     allow_folding = arrangement.fidelity != "transcribed"
-    right = _fold_scored_span(
-        _layout(right_notes, grid, beats_per_bar),
-        cap,
-        allow_deletion=allow_deletion,
-        allow_folding=allow_folding,
+    right = _legato_marks(
+        _fold_scored_span(
+            _layout(right_notes, grid, beats_per_bar),
+            cap,
+            allow_deletion=allow_deletion,
+            allow_folding=allow_folding,
+        ),
+        beats_per_bar,
     )
-    left = _fold_scored_span(
-        _layout(left_notes, grid, beats_per_bar),
-        cap,
-        allow_deletion=allow_deletion,
-        allow_folding=allow_folding,
+    left = _legato_marks(
+        _fold_scored_span(
+            _layout(left_notes, grid, beats_per_bar),
+            cap,
+            allow_deletion=allow_deletion,
+            allow_folding=allow_folding,
+        ),
+        beats_per_bar,
     )
 
     by_bar: dict[int, tuple[list[ScoredNote], list[ScoredNote]]] = {

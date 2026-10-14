@@ -344,7 +344,9 @@ def test_midi_puts_the_melody_in_the_right_hand_track(tmp_path: Path) -> None:
     midi = mido.MidiFile(str(path))
     right_pitches = {m.note for m in midi.tracks[1] if m.type == "note_on" and m.velocity > 0}
     left_pitches = {m.note for m in midi.tracks[2] if m.type == "note_on" and m.velocity > 0}
-    assert min(right_pitches) >= 72
+    # The arranged melody is folded into C4-C5, so the hands still never meet:
+    # the right hand stays at C4 or above, the left hand stays below it.
+    assert min(right_pitches) >= 60
     assert max(left_pitches) < 60
     assert not (right_pitches & left_pitches)
 
@@ -400,11 +402,12 @@ def test_a_tied_note_is_written_as_one_long_midi_note(tmp_path: Path) -> None:
     ons = [m for m in track if m.type == "note_on" and m.velocity > 0]
     assert len(ons) == 1
     # The single note must span both halves: 5 beats at 480 ticks per beat.
+    # The arrange path folds the G5 melody into C4-C5, so it comes out as G4.
     on_tick = track.index(ons[0])
     off_index = next(
         index
         for index in range(on_tick + 1, len(track))
-        if track[index].type == "note_off" and track[index].note == 79
+        if track[index].type == "note_off" and track[index].note == 67
     )
     # mido stores delta times, so the sounding length is note_off.time.
     total = track[off_index].time

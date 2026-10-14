@@ -96,7 +96,7 @@ class TestQueueAccounting:
         registry = ExtractorRegistry()
         registry.register(FakeExtractor())
         services.downloads = AudioDownloadService(
-            settings, services.cache, services.tasks, registry
+            settings, services.cache, services.tasks, registry, services.http
         )
         return services.downloads, registry
 

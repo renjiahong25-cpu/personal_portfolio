@@ -7,9 +7,9 @@
 # with backend_python as the working directory (that is where pyproject.toml
 # lives, and mypy/bandit resolve their config relative to the cwd).
 #
-# Usage (from the repository root):
-#   powershell -ExecutionPolicy Bypass -File scripts\gate.ps1
-#   powershell -ExecutionPolicy Bypass -File scripts\gate.ps1 -Governance
+# Usage:
+#   powershell -ExecutionPolicy Bypass -File "D:\Program Files\pianoflow\scripts\gate.ps1"
+#   powershell -ExecutionPolicy Bypass -File "D:\Program Files\pianoflow\scripts\gate.ps1" -Governance
 #
 # Two tiers:
 #   default     code must be clean: ruff, ruff-format, mypy, bandit, pytest,
@@ -28,35 +28,16 @@ $ErrorActionPreference = 'Continue'
 $root = Split-Path -Parent $PSScriptRoot
 $backend = Join-Path $root 'backend_python'
 $frontend = Join-Path $root 'frontend'
-
-# 三级回退：PIANOFLOW_PYTHON 环境变量 -> PATH 上的 python -> 报错并提示。
-$envPython = $env:PIANOFLOW_PYTHON
-if (-not $envPython -or -not (Test-Path -LiteralPath $envPython)) {
-    $onPath = Get-Command python -ErrorAction SilentlyContinue
-    if ($onPath) { $envPython = $onPath.Source }
-}
-if (-not $envPython -or -not (Test-Path -LiteralPath $envPython)) {
-    throw "找不到项目解释器。请设置 PIANOFLOW_PYTHON 指向项目环境（Python 3.11）的 python.exe，或将其加入 PATH。"
-}
-# 环境根 = 解释器父目录（conda env 与 venv 都是这个布局），pre-commit 钩子靠它解析 python。
-$envScripts = Split-Path -Parent $envPython
-
-# aoci（认知索引工具）：PIANOFLOW_AOCI -> PATH -> 找不到则跳过该阶段。
-$aoci = $env:PIANOFLOW_AOCI
-if (-not $aoci -or -not (Test-Path -LiteralPath $aoci)) {
-    $aociCmd = Get-Command aoci -ErrorAction SilentlyContinue
-    if ($aociCmd) { $aoci = $aociCmd.Source }
-}
-
+$envPython = 'D:\conda_envs\pianoflow\python.exe'
+$envScripts = 'D:\conda_envs\pianoflow'
+$aoci = 'D:\tools\aoci.exe'
 # npm on Windows is a .cmd shim; a bare `npm` is not resolvable from PowerShell.
-$npm = $env:PIANOFLOW_NPM
-if (-not $npm -or -not (Test-Path -LiteralPath $npm)) {
-    $npmCmd = Get-Command npm -ErrorAction SilentlyContinue
-    if ($npmCmd) { $npm = $npmCmd.Source }
+$npm = 'C:\Program Files\nodejs\npm.cmd'
+$node = 'C:\Program Files\nodejs\node.exe'
+
+if (-not (Test-Path -LiteralPath $envPython)) {
+    throw "找不到项目解释器: $envPython（conda 环境 pianoflow 是否还在？）"
 }
-$node = $null
-$nodeCmd = Get-Command node -ErrorAction SilentlyContinue
-if ($nodeCmd) { $node = $nodeCmd.Source }
 
 # `python` inside hook entries must resolve to the project environment.
 $env:PATH = "$envScripts;$envScripts\Scripts;" + $env:PATH
@@ -94,26 +75,16 @@ Pop-Location
 # lived here for so long - a call to an OSMD API that does not exist, and a MusicXML
 # writer whose tick stream did not match the score's own beats. Both shipped green.
 Write-Host "`n=== 5/7  notation highlight (OSMD in jsdom) ===" -ForegroundColor Cyan
-if (-not $node) {
-    Write-Warning "node not found; skipping notation highlight"
-    $results['notation-highlight'] = 0
-} else {
-    Push-Location $frontend
-    & $node tests/notation-highlight.test.mjs
-    $results['notation-highlight'] = $LASTEXITCODE
-    Pop-Location
-}
+Push-Location $frontend
+& $node tests/notation-highlight.test.mjs
+$results['notation-highlight'] = $LASTEXITCODE
+Pop-Location
 
 Write-Host "`n=== 6/7  frontend build ===" -ForegroundColor Cyan
-if (-not $npm) {
-    Write-Warning "npm not found; skipping frontend build"
-    $results['frontend-build'] = 0
-} else {
-    Push-Location $frontend
-    & $npm run build
-    $results['frontend-build'] = $LASTEXITCODE
-    Pop-Location
-}
+Push-Location $frontend
+& $npm run build
+$results['frontend-build'] = $LASTEXITCODE
+Pop-Location
 
 Write-Host "`n=== 7/7  aoci governance check ===" -ForegroundColor Cyan
 $aociExit = 0

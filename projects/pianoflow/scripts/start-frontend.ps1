@@ -1,20 +1,13 @@
-﻿# 在第二个 PowerShell 窗口里运行（项目根目录下）：
-#   powershell -ExecutionPolicy Bypass -File scripts\start-frontend.ps1
+﻿# 在第二个 PowerShell 窗口里运行：powershell -ExecutionPolicy Bypass -File "D:\Program Files\pianoflow\scripts\start-frontend.ps1"
 # 这个窗口要一直开着；关掉窗口 = 关掉前端 dev server。
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
 $frontend = Join-Path $root 'frontend'
+$npm = 'C:\Program Files\nodejs\npm.cmd'
 
-# 三级回退：PIANOFLOW_NPM 环境变量 -> PATH 上的 npm -> 报错并提示。
-# 注意 Windows 上 npm 是 .cmd shim，必须拿到完整路径再调用。
-$npm = $env:PIANOFLOW_NPM
-if (-not $npm -or -not (Test-Path -LiteralPath $npm)) {
-    $onPath = Get-Command npm -ErrorAction SilentlyContinue
-    if ($onPath) { $npm = $onPath.Source }
-}
-if (-not $npm -or -not (Test-Path -LiteralPath $npm)) {
-    throw "找不到 npm。请安装 Node.js（v20+）并加入 PATH，或设置 PIANOFLOW_NPM 指向 npm.cmd。"
+if (-not (Test-Path -LiteralPath $npm)) {
+    throw "找不到 npm: $npm"
 }
 
 if (-not (Test-Path -LiteralPath (Join-Path $frontend 'node_modules'))) {

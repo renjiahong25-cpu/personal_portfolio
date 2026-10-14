@@ -63,6 +63,34 @@ class SearchHandler(BaseHandler):
         )
 
 
+class LyricsHandler(BaseHandler):
+    """GET /api/music/lyrics?source=netease&sourceId=... -> lyrics payload.
+
+    The response always carries ``lrc`` (plain LRC text, possibly empty) plus
+    whatever per-word data the source had: ``klyric`` (NetEase karaoke JSON)
+    and/or ``krc`` (KuGou karaoke text). The immersive fullscreen player uses
+    the word level when present and falls back to even-splitting the LRC.
+    Sidecar-backed sources resolve lyrics locally (NetEase without login,
+    KuGou with the account cookie); a source with no lyrics at all answers an
+    empty string, not an error, so the player can show "no lyrics" instead of
+    treating the absence as a failure.
+    """
+
+    @api_endpoint
+    async def get(self) -> None:
+        source = self.get_query_argument("source", "").strip().lower()
+        source_id = self.get_query_argument("sourceId", "").strip()
+        if not source or not source_id:
+            raise ValidationError("query parameters 'source' and 'sourceId' are required")
+        extractor = self.services.extractors.get(source)
+        payload = await extractor.lyrics(source_id) or {}
+        body: dict[str, Any] = {"source": source, "sourceId": source_id, "lrc": payload.get("lrc") or ""}
+        for key in ("klyric", "krc"):
+            if payload.get(key):
+                body[key] = payload[key]
+        self.write_json(body)
+
+
 class DownloadHandler(BaseHandler):
     """POST /api/music/download-audio -> 202 Accepted with a task id."""
 
@@ -73,11 +101,21 @@ class DownloadHandler(BaseHandler):
         source_id = self.require_str(payload, "sourceId")
         audio_format = str(payload.get("format") or "wav").strip().lower()
         title = payload.get("title")
+        artist = payload.get("artist")
+        thumbnail = payload.get("thumbnail")
+        duration_raw = payload.get("duration")
+        try:
+            duration = float(duration_raw) if duration_raw is not None else None
+        except (TypeError, ValueError):
+            duration = None
         request = DownloadRequest(
             source=source,
             source_id=source_id,
             audio_format=audio_format,
             title=title if isinstance(title, str) else None,
+            artist=artist if isinstance(artist, str) else None,
+            thumbnail=thumbnail if isinstance(thumbnail, str) and thumbnail else None,
+            duration=duration if duration and duration > 0 else None,
         )
         snapshot = await self.services.downloads.submit(request)
         self.write_json(snapshot, status=202)
@@ -220,6 +258,7 @@ __all__ = [
     "DownloadStreamHandler",
     "DownloadTaskHandler",
     "EventsHandler",
+    "LyricsHandler",
     "QueueHandler",
     "SearchHandler",
 ]

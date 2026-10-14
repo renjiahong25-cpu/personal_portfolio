@@ -32,6 +32,7 @@ from typing import Literal
 
 from services.arrangement.grid import BarGrid
 from services.arrangement.hand_split import HandAssignment, _simultaneous_groups
+from services.arrangement.interlock import interlock, phrase_boundary_beats
 from services.arrangement.harmony import (
     ACCOMPANIMENT_GAIN,
     DENSITY_CAP,
@@ -40,7 +41,13 @@ from services.arrangement.harmony import (
     fit_span,
     harmonize_melody,
 )
-from services.arrangement.patterns import DEFAULT_PATTERN, PATTERNS, PlacedNote, build_pattern
+from services.arrangement.patterns import (
+    DEFAULT_PATTERN,
+    PATTERNS,
+    PlacedNote,
+    Role,
+    build_pattern,
+)
 from services.arrangement.quality import BarQuality, QualityReport
 from services.arrangement.textures import (
     DEFAULT_TEXTURE,
@@ -61,6 +68,43 @@ DIFFICULTIES: tuple[int, ...] = (1, 2, 3, 4)
 
 BarSource = Literal["as-played", "recomposed"]
 
+AccompanimentLevel = Literal["light", "standard", "full"]
+
+
+@dataclass(frozen=True)
+class AccompanimentConfig:
+    """How one density level treats the *generated* left hand.
+
+    ``keep_roles`` is the set of figure roles the level retains. Thinning happens
+    along the texture's own role tiers, so a light bar keeps its skeleton and chord
+    tones and loses only colour and ornament: the figure's rhythm survives, its
+    density does not. ``gain`` multiplies the left-hand layer gain, so light is
+    quieter as well as sparser - both are what make the right hand audible.
+    """
+
+    keep_roles: frozenset[Role]
+    gain: float
+
+
+ALL_ROLES = frozenset({Role.SKELETON, Role.CHORD, Role.COLOR, Role.ORNAMENT})
+
+ACCOMPANIMENT_NAMES: tuple[str, ...] = ("light", "standard", "full")
+#: The function's default is the historic behaviour. The *product* default is
+#: "light" (see services.score.service), passed explicitly by the pipeline: the
+#: complaint this level exists for is that the full figure buried the melody.
+DEFAULT_ACCOMPANIMENT = "standard"
+
+ACCOMPANIMENT_LEVELS: dict[str, AccompanimentConfig] = {
+    "light": AccompanimentConfig(frozenset({Role.SKELETON, Role.CHORD}), 0.75),
+    "standard": AccompanimentConfig(ALL_ROLES, 1.0),
+    "full": AccompanimentConfig(ALL_ROLES, 1.25),
+}
+
+#: The level gain is a multiplier on the layer gain, clamped so no level can
+#: silence the left hand or let it out-shout the melody.
+MIN_ACCOMPANIMENT_GAIN = 0.25
+MAX_ACCOMPANIMENT_GAIN = 1.0
+
 
 @dataclass(frozen=True)
 class ArrangedBar:
@@ -68,6 +112,11 @@ class ArrangedBar:
     right: tuple[NoteEvent, ...]
     left: tuple[NoteEvent, ...]
     source: BarSource
+    #: The tune alone, without the chord-tone filling the right hand carries.
+    #: The "melody only" preview track renders from this, so it sounds like the
+    #: song rather than like a chord voicing. Empty for paths that do not
+    #: separate the two (the ballad builder).
+    melody: tuple[NoteEvent, ...] = ()
     chord: str | None = None
     score: float | None = None
     flags: tuple[str, ...] = ()
@@ -97,6 +146,9 @@ class Arrangement:
     difficulty: int = 3
     pattern: str = DEFAULT_PATTERN
     pattern_reason: str = ""
+    #: The left-hand density level that was applied, so the UI can say what a
+    #: sparse bar means before the player suspects notes were lost.
+    accompaniment: str = DEFAULT_ACCOMPANIMENT
     #: What the faithful re-voicing did. Empty for every other mode, so a caller can
     #: tell "nothing was re-voiced" from "re-voicing found nothing to do".
     voicing: Mapping[str, object] = field(default_factory=dict)
@@ -115,6 +167,7 @@ class Arrangement:
             "difficulty": self.difficulty,
             "pattern": self.pattern,
             "patternReason": self.pattern_reason,
+            "accompaniment": self.accompaniment,
             "barCount": len(self.bars),
             "asPlayedBars": len(self.as_played),
             "recomposedBars": [b.index for b in self.recomposed],
@@ -229,6 +282,35 @@ def simplify_melody(notes: Sequence[NoteEvent], grid: BarGrid, difficulty: int) 
     return kept or list(notes)
 
 
+#: The comfortable singing range for the arranged melody: C4 up to C5, inclusive.
+#: A pop transcription often sits an octave too high for a piano melody to sit
+#: well; folding the outliers down is the register shift the user asked for.
+MELODY_RANGE_LOW = 60
+MELODY_RANGE_HIGH = 72
+
+
+def fold_melody_to_range(notes: Sequence[NoteEvent]) -> list[NoteEvent]:
+    """Fold each melody note by octaves into [MELODY_RANGE_LOW, MELODY_RANGE_HIGH].
+
+    Notes already in the range move nothing; an outlier steps down (or up) whole
+    octaves, so the pitch classes - the actual tune - are preserved exactly. A
+    whole-melody transposition would be worse: it moves every note, including the
+    ones that already sit well, and can push the low end under the left hand.
+
+    Only the arranged path uses this. The faithful transcription is explicitly
+    unfoldable: "不要有八度折叠，要严格忠于原来的音频".
+    """
+    folded: list[NoteEvent] = []
+    for note in notes:
+        midi = note.midi
+        while midi > MELODY_RANGE_HIGH:
+            midi -= 12
+        while midi < MELODY_RANGE_LOW:
+            midi += 12
+        folded.append(note if midi == note.midi else dataclasses.replace(note, midi=midi))
+    return folded
+
+
 def _placed_to_events(
     placed: Sequence[PlacedNote],
     grid: BarGrid,
@@ -252,6 +334,20 @@ def _placed_to_events(
             )
         )
     return events
+
+
+def _thin_by_role(placed: Sequence[PlacedNote], level: AccompanimentConfig) -> list[PlacedNote]:
+    """Cut a figure's notes for a light level, role tier by role tier.
+
+    The role is the texture's own statement of which notes carry the figure, so
+    thinning along it keeps the rhythm of what survives. A figure made of nothing
+    but cut roles would come back uncut rather than vanish: a silent left hand is
+    worse than a dense one (no current texture is such, the guard is for the next).
+    """
+    if level.keep_roles == ALL_ROLES:
+        return list(placed)
+    kept = [note for note in placed if note.role in level.keep_roles]
+    return kept or list(placed)
 
 
 def _clean(events: Sequence[NoteEvent]) -> list[NoteEvent]:
@@ -335,12 +431,17 @@ def _arrange_transcribed(
     bars: list[ArrangedBar] = []
     for index in range(grid.bar_count()):
         chord = chord_for_bar(chords, grid, index)
+        right = tuple(_clean(by_hand.get((index, 0), [])))
+        left = tuple(_clean(by_hand.get((index, 1), [])))
         bars.append(
             ArrangedBar(
                 index=index,
-                right=tuple(_clean(by_hand.get((index, 0), []))),
-                left=tuple(_clean(by_hand.get((index, 1), []))),
+                right=right,
+                left=left,
                 source="as-played",
+                # In the faithful path there is no filling to separate: the right
+                # hand is the performance itself, so it is the whole melody.
+                melody=right,
                 chord=chord.name if chord else None,
                 reason="faithful transcription, re-voiced",
             )
@@ -369,6 +470,7 @@ def arrange(
     fill_chords: bool = False,
     texture: TextureName | str | None = None,
     texture_plan: TexturePlan | None = None,
+    accompaniment: str = DEFAULT_ACCOMPANIMENT,
 ) -> Arrangement:
     """Build the arranged score, one bar at a time.
 
@@ -377,6 +479,12 @@ def arrange(
     instead of the five patterns in :mod:`services.arrangement.patterns`.
     ``texture`` selects one texture for the whole piece; ``texture_plan`` maps
     bar ranges to textures for a varying left hand.
+
+    ``accompaniment`` is the left-hand density level: light thins the generated
+    figure along its role tiers and plays it quieter, so the right hand stands
+    out; full plays the figure at a slightly higher gain. It reaches only the
+    generated left hand - a kept, transcribed bar keeps the recording's own
+    balance.
     """
     if fidelity not in FIDELITIES:
         raise ValueError(f"unknown fidelity: {fidelity}")
@@ -386,6 +494,9 @@ def arrange(
         raise ValueError(f"unknown pattern: {pattern}")
     if texture is not None and texture_plan is not None:
         raise ValueError("texture and texture_plan are mutually exclusive")
+    if accompaniment not in ACCOMPANIMENT_LEVELS:
+        raise ValueError(f"unknown accompaniment: {accompaniment}")
+    level = ACCOMPANIMENT_LEVELS[accompaniment]
 
     if fidelity == "transcribed":
         return _arrange_transcribed(
@@ -421,11 +532,20 @@ def arrange(
             else choose_pattern(buckets, grid, difficulty=difficulty)
         )
     result = Arrangement(
-        fidelity=fidelity, difficulty=difficulty, pattern=chosen, pattern_reason=reason
+        fidelity=fidelity,
+        difficulty=difficulty,
+        pattern=chosen,
+        pattern_reason=reason,
+        accompaniment=accompaniment,
     )
 
     recomposed = set(quality.recomposed_bars) if quality is not None else set()
     qualities = {b.index: b for b in quality.bars} if quality is not None else {}
+
+    # The instants the left hand must be present at: the melody's phrase
+    # boundaries. Computed once over the whole piece, because the rests that
+    # define them can span barlines.
+    boundaries = phrase_boundary_beats(buckets, grid)
 
     for index in range(grid.bar_count()):
         right, left = buckets.get(index, ([], []))
@@ -463,6 +583,20 @@ def arrange(
                     difficulty=difficulty,
                     beats_per_bar=grid.beats_per_bar,
                 )
+            # The density level cuts the figure before it becomes events: the
+            # transcribed hand below gets no such edit.
+            placed = _thin_by_role(placed, level)
+            # Align the figure to the melody: snap near attacks together and
+            # anchor the phrase handoffs, so the hands play off each other
+            # instead of over each other.
+            placed = interlock(
+                placed,
+                right,
+                grid,
+                index,
+                chord,
+                boundary_beats=boundaries.get(index, ()),
+            )
             generated = _placed_to_events(placed, grid, index, amplitude=0.6)
             source: BarSource = "recomposed"
             bar_reason = f"{why} -> {chosen}/{difficulty}"
@@ -478,14 +612,20 @@ def arrange(
         # 0.428, which is why the melody was not clear.
         # When the texture system is active, the left hand carries the harmonic/rhythmic
         # identity of the arrangement, so it needs to be clearly audible.
-        gain = TEXTURE_ACCOMPANIMENT_GAIN if use_texture else ACCOMPANIMENT_GAIN
+        base_gain = TEXTURE_ACCOMPANIMENT_GAIN if use_texture else ACCOMPANIMENT_GAIN
+        # The level's gain reaches only what the module invented: a kept, transcribed
+        # bar keeps the recording's own balance.
+        bar_gain = base_gain * level.gain if source == "recomposed" else base_gain
+        bar_gain = min(max(bar_gain, MIN_ACCOMPANIMENT_GAIN), MAX_ACCOMPANIMENT_GAIN)
         final_left = [
-            dataclasses.replace(n, amplitude=n.amplitude * gain) for n in _clean(generated)
+            dataclasses.replace(n, amplitude=n.amplitude * bar_gain) for n in _clean(generated)
         ]
 
         # The transcribed tune, kept aside so the span fitter knows which pitches
         # must not move: the filling is folded to fit the melody, never the reverse.
-        skeleton = simplify_melody(right, grid, difficulty)
+        # The register is folded first, so the chord-tone filling that follows is
+        # placed under a melody that already sits where a piano melody should sit.
+        skeleton = fold_melody_to_range(simplify_melody(right, grid, difficulty))
         melody = harmonize_melody(
             skeleton,
             chords,
@@ -506,6 +646,10 @@ def arrange(
                 right=tuple(melody),
                 left=tuple(final_left),
                 source=source,
+                # The skeleton is the tune: the harmonised right hand above is the
+                # skeleton plus the filling, and the melody-only preview wants the
+                # first without the second.
+                melody=tuple(skeleton),
                 chord=chord.name if chord else None,
                 score=bar_quality.score if bar_quality else None,
                 flags=bar_quality.flags if bar_quality else (),
@@ -531,8 +675,15 @@ def _enforce_density(result: Arrangement, grid: BarGrid, difficulty: int) -> Non
 
     Applied after every bar is built, because the budget is a property of the piece:
     four bars that are each within the limit can still add up to a passage no hand
-    can play. The melody's structural notes and the left hand's downbeats are what
-    survive; see ``thin_to_density`` for the order.
+    can play.
+
+    What gets cut is fixed by what a note is: the **melody is never cut**. The tune
+    is what the listener recognises, and a notes-per-second table that eats the song
+    is the opposite of the point - the complaint behind this protection was 仅旋律
+    sounding like "中间少了很多音". The budget is shared by the left hand (its
+    historic 40% share) and the chord filling (the remainder); a bar whose melody
+    alone outruns the budget keeps the melody and plays with whatever the filling
+    and left hand can still afford, which may be nothing.
     """
     seconds = grid.phase_seconds + len(result.bars) * grid.bar_seconds
     if seconds <= 0:
@@ -560,17 +711,27 @@ def _enforce_density(result: Arrangement, grid: BarGrid, difficulty: int) -> Non
         if bar.note_count <= allowed_total:
             thinned.append(bar)
             continue
-        # The melody has already been shaped for this difficulty by simplify_melody
-        # and by the chord budget, so it is only thinned here if it would blow the bar
-        # on its own. Splitting the bar 55/45 unconditionally cut L1's melody to a
-        # single note per bar, which is thinner than L1 is supposed to be.
-        allowed_right = min(len(bar.right), max(1, round(allowed_total * 0.6)))
-        allowed_left = min(len(bar.left), max(0, allowed_total - allowed_right))
+        # The tune is sacred: melody notes are never cut by the density cap. The
+        # melody is a single line, always playable, so a notes-per-second budget
+        # that eats the song is the opposite of the point - the complaint this
+        # protection answers is 仅旋律 sounding like "中间少了很多音". The old
+        # 60/40 split put the filling and the melody in one pot, and with two
+        # chord tones added per melody note the filling out-voted the tune: the
+        # shortest melody notes were the first to go. Now the left hand keeps its
+        # historic share, the filling takes whatever the right hand's share has
+        # left after the melody, and the melody rides on top uncut.
+        melody_set = {(n.start, n.midi, n.duration) for n in bar.melody}
+        melody_notes = [n for n in bar.right if (n.start, n.midi, n.duration) in melody_set]
+        fill_notes = [n for n in bar.right if (n.start, n.midi, n.duration) not in melody_set]
+        kept_left = _prioritise_left(bar.left)[: max(0, round(allowed_total * 0.4))]
+        fill_budget = max(0, round(allowed_total * 0.6) - len(melody_notes))
+        kept_fill = _prioritise(fill_notes)[:fill_budget]
         thinned.append(
             dataclasses.replace(
                 bar,
-                right=tuple(_prioritise(bar.right)[:allowed_right]),
-                left=tuple(_prioritise_left(bar.left)[:allowed_left]),
+                right=tuple(melody_notes) + tuple(kept_fill),
+                left=tuple(kept_left),
+                melody=tuple(melody_notes),
             )
         )
     result.bars = thinned
@@ -608,6 +769,12 @@ def describe_left_hand(bar: ArrangedBar) -> str:
 
 
 __all__ = [
+    "ALL_ROLES",
+    "ACCOMPANIMENT_LEVELS",
+    "ACCOMPANIMENT_NAMES",
+    "AccompanimentConfig",
+    "AccompanimentLevel",
+    "DEFAULT_ACCOMPANIMENT",
     "DIFFICULTIES",
     "DIFFICULTY_PATTERN",
     "FIDELITIES",
@@ -615,9 +782,12 @@ __all__ = [
     "Arrangement",
     "BarSource",
     "Fidelity",
+    "MELODY_RANGE_HIGH",
+    "MELODY_RANGE_LOW",
     "arrange",
     "choose_pattern",
     "chord_for_bar",
     "describe_left_hand",
+    "fold_melody_to_range",
     "simplify_melody",
 ]

@@ -223,9 +223,10 @@ def main() -> None:
     """Test separation on the source audio."""
     logging.basicConfig(level=logging.INFO)
 
-    repo_root = Path(__file__).resolve().parents[2]
-    source = repo_root / "cache" / "audio" / "b6cdcdb386a4b3b271d6be75fc874902a81642d8.wav"
-    output = repo_root / "output" / "separated"
+    source = Path(
+        r"D:\Program Files\pianoflow\cache\audio\b6cdcdb386a4b3b271d6be75fc874902a81642d8.wav"
+    )
+    output = Path(r"D:\Program Files\pianoflow\output\separated")
 
     print(f"源音频: {source.name}")
     print(f"模型: {DEFAULT_MODEL}")

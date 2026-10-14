@@ -1,8 +1,8 @@
 ﻿# Free AI code review backed by the local Qwen endpoint (Continue CLI).
 #
-# Usage (from the repository root):
-#   powershell -ExecutionPolicy Bypass -File scripts\review.ps1 -Paths "backend_python/src/services/cache"
-#   powershell -ExecutionPolicy Bypass -File scripts\review.ps1 -Since HEAD~3
+# Usage:
+#   powershell -ExecutionPolicy Bypass -File "D:\Program Files\pianoflow\scripts\review.ps1" -Paths "backend_python/src/services/cache"
+#   powershell -ExecutionPolicy Bypass -File "D:\Program Files\pianoflow\scripts\review.ps1" -Since HEAD~3
 #
 # Design notes:
 #  * This file MUST stay UTF-8 with BOM. PowerShell 5.1 reads .ps1 as ANSI/GBK
@@ -66,7 +66,7 @@ async 正确性 / 超时与错误处理 / 含空格路径 / 限流与合规 / �
 - 最后一行：结论 CRITICAL/HIGH 数量 + 是否可通过门禁
 "@
 
-Write-Host "[review] model  : local OpenAI-compatible endpoint (see .continue/config.yaml)" -ForegroundColor Cyan
+Write-Host "[review] model  : Qwen3.8-27B @ 116.57.100.167:8000 (local, free)" -ForegroundColor Cyan
 Write-Host "[review] config : $config" -ForegroundColor DarkGray
 Write-Host "[review] log    : $log" -ForegroundColor DarkGray
 Write-Host "[review] scope  : $scope" -ForegroundColor Cyan
