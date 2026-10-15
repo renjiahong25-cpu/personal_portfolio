@@ -1,190 +1,26 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import gsap from 'gsap'
+import { computed, ref, watch } from 'vue'
 import { PROJECTS } from '../data/projects'
-
-const props = defineProps<{ island: string }>()
-const emit = defineEmits<{ (e: 'close'): void }>()
-
-const info = computed(() => PROJECTS[props.island])
-const el = ref<HTMLElement | null>(null)
-
-const STATUS_COLOR: Record<string, string> = {
-  live: '#e8c478',
-  progress: '#7ab8d8',
-  wip: '#9aa0b4'
-}
-
-function onKey(e: KeyboardEvent): void {
-  if (e.key === 'Escape') emit('close')
-}
-
-onMounted(() => {
-  if (el.value) {
-    const mobile = window.matchMedia('(max-width:768px)').matches
-    const yP = mobile ? 0 : -50
-    gsap.fromTo(
-      el.value,
-      { x: mobile ? 0 : 48, yPercent: yP, opacity: 0 },
-      { x: 0, yPercent: yP, opacity: 1, duration: 0.45, ease: 'power3.out' }
-    )
-  }
-  window.addEventListener('keydown', onKey)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', onKey)
-})
+import { COMMUNITY, type IslandId } from '../data/community'
+import CommunityRoom from './CommunityRoom.vue'
+const props=defineProps<{island:IslandId}>()
+const emit=defineEmits<{(e:'close'):void;(e:'demo'):void;(e:'game'):void}>()
+const info=computed(()=>PROJECTS[props.island]!),tab=ref('life')
+watch(()=>props.island,()=>tab.value='life')
 </script>
-
 <template>
-  <aside v-if="info" ref="el" class="island-panel" role="dialog" :aria-label="`项目面板 ${info.name}`">
-    <button type="button" class="ip-close" aria-label="关闭面板" @click="emit('close')">×</button>
-    <div class="ip-badge" :style="{ color: STATUS_COLOR[info.status] }">
-      <span class="ip-dot" :style="{ background: STATUS_COLOR[info.status] }"></span>
-      <span>{{ info.statusText }}</span>
-    </div>
-    <h2 class="ip-title">{{ info.name }}</h2>
-    <p class="ip-tagline">{{ info.tagline }}</p>
-    <p class="ip-tagline-en">{{ info.taglineEn }}</p>
-    <p class="ip-desc">{{ info.desc }}</p>
-    <div class="ip-tech">
-      <span v-for="tech in info.tech" :key="tech" class="ip-chip">{{ tech }}</span>
-    </div>
-    <div class="ip-actions">
-      <a v-if="info.url" :href="info.url" class="btn-gold ip-link" target="_blank" rel="noopener">{{ info.urlLabel }} ↗</a>
-      <button type="button" class="ip-back" @click="emit('close')">返回群岛</button>
-    </div>
+  <aside class="island-panel" role="dialog" :aria-label="`项目 ${info.name}`" :style="{'--accent':info.accent}">
+    <div class="panel-top"><span class="status"><i></i>{{info.statusText}}</span><button class="close" aria-label="关闭项目面板" @click="emit('close')">×</button></div>
+    <p class="panel-kicker">PROJECT FIELD NOTES</p><h2>{{info.name}}</h2><p class="tagline">{{info.tagline}}</p><p class="english">{{info.taglineEn}}</p>
+    <div class="tabs"><button @click="tab='life'" :class="{selected:tab==='life'}">岛民生活</button><button @click="tab='overview'" :class="{selected:tab==='overview'}">项目概览</button><button @click="tab='architecture'" :class="{selected:tab==='architecture'}">架构</button></div>
+    <template v-if="tab==='life'"><CommunityRoom :key="island" :island="island"/><div class="demo-teaser"><span>✧</span><div><b>{{COMMUNITY[island].title}} · {{COMMUNITY[island].game}}</b><p>{{COMMUNITY[island].action}}。参与小游戏，把你的补给送给居民。</p></div></div><button class="life-game" @click="emit('game')">和居民一起{{COMMUNITY[island].game}} <span>↗</span></button></template>
+    <template v-else-if="tab==='overview'"><p class="description">{{info.desc}}</p><div class="tech"><span v-for="t in info.tech" :key="t">{{t}}</span></div></template>
+    <template v-else><div class="architecture"><div v-for="(node,i) in info.architecture" :key="node"><span class="node-index">0{{i+1}}</span><span>{{node}}</span><i v-if="i<(info.architecture?.length??0)-1">↓</i></div></div><ul class="strengths"><li v-for="s in info.strengths" :key="s">{{s}}</li></ul></template>
+    <div class="panel-actions"><button class="demo-link" @click="emit('demo')">观看真实项目实录 <span>▷</span></button><a v-if="info.url" :href="info.url" target="_blank" rel="noopener">{{info.urlLabel}} ↗</a></div>
+    <a v-if="island==='DOCK'" class="email" href="mailto:1483764005@qq.com">1483764005@qq.com</a>
   </aside>
 </template>
-
 <style scoped>
-.island-panel {
-  position: fixed;
-  right: 24px;
-  top: 50%;
-  z-index: 20;
-  width: min(420px, 92vw);
-  padding: 26px 28px 24px;
-  background: rgba(10, 13, 24, 0.92);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(201, 168, 106, 0.4);
-  border-radius: var(--r-md);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 34px var(--gold-glow);
-}
-.ip-close {
-  position: absolute;
-  top: 10px;
-  right: 12px;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  background: none;
-  border: 0;
-  border-radius: var(--r-sm);
-  color: var(--text-3);
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-  transition: color 0.15s var(--ease-soft);
-}
-.ip-close:hover {
-  color: var(--gold-300);
-}
-.ip-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-}
-.ip-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  box-shadow: 0 0 8px currentColor;
-}
-.ip-title {
-  margin: 10px 0 4px;
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  background: linear-gradient(180deg, var(--gold-200), var(--gold-500) 55%, var(--gold-600));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-.ip-tagline {
-  margin: 0;
-  color: var(--text-1);
-  font-size: 15px;
-  letter-spacing: 0.04em;
-}
-.ip-tagline-en {
-  margin: 2px 0 0;
-  color: var(--text-3);
-  font-size: 12px;
-  letter-spacing: 0.06em;
-}
-.ip-desc {
-  margin: 14px 0 0;
-  color: var(--text-2);
-  font-size: 13.5px;
-  line-height: 1.8;
-}
-.ip-tech {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin-top: 14px;
-}
-.ip-chip {
-  padding: 3px 11px;
-  border: 1px solid rgba(232, 196, 120, 0.45);
-  border-radius: var(--r-pill);
-  color: var(--text-2);
-  font-size: 11.5px;
-  letter-spacing: 0.05em;
-  white-space: nowrap;
-}
-.ip-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 22px;
-}
-.ip-link {
-  display: inline-block;
-  padding: 10px 22px;
-  font-size: 13px;
-  letter-spacing: 0.12em;
-  text-decoration: none;
-}
-.ip-back {
-  padding: 10px 20px;
-  background: none;
-  border: 1px solid rgba(201, 168, 106, 0.4);
-  border-radius: var(--r-sm);
-  color: var(--text-2);
-  font-size: 13px;
-  letter-spacing: 0.12em;
-  cursor: pointer;
-  transition: border-color 0.15s var(--ease-soft), color 0.15s var(--ease-soft);
-}
-.ip-back:hover {
-  border-color: var(--gold-500);
-  color: var(--text-1);
-}
-@media (max-width: 768px) {
-  .island-panel {
-    left: 12px;
-    right: 12px;
-    top: auto;
-    bottom: 12px;
-    width: auto;
-    max-height: 80vh;
-    overflow-y: auto;
-  }
-}
+.life-game{width:100%;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;background:#b4d6c609;border:1px solid #b4d6c62e;border-radius:5px;color:var(--accent);font-size:11px;cursor:pointer}.life-game:hover{background:#b4d6c613}
+.island-panel{--accent:#edc98e;position:fixed;z-index:20;right:33px;top:116px;bottom:112px;width:375px;max-height:720px;overflow:auto;padding:27px;background:linear-gradient(135deg,#152f38f5,#0a1c28f5);backdrop-filter:blur(20px);border:1px solid #9ab8aa30;box-shadow:0 25px 60px #0004;border-radius:12px;animation:arrive .35s ease-out;color:#c4d8d0}.panel-top{display:flex;justify-content:space-between;align-items:center}.status{display:flex;align-items:center;gap:7px;font-size:10px;color:var(--accent)}.status i{width:5px;height:5px;background:var(--accent);border-radius:50%;box-shadow:0 0 9px var(--accent)}.close{border:none;background:none;font-size:25px;color:#8aaa9e;cursor:pointer;line-height:1}.panel-kicker{font:8px monospace;color:#608880;letter-spacing:2px;margin-top:24px}.island-panel h2{font-size:30px;letter-spacing:-.7px;font-weight:500;margin:7px 0 10px;color:#deede4;overflow-wrap:anywhere}.tagline{font-size:14px;margin:0 0 7px;color:#aec8bb}.english{font:10px monospace;color:#648d82;line-height:1.7}.tabs{display:flex;gap:24px;border-bottom:1px solid #b3d0b923;margin-top:26px}.tabs button{padding:0 0 13px;background:none;border:0;border-bottom:1px solid transparent;color:#719b8f;font-size:11px;cursor:pointer}.tabs .selected{color:var(--accent);border-color:var(--accent)}.description{font-size:12px;line-height:2;color:#a2bfb1;margin:22px 0}.tech{display:flex;flex-wrap:wrap;gap:7px}.tech span{font-size:9px;padding:6px 9px;border:1px solid #b3d0b92b;border-radius:4px;color:#96b4a7}.demo-teaser{display:flex;gap:14px;margin:27px 0 24px;padding:18px 15px;background:#d7e8d205;border:1px solid #b3d0b917;border-radius:7px}.demo-teaser>span{font-size:24px;color:var(--accent);font-weight:300}.demo-teaser b{font-size:11px;color:#b9d0bf;font-weight:400}.demo-teaser p{color:#6e9687;font-size:10px;line-height:1.8;margin:7px 0 0}.panel-actions{display:flex;align-items:center;gap:24px;margin-top:25px}.demo-link{display:flex;align-items:center;gap:20px;background:var(--accent);border:0;color:#10272a;font-size:11px;padding:13px 16px;border-radius:4px;cursor:pointer;white-space:nowrap}.demo-link:hover{filter:brightness(1.1)}.panel-actions a{font:10px monospace;color:#a0bcad;text-decoration:none}.architecture{padding:19px 0 5px}.architecture>div{position:relative;display:flex;align-items:center;gap:15px;padding:11px 14px;margin-bottom:15px;border:1px solid #9abcb22c;background:#09222a62;border-radius:5px;font-size:11px;color:#b7d0c2;line-height:1.6}.node-index{font:8px monospace;color:var(--accent);opacity:.7}.architecture i{position:absolute;bottom:-14px;left:50%;font-style:normal;color:#75968a;font-size:9px}.strengths{padding:0 0 0 14px;font-size:11px;line-height:1.9;color:#89aa99}.strengths li{padding-bottom:7px}.email{display:block;color:var(--accent);font:11px monospace;margin-top:20px}.island-panel::-webkit-scrollbar{width:3px}.island-panel::-webkit-scrollbar-thumb{background:#91b6a94d}@keyframes arrive{from{opacity:0;transform:translateX(25px)}to{opacity:1;transform:translateX(0)}}@media(max-width:1000px){.island-panel{width:320px;right:20px;padding:22px;top:96px;bottom:105px}}@media(max-width:600px){.island-panel{right:12px;left:12px;width:auto;top:92px;bottom:154px;padding:22px;max-height:none}.island-panel h2{font-size:26px}.panel-kicker{margin-top:14px}.tabs{margin-top:20px}.description{margin:16px 0}.demo-teaser{margin:19px 0 12px}}
 </style>

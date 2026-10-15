@@ -1,0 +1,1559 @@
+{
+ "sprites": {
+  "grass_a_e": {
+   "file": "curated/grass_a_e.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    35
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/dirt_E.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "e",
+   "bbox": [
+    0,
+    373,
+    256,
+    139
+   ],
+   "note": "recolor grass_a"
+  },
+  "grass_b_e": {
+   "file": "curated/grass_b_e.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    35
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/dirt_E.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "e",
+   "bbox": [
+    0,
+    373,
+    256,
+    139
+   ],
+   "note": "recolor grass_b"
+  },
+  "sand_e": {
+   "file": "curated/sand_e.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    35
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/dirt_E.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "e",
+   "bbox": [
+    0,
+    373,
+    256,
+    139
+   ],
+   "note": "recolor sand"
+  },
+  "dirt_path_e": {
+   "file": "curated/dirt_path_e.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    35
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/dirt_E.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "e",
+   "bbox": [
+    0,
+    373,
+    256,
+    139
+   ],
+   "note": "recolor dirt_path"
+  },
+  "dirt_e": {
+   "file": "curated/dirt_e.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    35
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/dirt_E.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "e",
+   "bbox": [
+    0,
+    373,
+    256,
+    139
+   ],
+   "note": "original color"
+  },
+  "farmland_e": {
+   "file": "curated/farmland_e.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    35
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/dirtFarmland_E.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "e",
+   "bbox": [
+    0,
+    373,
+    256,
+    139
+   ],
+   "note": "slight warm shift"
+  },
+  "grass_a_n": {
+   "file": "curated/grass_a_n.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    35
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/dirt_N.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "n",
+   "bbox": [
+    0,
+    373,
+    256,
+    139
+   ],
+   "note": "recolor grass_a"
+  },
+  "grass_b_n": {
+   "file": "curated/grass_b_n.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    35
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/dirt_N.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "n",
+   "bbox": [
+    0,
+    373,
+    256,
+    139
+   ],
+   "note": "recolor grass_b"
+  },
+  "sand_n": {
+   "file": "curated/sand_n.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    35
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/dirt_N.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "n",
+   "bbox": [
+    0,
+    373,
+    256,
+    139
+   ],
+   "note": "recolor sand"
+  },
+  "dirt_path_n": {
+   "file": "curated/dirt_path_n.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    35
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/dirt_N.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "n",
+   "bbox": [
+    0,
+    373,
+    256,
+    139
+   ],
+   "note": "recolor dirt_path"
+  },
+  "dirt_n": {
+   "file": "curated/dirt_n.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    35
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/dirt_N.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "n",
+   "bbox": [
+    0,
+    373,
+    256,
+    139
+   ],
+   "note": "original color"
+  },
+  "farmland_n": {
+   "file": "curated/farmland_n.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    35
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/dirtFarmland_N.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "n",
+   "bbox": [
+    0,
+    373,
+    256,
+    139
+   ],
+   "note": "slight warm shift"
+  },
+  "grass_a_s": {
+   "file": "curated/grass_a_s.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    35
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/dirt_S.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "s",
+   "bbox": [
+    0,
+    373,
+    256,
+    139
+   ],
+   "note": "recolor grass_a"
+  },
+  "grass_b_s": {
+   "file": "curated/grass_b_s.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    35
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/dirt_S.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "s",
+   "bbox": [
+    0,
+    373,
+    256,
+    139
+   ],
+   "note": "recolor grass_b"
+  },
+  "sand_s": {
+   "file": "curated/sand_s.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    35
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/dirt_S.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "s",
+   "bbox": [
+    0,
+    373,
+    256,
+    139
+   ],
+   "note": "recolor sand"
+  },
+  "dirt_path_s": {
+   "file": "curated/dirt_path_s.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    35
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/dirt_S.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "s",
+   "bbox": [
+    0,
+    373,
+    256,
+    139
+   ],
+   "note": "recolor dirt_path"
+  },
+  "dirt_s": {
+   "file": "curated/dirt_s.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    35
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/dirt_S.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "s",
+   "bbox": [
+    0,
+    373,
+    256,
+    139
+   ],
+   "note": "original color"
+  },
+  "farmland_s": {
+   "file": "curated/farmland_s.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    35
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/dirtFarmland_S.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "s",
+   "bbox": [
+    0,
+    373,
+    256,
+    139
+   ],
+   "note": "slight warm shift"
+  },
+  "grass_a_w": {
+   "file": "curated/grass_a_w.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    35
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/dirt_W.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "w",
+   "bbox": [
+    0,
+    373,
+    256,
+    139
+   ],
+   "note": "recolor grass_a"
+  },
+  "grass_b_w": {
+   "file": "curated/grass_b_w.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    35
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/dirt_W.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "w",
+   "bbox": [
+    0,
+    373,
+    256,
+    139
+   ],
+   "note": "recolor grass_b"
+  },
+  "sand_w": {
+   "file": "curated/sand_w.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    35
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/dirt_W.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "w",
+   "bbox": [
+    0,
+    373,
+    256,
+    139
+   ],
+   "note": "recolor sand"
+  },
+  "dirt_path_w": {
+   "file": "curated/dirt_path_w.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    35
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/dirt_W.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "w",
+   "bbox": [
+    0,
+    373,
+    256,
+    139
+   ],
+   "note": "recolor dirt_path"
+  },
+  "dirt_w": {
+   "file": "curated/dirt_w.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    35
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/dirt_W.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "w",
+   "bbox": [
+    0,
+    373,
+    256,
+    139
+   ],
+   "note": "original color"
+  },
+  "farmland_w": {
+   "file": "curated/farmland_w.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    35
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/dirtFarmland_W.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "w",
+   "bbox": [
+    0,
+    373,
+    256,
+    139
+   ],
+   "note": "slight warm shift"
+  },
+  "plank_e": {
+   "file": "curated/plank_e.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    37
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/planks_E.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "e",
+   "bbox": [
+    0,
+    364,
+    256,
+    148
+   ],
+   "note": "bridge/floor main"
+  },
+  "plank_n": {
+   "file": "curated/plank_n.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    37
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/planks_N.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "n",
+   "bbox": [
+    0,
+    364,
+    256,
+    148
+   ],
+   "note": "bridge/floor main"
+  },
+  "plank_s": {
+   "file": "curated/plank_s.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    37
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/planks_S.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "s",
+   "bbox": [
+    0,
+    364,
+    256,
+    148
+   ],
+   "note": "bridge/floor main"
+  },
+  "plank_w": {
+   "file": "curated/plank_w.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    37
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/planks_W.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "w",
+   "bbox": [
+    0,
+    364,
+    256,
+    148
+   ],
+   "note": "bridge/floor main"
+  },
+  "plank_corner_l": {
+   "file": "curated/plank_corner_l.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    37
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/planksCornerLeft_S.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "bbox": [
+    0,
+    364,
+    256,
+    148
+   ],
+   "note": "corner platform (S-facing)"
+  },
+  "plank_corner_r": {
+   "file": "curated/plank_corner_r.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    35
+   ],
+   "type": "ground",
+   "src": "kenney-iso-mini-farm/Isometric/planksCornerRight_S.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "bbox": [
+    0,
+    373,
+    256,
+    139
+   ],
+   "note": "corner platform (S-facing)"
+  },
+  "house_body_e": {
+   "file": "curated/house_body_e.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    35,
+    59
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/woodWall_E.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "e",
+   "bbox": [
+    0,
+    220,
+    141,
+    235
+   ]
+  },
+  "house_body_n": {
+   "file": "curated/house_body_n.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    35,
+    59
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/woodWall_N.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "n",
+   "bbox": [
+    0,
+    277,
+    141,
+    235
+   ]
+  },
+  "house_body_s": {
+   "file": "curated/house_body_s.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    35,
+    59
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/woodWall_S.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "s",
+   "bbox": [
+    115,
+    220,
+    141,
+    235
+   ]
+  },
+  "house_body_w": {
+   "file": "curated/house_body_w.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    35,
+    59
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/woodWall_W.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "w",
+   "bbox": [
+    115,
+    278,
+    141,
+    234
+   ]
+  },
+  "house_door_e": {
+   "file": "curated/house_door_e.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    35,
+    59
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/woodWallDoorClosed_E.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "e",
+   "bbox": [
+    0,
+    220,
+    141,
+    235
+   ],
+   "note": "closed door"
+  },
+  "house_door_n": {
+   "file": "curated/house_door_n.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    35,
+    59
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/woodWallDoorClosed_N.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "n",
+   "bbox": [
+    0,
+    277,
+    141,
+    235
+   ],
+   "note": "closed door"
+  },
+  "house_door_s": {
+   "file": "curated/house_door_s.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    35,
+    59
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/woodWallDoorClosed_S.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "s",
+   "bbox": [
+    115,
+    220,
+    141,
+    235
+   ],
+   "note": "closed door"
+  },
+  "house_door_w": {
+   "file": "curated/house_door_w.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    35,
+    59
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/woodWallDoorClosed_W.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "w",
+   "bbox": [
+    115,
+    278,
+    141,
+    234
+   ],
+   "note": "closed door"
+  },
+  "house_window_e": {
+   "file": "curated/house_window_e.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    35,
+    59
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/woodWallWindow_E.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "e",
+   "bbox": [
+    0,
+    220,
+    141,
+    235
+   ]
+  },
+  "house_window_n": {
+   "file": "curated/house_window_n.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    35,
+    59
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/woodWallWindow_N.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "n",
+   "bbox": [
+    0,
+    277,
+    141,
+    235
+   ]
+  },
+  "house_window_s": {
+   "file": "curated/house_window_s.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    35,
+    59
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/woodWallWindow_S.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "s",
+   "bbox": [
+    115,
+    220,
+    141,
+    235
+   ]
+  },
+  "house_window_w": {
+   "file": "curated/house_window_w.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    35,
+    59
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/woodWallWindow_W.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "w",
+   "bbox": [
+    115,
+    277,
+    141,
+    235
+   ]
+  },
+  "roof_e": {
+   "file": "curated/roof_e.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    68
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/roof_E.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "e",
+   "bbox": [
+    0,
+    242,
+    256,
+    270
+   ]
+  },
+  "roof_n": {
+   "file": "curated/roof_n.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    68
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/roof_N.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "n",
+   "bbox": [
+    0,
+    242,
+    256,
+    270
+   ]
+  },
+  "roof_s": {
+   "file": "curated/roof_s.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    39
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/roof_S.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "s",
+   "bbox": [
+    0,
+    303,
+    256,
+    156
+   ]
+  },
+  "roof_w": {
+   "file": "curated/roof_w.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    39
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/roof_W.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "w",
+   "bbox": [
+    0,
+    303,
+    256,
+    156
+   ]
+  },
+  "roof_corner_e": {
+   "file": "curated/roof_corner_e.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    68
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/roofCorner_E.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "e",
+   "bbox": [
+    0,
+    239,
+    256,
+    273
+   ]
+  },
+  "roof_corner_n": {
+   "file": "curated/roof_corner_n.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    53
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/roofCorner_N.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "n",
+   "bbox": [
+    0,
+    300,
+    256,
+    212
+   ]
+  },
+  "roof_corner_s": {
+   "file": "curated/roof_corner_s.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    53
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/roofCorner_S.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "s",
+   "bbox": [
+    0,
+    300,
+    256,
+    212
+   ]
+  },
+  "roof_corner_w": {
+   "file": "curated/roof_corner_w.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    64,
+    25
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/roofCorner_W.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "w",
+   "bbox": [
+    0,
+    361,
+    256,
+    98
+   ]
+  },
+  "fence_h_e": {
+   "file": "curated/fence_h_e.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    34,
+    44
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/fenceHigh_E.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "e",
+   "bbox": [
+    0,
+    277,
+    134,
+    174
+   ]
+  },
+  "fence_h_n": {
+   "file": "curated/fence_h_n.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    34,
+    44
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/fenceHigh_N.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "n",
+   "bbox": [
+    0,
+    338,
+    134,
+    174
+   ]
+  },
+  "fence_h_s": {
+   "file": "curated/fence_h_s.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    34,
+    44
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/fenceHigh_S.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "s",
+   "bbox": [
+    122,
+    277,
+    134,
+    174
+   ]
+  },
+  "fence_h_w": {
+   "file": "curated/fence_h_w.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    34,
+    44
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/fenceHigh_W.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "w",
+   "bbox": [
+    122,
+    338,
+    134,
+    174
+   ]
+  },
+  "fence_l_e": {
+   "file": "curated/fence_l_e.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    34,
+    34
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/fenceLow_E.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "e",
+   "bbox": [
+    0,
+    315,
+    134,
+    136
+   ]
+  },
+  "fence_l_n": {
+   "file": "curated/fence_l_n.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    34,
+    34
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/fenceLow_N.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "n",
+   "bbox": [
+    0,
+    377,
+    134,
+    135
+   ]
+  },
+  "fence_l_s": {
+   "file": "curated/fence_l_s.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    34,
+    34
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/fenceLow_S.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "s",
+   "bbox": [
+    122,
+    315,
+    134,
+    136
+   ]
+  },
+  "fence_l_w": {
+   "file": "curated/fence_l_w.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    34,
+    34
+   ],
+   "type": "building",
+   "src": "kenney-iso-mini-farm/Isometric/fenceLow_W.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "w",
+   "bbox": [
+    122,
+    377,
+    134,
+    135
+   ]
+  },
+  "corn_stage0_s": {
+   "file": "curated/corn_stage0_s.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    42,
+    24
+   ],
+   "type": "prop",
+   "src": "kenney-iso-mini-farm/Isometric/cornYoung_S.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "s",
+   "bbox": [
+    44,
+    388,
+    166,
+    95
+   ],
+   "note": "young corn (stage0)"
+  },
+  "corn_stage0_e": {
+   "file": "curated/corn_stage0_e.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    39,
+    25
+   ],
+   "type": "prop",
+   "src": "kenney-iso-mini-farm/Isometric/cornYoung_E.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "e",
+   "bbox": [
+    47,
+    383,
+    157,
+    100
+   ],
+   "note": "young corn (stage0)"
+  },
+  "corn_stage2_s": {
+   "file": "curated/corn_stage2_s.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    55,
+    46
+   ],
+   "type": "prop",
+   "src": "kenney-iso-mini-farm/Isometric/corn_S.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "s",
+   "bbox": [
+    7,
+    300,
+    220,
+    183
+   ],
+   "note": "mature corn (stage2)"
+  },
+  "corn_stage2_e": {
+   "file": "curated/corn_stage2_e.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    50,
+    48
+   ],
+   "type": "prop",
+   "src": "kenney-iso-mini-farm/Isometric/corn_E.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "dir": "e",
+   "bbox": [
+    15,
+    292,
+    201,
+    191
+   ],
+   "note": "mature corn (stage2)"
+  },
+  "hay": {
+   "file": "curated/hay.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    22,
+    17
+   ],
+   "type": "prop",
+   "src": "kenney-iso-mini-farm/Isometric/hay_S.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "bbox": [
+    79,
+    401,
+    88,
+    66
+   ]
+  },
+  "hay_bales": {
+   "file": "curated/hay_bales.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    31,
+    25
+   ],
+   "type": "prop",
+   "src": "kenney-iso-mini-farm/Isometric/hayBales_S.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "bbox": [
+    63,
+    376,
+    123,
+    99
+   ]
+  },
+  "sack": {
+   "file": "curated/sack.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    11,
+    14
+   ],
+   "type": "prop",
+   "src": "kenney-iso-mini-farm/Isometric/sack_S.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "bbox": [
+    98,
+    395,
+    43,
+    55
+   ]
+  },
+  "sacks_crate": {
+   "file": "curated/sacks_crate.png",
+   "w": 256,
+   "h": 512,
+   "display": [
+    29,
+    19
+   ],
+   "type": "prop",
+   "src": "kenney-iso-mini-farm/Isometric/sacksCrate_S.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "bbox": [
+    70,
+    389,
+    116,
+    74
+   ]
+  },
+  "bush_01": {
+   "file": "curated/bush_01.png",
+   "w": 36,
+   "h": 49,
+   "display": [
+    17,
+    24
+   ],
+   "type": "plant",
+   "src": "kenney-iso-city/Details/cityDetails_010.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "bbox": [
+    0,
+    0,
+    36,
+    49
+   ],
+   "note": "bush (仅存绿植物体)"
+  },
+  "rock_01": {
+   "file": "curated/rock_01.png",
+   "w": 136,
+   "h": 102,
+   "display": [
+    66,
+    49
+   ],
+   "type": "rock",
+   "src": "kenney-iso-landscape/PNG/landscapeTiles_081.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "bbox": [
+    0,
+    0,
+    136,
+    102
+   ],
+   "note": "cliff face (全宽地形, 非独立岩石)"
+  },
+  "rock_02": {
+   "file": "curated/rock_02.png",
+   "w": 135,
+   "h": 102,
+   "display": [
+    65,
+    49
+   ],
+   "type": "rock",
+   "src": "kenney-iso-landscape/PNG/landscapeTiles_094.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "bbox": [
+    0,
+    0,
+    135,
+    102
+   ],
+   "note": "cliff face (全宽地形, 非独立岩石)"
+  },
+  "rock_03": {
+   "file": "curated/rock_03.png",
+   "w": 135,
+   "h": 102,
+   "display": [
+    65,
+    49
+   ],
+   "type": "rock",
+   "src": "kenney-iso-landscape/PNG/landscapeTiles_101.png",
+   "license": "CC0 1.0 (Kenney, kenney.nl)",
+   "bbox": [
+    0,
+    0,
+    135,
+    102
+   ],
+   "note": "cliff face (全宽地形, 非独立岩石)"
+  },
+  "tree_01": {
+   "file": "curated/tree_01.png",
+   "w": 337,
+   "h": 234,
+   "display": [
+    163,
+    113
+   ],
+   "type": "tree",
+   "src": "trees/tree_01_src.png",
+   "license": "CC-BY 4.0 (pack also offered as CC-BY-SA 4.0; used CC-BY 4.0), c: Hansjorg Malthaner (https://opengameart.org/users/varkalandar)",
+   "bbox": [
+    0,
+    0,
+    337,
+    234
+   ],
+   "note": "圆冠矮胖 (src #4b)"
+  },
+  "tree_02": {
+   "file": "curated/tree_02.png",
+   "w": 319,
+   "h": 245,
+   "display": [
+    155,
+    119
+   ],
+   "type": "tree",
+   "src": "trees/tree_02_src.png",
+   "license": "CC-BY 4.0 (pack also offered as CC-BY-SA 4.0; used CC-BY 4.0), c: Hansjorg Malthaner (https://opengameart.org/users/varkalandar)",
+   "bbox": [
+    0,
+    0,
+    319,
+    245
+   ],
+   "note": "圆冠 (src #33b)"
+  },
+  "tree_03": {
+   "file": "curated/tree_03.png",
+   "w": 139,
+   "h": 223,
+   "display": [
+    67,
+    108
+   ],
+   "type": "tree",
+   "src": "trees/tree_03_src.png",
+   "license": "CC-BY 4.0 (pack also offered as CC-BY-SA 4.0; used CC-BY 4.0), c: Hansjorg Malthaner (https://opengameart.org/users/varkalandar)",
+   "bbox": [
+    0,
+    0,
+    139,
+    223
+   ],
+   "note": "瘦高 (src #2a)"
+  },
+  "tree_04": {
+   "file": "curated/tree_04.png",
+   "w": 221,
+   "h": 277,
+   "display": [
+    107,
+    134
+   ],
+   "type": "tree",
+   "src": "trees/tree_04_src.png",
+   "license": "CC-BY 4.0 (pack also offered as CC-BY-SA 4.0; used CC-BY 4.0), c: Hansjorg Malthaner (https://opengameart.org/users/varkalandar)",
+   "bbox": [
+    0,
+    0,
+    221,
+    277
+   ],
+   "note": "瘦高 V 形基座 (src #19a)"
+  },
+  "tree_05": {
+   "file": "curated/tree_05.png",
+   "w": 250,
+   "h": 269,
+   "display": [
+    121,
+    130
+   ],
+   "type": "tree",
+   "src": "trees/tree_05_src.png",
+   "license": "CC-BY 4.0 (pack also offered as CC-BY-SA 4.0; used CC-BY 4.0), c: Hansjorg Malthaner (https://opengameart.org/users/varkalandar)",
+   "bbox": [
+    0,
+    0,
+    250,
+    269
+   ],
+   "note": "层叠冠 (src #12b)"
+  },
+  "tree_06": {
+   "file": "curated/tree_06.png",
+   "w": 250,
+   "h": 155,
+   "display": [
+    121,
+    75
+   ],
+   "type": "tree",
+   "src": "trees/tree_06_src.png",
+   "license": "CC-BY 4.0 (pack also offered as CC-BY-SA 4.0; used CC-BY 4.0), c: Hansjorg Malthaner (https://opengameart.org/users/varkalandar)",
+   "bbox": [
+    0,
+    0,
+    250,
+    155
+   ],
+   "note": "矮胖低矮 (src #32b)"
+  },
+  "tree_07": {
+   "file": "curated/tree_07.png",
+   "w": 301,
+   "h": 286,
+   "display": [
+    146,
+    139
+   ],
+   "type": "tree",
+   "src": "trees/tree_07_src.png",
+   "license": "CC-BY 4.0 (pack also offered as CC-BY-SA 4.0; used CC-BY 4.0), c: Hansjorg Malthaner (https://opengameart.org/users/varkalandar)",
+   "bbox": [
+    0,
+    0,
+    301,
+    286
+   ],
+   "note": "红叶秋色 (src #8c)"
+  },
+  "tree_08": {
+   "file": "curated/tree_08.png",
+   "w": 271,
+   "h": 231,
+   "display": [
+    131,
+    112
+   ],
+   "type": "tree",
+   "src": "trees/tree_08_src.png",
+   "license": "CC-BY 4.0 (pack also offered as CC-BY-SA 4.0; used CC-BY 4.0), c: Hansjorg Malthaner (https://opengameart.org/users/varkalandar)",
+   "bbox": [
+    0,
+    0,
+    271,
+    231
+   ],
+   "note": "黄叶 (src #27a)"
+  },
+  "cart": {
+   "w": 193,
+   "h": 150,
+   "display": [
+    56,
+    44
+   ],
+   "type": "cart",
+   "src": "cart-candidates/hjm_parked_00..15.png",
+   "license": "CC-BY 4.0 / CC-BY 3.0 / OGA-BY 3.0, c: Hansjorg Malthaner (https://opengameart.org/users/varkalandar)",
+   "note": "OGA 木制手推车 parked 16 向; 统一画箱 193x150, 底部居中对齐",
+   "frames": [
+    "curated/cart_00.png",
+    "curated/cart_01.png",
+    "curated/cart_02.png",
+    "curated/cart_03.png",
+    "curated/cart_04.png",
+    "curated/cart_05.png",
+    "curated/cart_06.png",
+    "curated/cart_07.png",
+    "curated/cart_08.png",
+    "curated/cart_09.png",
+    "curated/cart_10.png",
+    "curated/cart_11.png",
+    "curated/cart_12.png",
+    "curated/cart_13.png",
+    "curated/cart_14.png",
+    "curated/cart_15.png"
+   ],
+   "dirs": 16
+  }
+ },
+ "meta": {
+  "generated_by": "tools/blender/curate_open.py",
+  "convention": "2019 系 PNG 为 256x512 原画布 (内容锚定画布底部, bbox 字段给出内容位置, 场景放置时按 bbox 底角对齐瓦片底角); display 为屏幕像素 (2019: bbox/4, 2014 系与 OGA 树: bbox*64/132)",
+  "gaps": [
+   "kenney-iso-landscape(2014) 经逐图验证为纯地形包 (草地/沙地/水面/河流/瀑布/悬崖), 不含树木与独立岩石物体",
+   "rock_01..03 取自该包 3 块悬崖岩面瓦片 (全瓦片宽, 建议按地形件使用), 包内无独立岩石",
+   "bush_01 取自 kenney-iso-city Details (唯一绿植物体, 30x44)",
+   "全部已下载 Kenney 包中不存在等距树木素材; tree_01..08 改由 OGA Varkalandar '80 More Isometric Trees' (CC-BY 4.0) 补足, 原图与 7z 存档在 trees/"
+  ]
+ }
+}

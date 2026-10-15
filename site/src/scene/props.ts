@@ -21,6 +21,10 @@ const sheets = import.meta.glob('../assets/props/*.webp', {
   import: 'default'
 }) as Record<string, string>
 
+export const PROP_NAMES: string[] = Object.keys(manifests)
+  .map((k) => k.slice(k.lastIndexOf('/') + 1))
+  .map((n) => n.slice(0, -5))
+
 export interface PropEntry {
   texs: Texture[]
   m: PropManifest

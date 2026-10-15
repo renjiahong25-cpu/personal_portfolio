@@ -1,67 +1,27 @@
 <script setup lang="ts">
-const emit = defineEmits<{ (e: 'enter'): void }>()
-
-function enter(): void {
-  emit('enter')
-}
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { EXPERIENCES } from '../data/experiences'
+defineProps<{musicOn?:boolean;musicReady?:boolean;musicMessage?:string}>()
+const emit = defineEmits<{(e:'enter'):void;(e:'demo'):void;(e:'blind-song', index:number):void;(e:'sound'):void}>()
+const revealed=ref<string[]>([]),selected=ref(''), detail=computed(()=>EXPERIENCES.find(e=>e.id===selected.value))
+let wheelDistance=0
+function open(id:string,index:number):void {selected.value=id;if(!revealed.value.includes(id))revealed.value.push(id);emit('blind-song',index)}
+function wheel(e:WheelEvent):void {if((e.target as HTMLElement)?.closest('.experience-detail'))return;if(e.deltaY>0){wheelDistance+=e.deltaY;if(wheelDistance>120)emit('enter')}else wheelDistance=0}
+function keyboard(e:KeyboardEvent):void{if(e.key==='Escape')selected.value=''}
+onMounted(()=>{window.addEventListener('wheel',wheel,{passive:true});window.addEventListener('keydown',keyboard)})
+onBeforeUnmount(()=>{window.removeEventListener('wheel',wheel);window.removeEventListener('keydown',keyboard)})
 </script>
-
 <template>
-  <div class="gate">
-    <p class="eyebrow">R.J.H. — GHOST</p>
-    <h1 class="gate-title">STARHARBOR</h1>
-    <p class="gate-sub">rjh-ghost 的作品群岛 · An Archipelago of Works</p>
-    <button type="button" class="btn-gold gate-btn" @click="enter">进入群岛</button>
-    <div class="gate-progress">
-      <div class="gate-progress-fill"></div>
-    </div>
-  </div>
+  <section class="gate" aria-label="经历盲盒首页">
+    <header class="gate-header"><span>✧ STARHARBOR <small>A PERSONAL UNIVERSE</small></span><a href="mailto:1483764005@qq.com">1483764005@qq.com ↗</a></header>
+    <div class="gate-layout"><div class="hero-content"><p class="hero-kicker">A LITTLE CURIOSITY GOES A LONG WAY</p><h1>你好，<br>先拆一份<span>好奇心。</span></h1><p class="hero-description">九个盲盒，藏着我走过的不同片段。<br>从研究到产品，从真实现场到数字世界。<br>挑一个，看看我们在哪里产生共鸣。</p><div class="hero-actions"><button class="enter-button" @click="emit('enter')">往下一页，遇见群岛 <span>↓</span></button><button class="demo-button" @click="emit('demo')">看看作品如何运转 →</button></div><div class="hero-meta"><span>09 STORIES</span><i></i><span>06 LIVING ISLANDS</span><i></i><span>YOUR OWN PACE</span></div></div>
+    <div class="blindbox-area"><div class="box-heading"><span>THE EXPERIENCE COLLECTION</span><span>{{String(revealed.length).padStart(2,'0')}} / 09 OPENED</span></div><div class="box-grid"><button v-for="(story,i) in EXPERIENCES" :key="story.id" class="blindbox" :class="{revealed:revealed.includes(story.id),selected:selected===story.id}" @click="open(story.id,i)" :aria-label="revealed.includes(story.id)?`阅读${story.theme}：${story.title}`:`打开经历盲盒 ${i+1}`" :aria-pressed="selected===story.id" :style="{'--delay':i*55+'ms'}"><span class="box-number">{{String(i+1).padStart(2,'0')}}</span><span class="box-symbol">{{revealed.includes(story.id)?story.glyph:'✧'}}</span><b>{{revealed.includes(story.id)?story.theme:'未知的片段'}}</b><small>{{revealed.includes(story.id)?'READ THE STORY ↗':'TAP TO UNBOX'}}</small><span class="box-seal" aria-hidden="true"></span></button></div><p class="box-hint">每一次好奇，都是一次新的连接。</p></div></div>
+    <Transition name="story"><aside v-if="detail" class="experience-detail" aria-label="已揭晓的经历"><div class="detail-top"><span>{{detail.theme}} / FIELD NOTES</span><button aria-label="收起经历" @click="selected=''">×</button></div><h2>{{detail.title}}</h2><p>{{detail.problem}}</p><ul><li v-for="action in detail.actions" :key="action">{{action}}</li></ul><p class="result">{{detail.result}}</p><button class="next-story" @click="open(EXPERIENCES[(EXPERIENCES.indexOf(detail)+1)%9]!.id,(EXPERIENCES.indexOf(detail)+1)%9)">拆下一份好奇心 ↗</button></aside></Transition>
+    <footer class="gate-footer"><button @click="emit('enter')"><span class="scroll-mark">↓</span> 滚轮向下，进入我的作品群岛</button><button class="blind-music" @click="emit('sound')" :aria-pressed="musicOn" :title="musicMessage">{{musicOn?'♫ 关闭音乐':'♪ 开启盲选音乐'}}<small>{{musicReady?'黄霄云歌单':'音乐待接入'}}</small></button></footer><p v-if="musicMessage&&musicMessage!=='默认静音 · 点击开启音乐'" class="gate-music-notice" role="status">{{musicMessage}}</p>
+  </section>
 </template>
-
 <style scoped>
-.gate {
-  position: relative;
-  z-index: 3;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 0 24px;
-}
-.gate-title {
-  margin: 16px 0 12px;
-  font-size: clamp(56px, 12vw, 96px);
-  font-weight: 700;
-  line-height: 1.05;
-  letter-spacing: 0.13em;
-  background: linear-gradient(180deg, var(--gold-200), var(--gold-500) 55%, var(--gold-600));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  filter: drop-shadow(0 0 26px var(--gold-glow-strong));
-}
-.gate-sub {
-  margin: 0 0 44px;
-  color: var(--text-3);
-  font-size: 14px;
-  letter-spacing: 0.08em;
-}
-.gate-btn {
-  margin-top: 8px;
-}
-.gate-progress {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 2px;
-  background: rgba(232, 196, 120, 0.1);
-}
-.gate-progress-fill {
-  height: 100%;
-  width: 100%;
-  background: linear-gradient(90deg, transparent, var(--gold-500), transparent);
-}
+.blind-music small{color:#5d8b78;font-size:7px;margin-left:9px}@media(max-width:650px){.blind-music small{display:none}}
+.gate-music-notice{position:fixed;bottom:76px;right:6%;font-size:9px;background:#112e39ee;border:1px solid #7b9b872f;padding:10px 13px;border-radius:5px;color:#8daf9b;z-index:3}
+.gate{position:fixed;inset:0;z-index:10;overflow:auto;background:radial-gradient(ellipse at 72% 42%,#2c5e5655,transparent 60%),linear-gradient(115deg,#07151df5,#112c36f0);color:#dfede5}.gate::before{content:'';position:absolute;inset:0;background-image:linear-gradient(#aecdc603 1px,transparent 1px),linear-gradient(90deg,#aecdc603 1px,transparent 1px);background-size:60px 60px;pointer-events:none}.gate-header{position:absolute;left:6%;right:6%;top:36px;display:flex;justify-content:space-between;align-items:center;z-index:2}.gate-header>span{font:600 17px Georgia,serif;letter-spacing:3px}.gate-header small{font:7px monospace;letter-spacing:1.7px;color:#5c8d7e;display:block;margin-top:10px}.gate-header>a{color:#97b7a9;font:10px monospace;letter-spacing:1px;text-decoration:none}.gate-layout{position:relative;min-height:100dvh;box-sizing:border-box;padding:130px 7% 110px;display:grid;grid-template-columns:1fr 1.12fr;gap:7%;align-items:center}.hero-kicker{font:8px monospace;letter-spacing:2px;color:#76a795;margin-bottom:27px}.hero-content h1{font-size:clamp(44px,4.2vw,72px);font-weight:500;line-height:1.22;letter-spacing:-2px;margin:0 0 26px;font-family:Georgia,'Songti SC','SimSun',serif}.hero-content h1 span{display:block;color:#e9ca91}.hero-description{font-size:12px;line-height:2.15;color:#97b4ab;letter-spacing:.7px}.hero-actions{display:flex;flex-direction:column;align-items:flex-start;gap:21px;margin-top:30px}.enter-button{display:flex;gap:28px;align-items:center;background:#e8c98e;color:#193537;border:none;border-radius:5px;padding:15px 21px;font-size:12px;letter-spacing:.5px;cursor:pointer;box-shadow:0 10px 30px #e2bc6714}.enter-button:hover{background:#f2daa7;transform:translateY(-2px)}.enter-button span{font-size:19px}.demo-button{border:0;border-bottom:1px solid #a1c0ac42;padding:0 0 7px;background:none;color:#acc8bb;font-size:10px;cursor:pointer}.hero-meta{display:flex;align-items:center;gap:10px;font:7px monospace;letter-spacing:.8px;color:#587e77;margin-top:40px;white-space:nowrap}.hero-meta i{height:3px;width:3px;border-radius:50%;background:#7fa694}.box-heading{display:flex;justify-content:space-between;font:7px monospace;letter-spacing:1.4px;color:#699784;margin:0 0 18px}.box-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;transform:perspective(1300px) rotateY(-7deg) rotateX(3deg)}.blindbox{position:relative;aspect-ratio:1.13;background:linear-gradient(145deg,#274a4d,#112c36);border:1px solid #b7cabc38;border-radius:10px;box-shadow:0 13px 0 #071c24,0 20px 26px #0004,inset 0 1px #d3e6d51a;color:#c9d7bd;cursor:pointer;transition:transform .3s,border-color .3s,background .3s;animation:box-arrive .7s both;animation-delay:var(--delay);overflow:hidden}.blindbox:hover{transform:translateY(-7px);border-color:#dfcb9480}.blindbox.selected{border-color:#eed49e;background:linear-gradient(145deg,#4d6253,#233e40);box-shadow:0 13px 0 #0c232a,0 25px 32px #0005,0 0 30px #e6c78715}.blindbox.revealed{background:linear-gradient(145deg,#324e46,#1c3438)}.box-number{position:absolute;top:11px;left:13px;color:#759b8b;font:8px monospace}.box-symbol{display:block;font:36px Georgia,serif;color:#d7bf8d;line-height:1;margin:16px 0 16px;filter:drop-shadow(0 0 10px #d5be8830)}.blindbox b{font-size:10px;letter-spacing:1px;font-weight:400;display:block}.blindbox small{display:block;font:6px monospace;letter-spacing:1px;color:#628d7e;margin-top:10px}.box-seal{position:absolute;right:-10px;top:-10px;width:35px;height:35px;border:1px solid #c5d3b720;transform:rotate(45deg)}.box-hint{font-size:9px;color:#638b7c;text-align:center;letter-spacing:2px;margin-top:32px}.experience-detail{position:fixed;z-index:4;right:7%;bottom:90px;width:min(440px,82vw);box-sizing:border-box;max-height:70dvh;overflow:auto;padding:25px 27px;background:linear-gradient(135deg,#203c42f9,#0d242ef9);border:1px solid #d2c18e75;border-radius:12px;box-shadow:0 20px 70px #0009;backdrop-filter:blur(20px)}.detail-top{display:flex;justify-content:space-between;align-items:center;font:8px monospace;letter-spacing:1px;color:#d4bc87}.detail-top button{background:none;border:0;color:#a2bdb0;font-size:22px;cursor:pointer;padding:0 2px}.experience-detail h2{font-size:23px;font-weight:500;color:#e5ddc4;line-height:1.5;margin:16px 0}.experience-detail p{font-size:11px;color:#8eb5a5;line-height:1.9}.experience-detail ul{padding-left:15px;font-size:11px;line-height:1.9;color:#becfbb}.experience-detail li{margin:7px 0}.experience-detail .result{padding-top:13px;border-top:1px solid #b2c5a925;color:#c5bb98}.next-story{color:#d5c393;background:none;border:0;border-bottom:1px solid #c5b48450;font-size:10px;padding:6px 0;cursor:pointer;margin-top:8px}.gate-footer{position:absolute;bottom:30px;left:6%;right:6%;display:flex;justify-content:space-between;align-items:center;color:#52766e;font:8px monospace;letter-spacing:1.5px}.gate-footer button{background:none;border:0;color:#81a492;font-size:9px;cursor:pointer;padding:4px;display:flex;align-items:center;gap:10px}.scroll-mark{display:grid;place-items:center;border:1px solid #8fb29b40;width:22px;height:33px;border-radius:20px;font-size:13px}.story-enter-active,.story-leave-active{transition:opacity .25s,transform .25s}.story-enter-from,.story-leave-to{opacity:0;transform:translateY(15px)}@keyframes box-arrive{from{opacity:0;transform:translateY(25px)}to{opacity:1;transform:translateY(0)}}@media(max-width:1050px){.gate-layout{gap:4%;padding-left:5%;padding-right:5%}.hero-content h1{font-size:50px}.box-grid{gap:11px}.box-symbol{font-size:29px;margin-bottom:10px}.blindbox small{font-size:5px}.hero-meta{font-size:6px;gap:7px}}@media(max-width:650px){.gate-header{left:23px;right:23px;top:23px}.gate-header>span{font-size:12px;letter-spacing:2px}.gate-header small{font-size:6px;letter-spacing:1px}.gate-header>a{font-size:8px;letter-spacing:0}.gate-layout{display:flex;flex-direction:column;gap:34px;align-items:stretch;padding:117px 26px 100px;min-height:100dvh}.hero-kicker{font-size:6px;margin:0 0 17px}.hero-content h1{font-size:42px;letter-spacing:-1px;margin-bottom:17px}.hero-content h1 span{display:inline}.hero-description{font-size:10px;line-height:1.9}.hero-actions{margin-top:21px;gap:16px}.enter-button{font-size:10px;padding:12px 15px;gap:17px}.hero-meta{display:none}.box-grid{transform:none;gap:10px}.blindbox{aspect-ratio:1.13;border-radius:7px;box-shadow:0 7px 0 #071c24,0 11px 15px #0004}.box-heading{font-size:6px;margin-bottom:12px}.box-number{font-size:6px;top:7px;left:9px}.box-symbol{font-size:28px;margin:12px 0 10px}.blindbox b{font-size:8px;letter-spacing:0}.blindbox small{font-size:5px;letter-spacing:.5px;margin-top:7px}.box-hint{font-size:7px;margin-top:23px;letter-spacing:1px}.gate-footer{position:absolute;bottom:21px;left:25px;right:25px}.gate-footer>span{display:none}.gate-footer button{font-size:8px}.experience-detail{right:16px;left:16px;bottom:65px;width:auto;max-height:70dvh;padding:20px}.experience-detail h2{font-size:22px}}@media(prefers-reduced-motion:reduce){.blindbox{animation:none;transition:none}.box-grid{transform:none}}
 </style>

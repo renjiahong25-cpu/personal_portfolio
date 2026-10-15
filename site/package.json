@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vue-tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "dev": "vite --host 127.0.0.1 --port 5175 --configLoader runner",
+    "build": "vue-tsc --noEmit && vite build --configLoader runner",
+    "preview": "vite preview --host 127.0.0.1 --port 5175 --configLoader runner"
   },
   "dependencies": {
     "gsap": "^3.13.0",

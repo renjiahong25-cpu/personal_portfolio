@@ -1,22 +1,32 @@
-import { FillGradient, Graphics, Matrix, RenderTexture, Texture } from 'pixi.js'
+import { FillGradient, Graphics, Matrix, RenderTexture, Sprite, Texture } from 'pixi.js'
 import type { Renderer } from 'pixi.js'
 import { TileClass } from '../data/islands'
 import { HALF_W, HALF_H } from './iso'
+import { getOpenDisplay, loadOpenTexture } from './openAssets'
 
+// Water keeps the procedural cloud-sea textures (Ghibli core, untouched).
+// Land tiles use curated Kenney/OGA sprites built in buildGroundSprites.
 export interface TerrainTextures {
   deep: Texture
   deepGlint: Texture
   shallow: Texture
-  sand: Texture
-  grassA: Texture
-  grassB: Texture
-  dirt: Texture
-  road: Texture
-  bridge: Texture
   rock: Texture
 }
 
-// Ghibli "Laputa" palette: cloud-sea instead of deep water, cel outlines on land
+export interface GroundEntry {
+  tex: Texture
+  display: [number, number]
+}
+
+export interface GroundSet {
+  grassA: GroundEntry
+  grassB: GroundEntry
+  sand: GroundEntry
+  dirt: GroundEntry
+  road: GroundEntry
+  bridge: GroundEntry
+}
+
 const CLOUD_TOP = 0xfdf6ec
 const CLOUD_MID = 0xe9f0f4
 const CLOUD_BOTTOM = 0xb8cfe0
@@ -24,16 +34,6 @@ const CLOUD_BAND = 0xeef4f8
 const CLOUD_PURE = 0xffffff
 const SHALLOW_TOP = 0xe8f0f4
 const SHALLOW_BOTTOM = 0xcfe2ee
-const GRASS_A = 0x7ec850
-const GRASS_B = 0x5aa83a
-const OUTLINE = 0x3a3356
-const SAND_A = 0xf0dfae
-const SAND_B = 0xdcc98c
-const DIRT = 0xd8a86a
-const ROAD = 0xd8b078
-const ROAD_EDGE = 0xb8945e
-const PLANK = 0xc8945e
-const ROPE = 0x8a5a34
 const ROCK = 0xb8b4c8
 
 function diamond(g: Graphics, hw = HALF_W, hh = HALF_H): Graphics {
@@ -102,48 +102,6 @@ export function buildTerrainTextures(renderer: Renderer): TerrainTextures {
     g.moveTo(-HALF_W, 0).lineTo(0, -HALF_H).lineTo(HALF_W, 0).stroke({ width: 1.5, color: CLOUD_PURE, alpha: 0.55 })
   })
 
-  const sand = gen((g) => {
-    diamond(g).fill(SAND_A)
-    diamond(g, HALF_W * 0.7, HALF_H * 0.7).fill({ color: SAND_B, alpha: 0.65 })
-    dotRow(g, [[-12, -3], [4, -8], [14, 2], [-4, 7], [8, 6]], 0xcbb377, 0.7, 1)
-    dotRow(g, [[0, -4], [-18, 2], [18, -4]], 0xf6e8c0, 0.9, 0.8)
-  })
-
-  const grassA = gen((g) => {
-    diamond(g).fill(GRASS_A)
-    dotRow(g, [[-10, -4], [8, -7], [2, 6]], 0x69b843, 0.8, 1.2)
-    dotRow(g, [[-2, -8], [12, 2], [-14, 3]], 0x97d468, 0.9, 0.9)
-    diamond(g).stroke({ width: 1.5, color: OUTLINE, alpha: 0.9 })
-  })
-
-  const grassB = gen((g) => {
-    diamond(g).fill(GRASS_B)
-    dotRow(g, [[-14, 2], [6, -6], [-2, 8], [14, -2]], 0x529c35, 0.8, 1.2)
-    dotRow(g, [[-6, -8], [10, 4], [-16, 6]], 0x7ec850, 0.8, 0.9)
-    diamond(g).stroke({ width: 1.5, color: OUTLINE, alpha: 0.9 })
-  })
-
-  const dirt = gen((g) => {
-    diamond(g).fill(DIRT)
-    dotRow(g, [[-8, -4], [6, -2], [-2, 6], [12, 5], [-16, 3]], 0xc08f55, 0.85, 1.4)
-    dotRow(g, [[2, -6], [-12, -1], [10, 9]], 0xe2b981, 0.85, 1)
-  })
-
-  const road = gen((g) => {
-    diamond(g).fill(ROAD)
-    dotRow(g, [[-18, -2], [-6, -6], [6, -6], [18, -2], [-12, 2], [0, 2], [12, 2], [-6, 7], [6, 7]], 0xc8a066, 0.9, 1.3)
-    diamond(g).stroke({ width: 1.5, color: ROAD_EDGE, alpha: 0.9 })
-  })
-
-  const bridge = gen((g) => {
-    diamond(g).fill(PLANK)
-    for (const [x1, y1, x2, y2] of [[-2, -13, 26, -3], [-14, -7, 14, 7], [-26, -1, 2, 13]] as const) {
-      g.moveTo(x1, y1).lineTo(x2, y2).stroke({ width: 1.5, color: ROPE, alpha: 0.8 })
-    }
-    g.moveTo(-28.7, 1.7).lineTo(3.4, -14.3).stroke({ width: 2, color: ROPE })
-    g.moveTo(-3.4, 14.3).lineTo(28.7, -1.7).stroke({ width: 2, color: ROPE })
-  })
-
   const rock = gen((g) => {
     diamond(g).fill(ROCK)
     g.poly([-10, -8, 8, -10, 16, 0, 2, 6]).fill({ color: 0x9d99b2, alpha: 0.95 })
@@ -151,28 +109,64 @@ export function buildTerrainTextures(renderer: Renderer): TerrainTextures {
     dotRow(g, [[10, 8], [-14, 6]], 0x8a86a0, 0.85, 1.1)
   })
 
-  return { deep, deepGlint, shallow, sand, grassA, grassB, dirt, road, bridge, rock }
+  return { deep, deepGlint, shallow, rock }
 }
 
-export function textureForClass(t: TerrainTextures, c: TileClass, gx: number, gy: number): Texture {
+// 2019 系 curated 地面: 256x512 原画布按 manifest bbox 裁出内容 (顶面 2:1 + 侧面),
+// 显示尺寸 = manifest display (256 宽 → 64px, 4x 过采样, 线性过滤直接缩放即可)。
+// 侧面 (~2.75px) 在 gy 递增方向被后绘制的邻瓦片顶面正确遮挡 (等距行距 16px)。
+const GROUND_NAMES: Record<keyof GroundSet, string> = {
+  grassA: 'grass_a_e',
+  grassB: 'grass_b_e',
+  sand: 'sand_e',
+  dirt: 'dirt_e',
+  road: 'dirt_path_e',
+  bridge: 'plank_e'
+}
+
+export async function buildGroundSprites(): Promise<GroundSet> {
+  const out = {} as GroundSet
+  for (const key of Object.keys(GROUND_NAMES) as (keyof GroundSet)[]) {
+    const name = GROUND_NAMES[key]
+    out[key] = { tex: await loadOpenTexture(name), display: getOpenDisplay(name) }
+  }
+  return out
+}
+
+export interface TileTex {
+  tex: Texture
+  display?: [number, number]
+}
+
+export function textureForClass(w: TerrainTextures, g: GroundSet, c: TileClass, gx: number, gy: number): TileTex {
   switch (c) {
     case TileClass.Deep:
-      return (gx * 7 + gy * 13) % 17 === 0 ? t.deepGlint : t.deep
+      return { tex: (gx * 7 + gy * 13) % 17 === 0 ? w.deepGlint : w.deep }
     case TileClass.Shallow:
-      return t.shallow
+      return { tex: w.shallow }
     case TileClass.Sand:
-      return t.sand
+      return g.sand
     case TileClass.GrassA:
-      return t.grassA
+      return g.grassA
     case TileClass.GrassB:
-      return t.grassB
+      return g.grassB
     case TileClass.Dirt:
-      return t.dirt
+      return g.dirt
     case TileClass.Road:
-      return t.road
+      return g.road
     case TileClass.Bridge:
-      return t.bridge
+      return g.bridge
     case TileClass.Rock:
-      return t.rock
+      return { tex: w.rock }
   }
+}
+
+export function makeTileSprite(t: TileTex): Sprite {
+  const sp = new Sprite(t.tex)
+  sp.anchor.set(0.5, 0.5)
+  if (t.display) {
+    sp.width = t.display[0]
+    sp.height = t.display[1]
+  }
+  return sp
 }

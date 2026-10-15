@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "videos": [
+    {
+      "id": "pianoflow",
+      "project": "PIANO",
+      "title": "PianoFlow",
+      "description": "实际浏览器操作分段记录。已剪去等待与录制间隔；无端到端速度宣称。歌曲与专辑封面仅在产品界面展示，成片不含歌曲音轨。",
+      "src": "media/pianoflow.mp4",
+      "poster": "media/pianoflow.jpg",
+      "duration": "00:27"
+    },
+    {
+      "id": "venue",
+      "project": "JOURNEY",
+      "title": "Venue Scout",
+      "description": "真实浏览器操作截图帧剪辑。等待与录制间隔已剪去；画面停留会标注，不声称端到端速度。 本片范围：录制测试场景，不是容量审核通过的推荐；住宿和会议容量未人工核验；小红书攻略细节未完成，不声称完成账号抓取。",
+      "src": "media/venue.mp4",
+      "poster": "media/venue.jpg",
+      "duration": "00:25"
+    },
+    {
+      "id": "policy",
+      "project": "TARIFF",
+      "title": "Policy Agent",
+      "description": "真实浏览器操作截图帧剪辑。等待与录制间隔已剪去；画面停留会标注，不声称端到端速度。 本片范围：仓库税则测试快照，非现行关税或报关建议；录制报价链路，不声称完整 RAG 服务已上线。",
+      "src": "media/policy.mp4",
+      "poster": "media/policy.jpg",
+      "duration": "00:25"
+    },
+    {
+      "id": "portfolio",
+      "project": "DOCK",
+      "title": "Starharbor",
+      "description": "真实浏览器操作截图帧剪辑。等待与录制间隔已剪去；画面停留会标注，不声称端到端速度。 本片范围：前端为等距2D场景，并非自由旋转实时3D；小游戏存档只保存在当前浏览器。",
+      "src": "media/portfolio.mp4",
+      "poster": "media/portfolio.jpg",
+      "duration": "00:33"
+    },
+    {
+      "id": "companion",
+      "project": "BUILD",
+      "title": "Game Companion",
+      "description": "真实浏览器操作截图帧剪辑。等待与录制间隔已剪去；画面停留会标注，不声称端到端速度。 本片范围：使用S18历史公开攻略，不是实时对局；模型视觉能力并非总能准确命名装备；本片不声称原生语音或自动桌面观察已录制验证。",
+      "src": "media/companion.mp4",
+      "poster": "media/companion.jpg",
+      "duration": "00:25"
+    }
+  ]
+}

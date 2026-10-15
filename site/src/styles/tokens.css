@@ -10,6 +10,7 @@
   --font-num:"Inter","SF Mono","JetBrains Mono",monospace;
 }
 body{margin:0;font-family:var(--font-sans);background:var(--ink-900);color:var(--text-2);}
+*{box-sizing:border-box}button,input,select,textarea{font-family:inherit}button:focus-visible,a:focus-visible,input:focus-visible,video:focus-visible,[tabindex]:focus-visible{outline:2px solid #e8cd96;outline-offset:4px}.ambient-paused .starfield *,.ambient-paused .room-person{animation-play-state:paused!important}@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 .btn-gold{background:linear-gradient(180deg,var(--gold-300),var(--gold-500) 46%,var(--gold-600));box-shadow:0 2px 0 var(--gold-700),0 6px 18px rgba(0,0,0,.45),0 0 22px var(--gold-glow),inset 0 1px 0 var(--gold-200),inset 0 -1px 0 var(--gold-700);color:#1a1408;border:0;border-radius:var(--r-sm);padding:12px 34px;font-size:15px;letter-spacing:.18em;cursor:pointer;transition:transform .12s var(--ease-soft),box-shadow .12s;}
 .btn-gold:hover{transform:translateY(-1px);box-shadow:0 3px 0 var(--gold-700),0 8px 22px rgba(0,0,0,.5),0 0 30px var(--gold-glow-strong),inset 0 1px 0 var(--gold-200),inset 0 -1px 0 var(--gold-700);}
 .btn-gold:active{transform:translateY(1px);box-shadow:0 0 0 var(--gold-700),0 3px 10px rgba(0,0,0,.4),inset 0 1px 0 var(--gold-200);}

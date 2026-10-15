@@ -1,588 +1,118 @@
-import { Application, Container, Graphics, Sprite, Text } from 'pixi.js'
-import gsap from 'gsap'
-import { BRIDGES, GRID_H, GRID_W, ISLANDS, TileClass, buildWorld, idx, inGrid } from '../data/islands'
+import { Application, Assets, Container, Graphics, Sprite, Text } from 'pixi.js'
 import { MapCamera, attachCameraInput } from './camera'
-import { FONT, initInteract, type InteractHandle } from './interact'
-import { findPath, type Tile } from './pathfind'
-import { loadProp } from './props'
-import { screenDepth, screenToTile, tileToScreen } from './iso'
-import { mulberry32, shuffle } from './rng'
-import { buildTerrainTextures, textureForClass, type TerrainTextures } from './terrain'
+import { COMMUNITY, progress, type IslandId } from '../data/community'
 
-export interface CartSnapshot {
-  tile: Tile
-  driving: boolean
-  target: string | null
-  pathLen: number
-}
-
+const islands = [
+  { id: 'PIANO', name: 'PianoFlow', sub: '01 / RESONANCE HALL', x: -570, y: -190, color: 0xf2c685 },
+  { id: 'HUB', name: 'web-agent', sub: '02 / SIGNAL STATION', x: 0, y: -210, color: 0x7be4f6 },
+  { id: 'TARIFF', name: 'Supply Chain', sub: '03 / POLICY PORT', x: 570, y: -190, color: 0xeab375 },
+  { id: 'JOURNEY', name: 'venue-scout', sub: '04 / EXPEDITION CAMP', x: -560, y: 235, color: 0xa7ddad },
+  { id: 'DOCK', name: 'STARHARBOR', sub: '00 / HOME PORT', x: 0, y: 285, color: 0xf2c685 },
+  { id: 'BUILD', name: 'Companion', sub: '05 / OBSERVATORY', x: 560, y: 235, color: 0x9bc3fd }
+]
 export interface MapSceneHandle {
-  app: Application
-  world: Container
-  camera: MapCamera
-  anchors: Record<string, { x: number; y: number }>
-  islandOf: (gx: number, gy: number) => string | null
-  stats: { tiles: number; props: number; placeholders: string[]; warnings: string[] }
-  driveTo(id: string): Promise<boolean>
-  getCart(): CartSnapshot
-  lastPathCrossedWater: boolean
-  anchorScreen(id: string): { x: number; y: number }
-  centerOn(id: string): void
-  destroy(): void
+  app: Application; world: Container; camera: MapCamera
+  driveTo(id: string): Promise<boolean>; centerOn(id: string): void; overview(): void; setKeyboardEnabled(enabled: boolean): void; setPaused(paused: boolean): void; destroy(): void
 }
-
-const LAND_HOVER: ReadonlySet<number> = new Set([
-  TileClass.GrassA, TileClass.GrassB, TileClass.Sand, TileClass.Dirt, TileClass.Road, TileClass.Rock
-])
-
-const CLOUD_WRAP_MIN = tileToScreen(0, GRID_H - 1).x - 80
-const CLOUD_WRAP_MAX = tileToScreen(GRID_W - 1, 0).x + 80
-
-function stageError(name: string, e: unknown): Error {
-  const err = new Error(`[stage:${name}] ${e instanceof Error ? e.message : String(e)}`)
-  err.cause = e
-  return err
-}
-
-interface IslandHitData {
-  id: string
-  name: string
-  desc: string
-  anchor: { x: number; y: number }
-  tiles: Array<{ x: number; y: number }>
-}
-
-export async function initMapScene(
-  container: HTMLElement,
-  opts: { onIslandClick?: (id: string) => void; onArrive?: (id: string) => void }
-): Promise<MapSceneHandle> {
-  const worldData = buildWorld()
-
-  let app!: Application
-  let world!: Container
-  let texs!: TerrainTextures
-  let shallowLayer!: Container
-  let cam!: MapCamera
-  let detachInput!: () => void
-  let ro!: ResizeObserver
-  let interact!: InteractHandle
-
-  const flowerLayer = new Container()
-  const glowLayer = new Container()
-  const propLayer = new Container()
-  const fxLayer = new Container()
-  const tileSprites: Sprite[] = new Array(GRID_W * GRID_H)
-  const glints: Array<{ sp: Sprite; phase: number }> = []
-  const clouds: Array<{ c: Container; speed: number; hw: number }> = []
-  const notes: Array<{ sp: Graphics; x: number; y: number; phase: number }> = []
-  let glowSprite: Graphics | null = null
-  let panel: Container | null = null
-  const placeholders: string[] = []
-  const warnings: string[] = []
-
-  interface CartState {
-    tile: Tile
-    pos: { x: number; y: number }
-    path: Tile[] | null
-    wp: number
-    dir: number
-    driving: boolean
-    target: string | null
+export async function initMapScene(container: HTMLElement, opts: { onIslandClick?: (id: string) => void; onArrive?: (id: string) => void }): Promise<MapSceneHandle> {
+  const app = new Application()
+  await app.init({ backgroundAlpha: 0, antialias: true, resolution: Math.min(devicePixelRatio || 1, 2), autoDensity: true, resizeTo: container })
+  container.appendChild(app.canvas)
+  app.canvas.setAttribute('aria-label','原创作品群岛。通过页面的项目导航选择岛屿，或拖动地图探索。')
+  app.ticker.maxFPS=45
+  const world = new Container(); app.stage.addChild(world)
+  const sea = new Graphics(); world.addChild(sea)
+  const sparkles: Array<{ g: Graphics; phase: number }> = [], rings: Array<{ g: Graphics; phase: number }> = []
+  let seed = 4271
+  const random = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646 }
+  for (let i = 0; i < 360; i++) {
+    const x = random() * 2600 - 1300, y = random() * 1900 - 950, w = 10 + random() * 65
+    sea.moveTo(x,y).quadraticCurveTo(x+w/2,y-3,x+w,y).stroke({ color: 0x6aa8ba, width: .6, alpha: .08 + random()*.09 })
+    if (i%4===0) { const g=new Graphics().circle(0,0,random()*1.2+.4).fill({ color: 0xa5e9ed, alpha: .7 }); g.position.set(x,y); world.addChild(g); sparkles.push({g,phase:random()*6.3}) }
   }
-  const cartState: CartState = {
-    tile: { x: 0, y: 0 },
-    pos: { x: 0, y: 0 },
-    path: null,
-    wp: 0,
-    dir: 0,
-    driving: false,
-    target: null
-  }
-  let cartRig: Container | null = null
-  const cartHolders: Container[] = []
-  let crossedWater = false
-  const hitIslands: IslandHitData[] = []
-  const anchors: Record<string, { x: number; y: number }> = {}
-
-  try {
-    app = new Application()
-    await app.init({
-      background: 0xcfe8f6,
-      antialias: true,
-      resolution: Math.min(window.devicePixelRatio || 1, 2),
-      autoDensity: true,
-      resizeTo: container,
-      preference: 'webgl'
-    })
-    container.appendChild(app.canvas)
-    app.canvas.style.display = 'block'
-    world = new Container()
-    world.label = 'world'
-    app.stage.addChild(world)
-  } catch (e) {
-    throw stageError('init', e)
-  }
-
-  try {
-    texs = buildTerrainTextures(app.renderer)
-    const terrainLayer = new Container()
-    shallowLayer = new Container()
-    world.addChild(terrainLayer)
-    world.addChild(shallowLayer)
-    for (let gy = 0; gy < GRID_H; gy++) {
-      for (let gx = 0; gx < GRID_W; gx++) {
-        const k = idx(gx, gy)
-        const c = worldData.cls[k]
-        const sp = new Sprite(textureForClass(texs, c, gx, gy))
-        sp.anchor.set(0.5, 0.5)
-        const p = tileToScreen(gx, gy)
-        sp.position.set(p.x, p.y)
-        if (c === TileClass.Deep && (gx * 7 + gy * 13) % 17 === 0) {
-          glints.push({ sp, phase: (gx * 13 + gy * 7) * 0.7 })
-        }
-        ;(c === TileClass.Shallow ? shallowLayer : terrainLayer).addChild(sp)
-        tileSprites[k] = sp
-      }
-    }
-    world.addChild(flowerLayer)
-    for (const f of worldData.flowers) {
-      const g = new Graphics()
-      const p = tileToScreen(f.gx, f.gy)
-      g.circle(f.ox, f.oy, f.r * 1.35).fill({ color: 0xffffff, alpha: 0.95 })
-      g.circle(f.ox, f.oy, Math.max(0.9, f.r * 0.5)).fill({ color: 0xffd97a, alpha: 0.95 })
-      g.position.set(p.x, p.y)
-      flowerLayer.addChild(g)
-    }
-
-    const cloudLayer = new Container()
-    cloudLayer.label = 'cloud-layer'
-    world.addChild(cloudLayer)
-    {
-      const rng = mulberry32(20261013)
-      const islById = new Map(ISLANDS.map((i) => [i.id, i]))
-      const distToSeg = (px: number, py: number, ax: number, ay: number, bx: number, by: number): number => {
-        const vx = bx - ax
-        const vy = by - ay
-        const wx = px - ax
-        const wy = py - ay
-        const l2 = vx * vx + vy * vy
-        const t = l2 ? Math.max(0, Math.min(1, (wx * vx + wy * vy) / l2)) : 0
-        return Math.hypot(wx - vx * t, wy - vy * t)
-      }
-      const cands: Array<{ x: number; y: number }> = []
-      for (let gy = 0; gy < GRID_H; gy++) {
-        for (let gx = 0; gx < GRID_W; gx++) {
-          const k = idx(gx, gy)
-          if (worldData.cls[k] !== TileClass.Deep) continue
-          let ok = true
-          for (const isl of ISLANDS) {
-            if (Math.hypot(gx - isl.cx, gy - isl.cy) < Math.max(isl.rx, isl.ry) + 3.5) { ok = false; break }
-          }
-          if (ok) {
-            for (const [aId, bId] of BRIDGES) {
-              const a = islById.get(aId)!
-              const b = islById.get(bId)!
-              if (distToSeg(gx, gy, a.cx, a.cy, b.cx, b.cy) < 4) { ok = false; break }
-            }
-          }
-          if (ok) {
-            const p = tileToScreen(gx, gy)
-            cands.push({ x: p.x + (rng() - 0.5) * 24, y: p.y + (rng() - 0.5) * 12 })
-          }
-        }
-      }
-      const chosen: Array<{ x: number; y: number }> = []
-      for (const p of shuffle(rng, cands)) {
-        if (chosen.length >= 6) break
-        if (chosen.every((q) => Math.hypot(q.x - p.x, q.y - p.y) > 230)) chosen.push(p)
-      }
-      for (const p of chosen) {
-        const w = 200 + rng() * 220
-        const h = w * 0.42
-        const shadow = new Graphics()
-        shadow.ellipse(0, h * 0.3, w * 0.47, h * 0.2).fill({ color: 0xb8cfe0, alpha: 0.55 })
-        const puffs = new Graphics()
-        puffs.ellipse(0, 0, w * 0.33, h * 0.4).fill(0xffffff)
-        puffs.ellipse(-w * 0.27, h * 0.08, w * 0.21, h * 0.3).fill(0xffffff)
-        puffs.ellipse(w * 0.27, h * 0.1, w * 0.23, h * 0.32).fill(0xffffff)
-        if (rng() < 0.8) puffs.ellipse(-w * 0.08, -h * 0.26, w * 0.15, h * 0.22).fill(0xffffff)
-        if (rng() < 0.5) puffs.ellipse(w * 0.1, -h * 0.2, w * 0.13, h * 0.19).fill(0xffffff)
-        const c = new Container()
-        c.addChild(shadow, puffs)
-        c.alpha = 0.92
-        c.position.set(p.x, p.y)
-        cloudLayer.addChild(c)
-        clouds.push({ c, speed: 0.02 + rng() * 0.04, hw: w / 2 })
-      }
-    }
-    world.addChild(glowLayer)
-    world.addChild(propLayer)
-    world.addChild(fxLayer)
-  } catch (e) {
-    throw stageError('terrain', e)
-  }
-
-  try {
-    propLayer.sortableChildren = true
-    const sorted = worldData.decos
-      .filter((d) => d.prop !== '__panel__' && d.prop !== 'cart')
-      .sort((a, b) => screenDepth(a.gx, a.gy) - screenDepth(b.gx, b.gy) || a.gy - b.gy)
-    for (let si = 0; si < sorted.length; si++) {
-      const d = sorted[si]
-      const loaded = await loadProp(d.prop, d.dir ?? 0)
-      if (loaded.missing) placeholders.push(d.prop)
-      const holder = new Container()
-      holder.zIndex = screenDepth(d.gx, d.gy) * 1000 + si
-      holder.addChild(loaded.node)
-      const p = tileToScreen(d.gx, d.gy)
-      holder.position.set(p.x, p.y)
-      if (d.scale !== undefined) holder.scale.multiplyScalar(d.scale)
-      if (d.label) {
-        const t = new Text({
-          text: d.label,
-          style: { fontFamily: FONT, fontSize: 9, fontWeight: '700', fill: 0xf5e0a8, letterSpacing: 1.5 }
-        })
-        t.anchor.set(0.5, 1)
-        t.position.set(0, -36)
-        holder.addChild(t)
-      }
-      if (d.effect === 'glow') {
-        const g = new Graphics()
-        g.circle(0, 0, 16).fill({ color: 0xf0b464, alpha: 0.25 })
-        g.circle(0, 0, 9).fill({ color: 0xf5d28a, alpha: 0.25 })
-        g.position.set(p.x, p.y - 8)
-        glowLayer.addChild(g)
-        glowSprite = g
-      }
-      if (d.effect === 'notes') {
-        for (let i = 0; i < 4; i++) {
-          const g = new Graphics()
-          g.circle(0, 0, 1.8).fill(0xf0d28a)
-          fxLayer.addChild(g)
-          notes.push({ sp: g, x: p.x + (i - 1.5) * 7, y: p.y - 30, phase: i / 4 })
-        }
-      }
-      propLayer.addChild(holder)
-    }
-
-    const panelDeco = worldData.decos.find((d) => d.prop === '__panel__')
-    if (panelDeco) {
-      const p = tileToScreen(panelDeco.gx, panelDeco.gy)
-      const w = 132
-      const h = 34
-      panel = new Container()
-      const g = new Graphics()
-      g.roundRect(-w / 2, -h, w, h, 8).fill({ color: 0x0d1530, alpha: 0.88 }).stroke({ width: 1.5, color: 0xe8c478, alpha: 0.85 })
-      const t = new Text({
-        text: '施工 0%',
-        style: { fontFamily: FONT, fontSize: 13, fontWeight: '600', fill: 0xf0d28a, letterSpacing: 2 }
-      })
-      t.anchor.set(0.5, 0.5)
-      t.position.set(0, -h / 2)
-      panel.addChild(g, t)
-      panel.position.set(p.x, p.y - 44)
-      panel.label = 'build-panel'
-      fxLayer.addChild(panel)
-      gsap.to(panel, { y: panel.y - 8, duration: 2.2, yoyo: true, repeat: -1, ease: 'sine.inOut' })
-    }
-  } catch (e) {
-    throw stageError('props', e)
-  }
-
-  try {
-    const hub = worldData.anchors.HUB
-    cartState.tile = { x: hub[0], y: hub[1] }
-    const hubPos = tileToScreen(hub[0], hub[1])
-    cartState.pos = { x: hubPos.x, y: hubPos.y }
-    cartRig = new Container()
-    cartRig.label = 'cart-rig'
-    for (let d = 0; d < 8; d++) {
-      const loaded = await loadProp('cart', d)
-      if (loaded.missing) placeholders.push('cart')
-      const holder = new Container()
-      holder.addChild(loaded.node)
-      holder.visible = d === 0
-      cartHolders.push(holder)
-      cartRig.addChild(holder)
-    }
-    cartRig.position.set(cartState.pos.x, cartState.pos.y)
-    cartRig.zIndex = screenDepth(cartState.tile.x, cartState.tile.y) * 1000 + 500
-    propLayer.addChild(cartRig)
-  } catch (e) {
-    throw stageError('cart', e)
-  }
-
-  try {
-    for (let i = 0; i < ISLANDS.length; i++) {
-      const isl = ISLANDS[i]
-      const tiles: Array<{ x: number; y: number }> = []
-      for (let gy = 0; gy < GRID_H; gy++) {
-        for (let gx = 0; gx < GRID_W; gx++) {
-          const k = idx(gx, gy)
-          if (worldData.island[k] !== i || !LAND_HOVER.has(worldData.cls[k])) continue
-          tiles.push(tileToScreen(gx, gy))
-        }
-      }
-      const a = tileToScreen(isl.anchor[0], isl.anchor[1])
-      hitIslands.push({ id: isl.id, name: isl.name, desc: isl.desc, anchor: a, tiles })
-      anchors[isl.id] = a
-    }
-  } catch (e) {
-    throw stageError('islands', e)
-  }
-
-  try {
-    const hubA = worldData.anchors.HUB
-    const hubPos = tileToScreen(hubA[0], hubA[1])
-    cam = new MapCamera(world, {
-      minX: tileToScreen(0, GRID_H - 1).x - 80,
-      minY: tileToScreen(0, 0).y - 110,
-      maxX: tileToScreen(GRID_W - 1, 0).x + 80,
-      maxY: tileToScreen(GRID_W - 1, GRID_H - 1).y + 60
-    })
-    cam.setViewSize(app.renderer.screen.width, app.renderer.screen.height)
-    cam.pos = { x: hubPos.x, y: hubPos.y - 30 }
-    cam.apply()
-    detachInput = attachCameraInput(app.canvas, cam)
-    ro = new ResizeObserver(() => {
-      cam.setViewSize(app.renderer.screen.width, app.renderer.screen.height)
-    })
-    ro.observe(container)
-  } catch (e) {
-    throw stageError('camera', e)
-  }
-
-  try {
-    interact = initInteract(app, world, hitIslands, (id) => opts.onIslandClick?.(id))
-  } catch (e) {
-    throw stageError('interact', e)
-  }
-
-  const CART_SPEED = 100
-
-  function setCartDir(dir: number): void {
-    if (dir === cartState.dir) return
-    cartState.dir = dir
-    for (let d = 0; d < 8; d++) cartHolders[d].visible = d === dir
-  }
-
-  function syncCartDepth(): void {
-    if (!cartRig) return
-    const ft = screenToTile(cartState.pos.x, cartState.pos.y)
-    const tx = Math.round(ft.gx)
-    const ty = Math.round(ft.gy)
-    if (tx === cartState.tile.x && ty === cartState.tile.y) return
-    cartState.tile = { x: tx, y: ty }
-    cartRig.zIndex = screenDepth(tx, ty) * 1000 + 500
-  }
-
-  function endDrive(): void {
-    cartState.driving = false
-    cartState.path = null
-    cam.stopFollow()
-    cam.setZoom(0.8, 1.0)
-    const tgt = cartState.target
-    cartState.target = null
-    if (tgt) opts.onArrive?.(tgt)
-  }
-
-  async function driveTo(id: string): Promise<boolean> {
-    if (!cartRig) return false
-    const anchor = worldData.anchors[id]
-    if (!anchor) {
-      warnings.push(`[cart] unknown island id "${id}"`)
-      return false
-    }
-    if (cartState.driving && cartState.target === id) return false
-    const from: Tile = { ...cartState.tile }
-    const to: Tile = { x: anchor[0], y: anchor[1] }
-    let path = findPath(worldData, from, to)
-    if (!path) {
-      path = [from, to]
-      warnings.push(`[cart] no path ${id} → straight fallback`)
-    }
-    crossedWater = path.some((p) => {
-      if (!inGrid(p.x, p.y)) return false
-      const c = worldData.cls[idx(p.x, p.y)]
-      return c === TileClass.Deep || c === TileClass.Shallow
-    })
-    cartState.path = path
-    cartState.wp = 1
-    cartState.target = id
-    cartState.driving = true
-    cam.setZoom(1.2, 1.15)
-    return true
-  }
-
-  function getCart(): CartSnapshot {
-    return {
-      tile: { ...cartState.tile },
-      driving: cartState.driving,
-      target: cartState.target,
-      pathLen: cartState.path ? cartState.path.length : 0
+  const routes = new Graphics(); world.addChild(routes)
+  const hub=islands[1]!
+  for (const island of islands.filter(i=>i.id!=='HUB')) {
+    const ax=hub.x, ay=hub.y+135, bx=island.x, by=island.y+120
+    routes.moveTo(ax,ay).lineTo(bx,by).stroke({color:0x9cc4c6,width:18,alpha:.035})
+    routes.moveTo(ax,ay).lineTo(bx,by).stroke({color:0x62777a,width:7,alpha:.32})
+    const length=Math.hypot(bx-ax,by-ay), count=Math.floor(length/14)
+    for(let j=0;j<count;j++) {
+      const t=j/count, x=ax+(bx-ax)*t,y=ay+(by-ay)*t, nx=-(by-ay)/length*5,ny=(bx-ax)/length*5
+      routes.moveTo(x-nx,y-ny).lineTo(x+nx,y+ny).stroke({color:0x91b4b6,width:1.3,alpha:.3})
+      if(j%7===0)routes.circle(x+nx,y+ny,1.4).fill({color:0xedcf8c,alpha:.85})
     }
   }
-
-  function anchorScreen(id: string): { x: number; y: number } {
-    const a = anchors[id]
-    if (!a) return { x: -9999, y: -9999 }
-    const p = world.toGlobal(a)
-    return { x: p.x, y: p.y }
-  }
-
-  function centerOn(id: string): void {
-    const a = anchors[id]
-    if (!a) return
-    cam.stopFollow()
-    cam.zoom = 1.0
-    cam.setZoom(0, 1.0)
-    cam.pos = { x: a.x, y: a.y }
-    cam.apply()
-  }
-
-  function cullTiles(): void {
-    const r = cam.visibleRect()
-    let minGx = GRID_W
-    let maxGx = -1
-    let minGy = GRID_H
-    let maxGy = -1
-    const corners: Array<[number, number]> = [
-      [r.x, r.y],
-      [r.x + r.w, r.y],
-      [r.x, r.y + r.h],
-      [r.x + r.w, r.y + r.h],
-      [r.x + r.w / 2, r.y],
-      [r.x + r.w / 2, r.y + r.h],
-      [r.x, r.y + r.h / 2],
-      [r.x + r.w / 2, r.y + r.h / 2]
-    ]
-    for (const [sx, sy] of corners) {
-      const { gx, gy } = screenToTile(sx, sy)
-      if (gx < minGx) minGx = gx
-      if (gx > maxGx) maxGx = gx
-      if (gy < minGy) minGy = gy
-      if (gy > maxGy) maxGy = gy
+  const layers=new Container();world.addChild(layers);layers.sortableChildren=true
+  const refs=new Map<string,Container>()
+  const residents:Array<{body:Container;feet:Graphics;phase:number;island:IslandId;label:Text}>=[]
+  let textures
+  try { textures=await Promise.all(islands.map(island=>Assets.load(`${import.meta.env.BASE_URL}islands/${island.id}.png`))) } catch(e) { app.destroy(true,{children:true,texture:false});throw e }
+  islands.forEach((island,index)=>{
+    const texture=textures[index]
+    const group=new Container();group.position.set(island.x,island.y);group.zIndex=island.y
+    const halo=new Graphics().ellipse(0,105,155,47).fill({color:island.color,alpha:.035});group.addChild(halo)
+    const shadow=new Graphics().ellipse(0,110,145,40).fill({color:0x020812,alpha:.38});group.addChild(shadow)
+    const ripples=new Graphics().ellipse(0,100,185,65).stroke({color:island.color,width:.8,alpha:.18});group.addChild(ripples);rings.push({g:ripples,phase:random()*6.3})
+    const sprite=new Sprite(texture);sprite.anchor.set(.5);sprite.width=510;sprite.height=459;group.addChild(sprite)
+    const footpath=new Graphics().moveTo(-107,43).bezierCurveTo(-78,76,40,88,92,42).stroke({color:0xe8d2a2,width:1,alpha:.2});group.addChild(footpath)
+    const community=COMMUNITY[island.id as IslandId]
+    for(let r=0;r<3;r++){
+      const person=new Container(),feet=new Graphics().moveTo(-2,-2).lineTo(-3,3).moveTo(2,-2).lineTo(3,3).stroke({color:0x16323e,width:2.5})
+      person.addChild(new Graphics().ellipse(0,3,7,2.5).fill({color:0x031320,alpha:.3}))
+      person.addChild(feet)
+      person.addChild(new Graphics().roundRect(-4,-12,8,11,3).fill([island.color,0x86bbb2,0xc8a1a4][r]!))
+      person.addChild(new Graphics().circle(0,-16,4.5).fill(0xeac89f).ellipse(0,-19,5,2).fill(r===0?island.color:0x35566a))
+      person.addChild(new Graphics().roundRect(3,-8,5,6,1).fill({color:0xd9c693,alpha:.85}))
+      const name=new Text({text:community.residents[r],style:{fontFamily:'Arial, Microsoft YaHei',fontSize:8,fill:0xdce9d7}});name.anchor.set(.5);name.position.set(0,-29);name.alpha=.65;person.addChild(name)
+      group.addChild(person);residents.push({body:person,feet,phase:r/3+index*.09,island:island.id as IslandId,label:name})
     }
-    minGx -= 1
-    maxGx += 1
-    minGy -= 1
-    maxGy += 1
-    for (let gy = 0; gy < GRID_H; gy++) {
-      if (gy < minGy || gy > maxGy) {
-        for (let gx = 0; gx < GRID_W; gx++) tileSprites[gy * GRID_W + gx].visible = false
-        continue
-      }
-      for (let gx = 0; gx < GRID_W; gx++) {
-        tileSprites[gy * GRID_W + gx].visible = gx >= minGx && gx <= maxGx
-      }
-    }
-  }
-
-  let lastCull = -1
-  app.ticker.add((ticker) => {
-    const t = ticker.elapsedMS / 1000
-    const dtF = ticker.deltaTime
-    cam.update(dtF)
-    shallowLayer.alpha = 0.9 + 0.1 * Math.sin(t * 0.9)
-    for (const gl of glints) gl.sp.alpha = 0.25 + 0.75 * (0.5 + 0.5 * Math.sin(t * 1.3 + gl.phase))
-    for (const cl of clouds) {
-      cl.c.x += cl.speed * dtF
-      if (cl.c.x - cl.hw > CLOUD_WRAP_MAX) cl.c.x = CLOUD_WRAP_MIN - cl.hw
-      else if (cl.c.x + cl.hw < CLOUD_WRAP_MIN) cl.c.x = CLOUD_WRAP_MAX + cl.hw
-    }
-    for (const n of notes) {
-      const cycle = (t * 0.22 + n.phase) % 1
-      n.sp.position.set(n.x + Math.sin(cycle * Math.PI) * 5, n.y - cycle * 44)
-      n.sp.alpha = (1 - cycle) * 0.85
-    }
-    if (glowSprite) {
-      glowSprite.scale.set(1 + 0.12 * Math.sin(t * 3.2))
-      glowSprite.alpha = 0.65 + 0.35 * Math.sin(t * 3.2 + 0.6)
-    }
-    if (cartRig && cartState.driving && cartState.path) {
-      const path = cartState.path
-      let wpt: Tile | null = path[cartState.wp]
-      while (cartState.wp < path.length && wpt) {
-        const tp = tileToScreen(wpt.x, wpt.y)
-        const dx = tp.x - cartState.pos.x
-        const dy = tp.y - cartState.pos.y
-        const dist = Math.hypot(dx, dy)
-        const step = (CART_SPEED * dtF) / 60
-        if (dist <= Math.max(step, 0.5)) {
-          cartState.pos.x = tp.x
-          cartState.pos.y = tp.y
-          cartState.wp++
-          wpt = cartState.wp < path.length ? path[cartState.wp] : null
-        } else {
-          cartState.pos.x += (dx / dist) * step
-          cartState.pos.y += (dy / dist) * step
-          const dir = ((Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) % 8) + 8) % 8
-          setCartDir(dir)
-          break
-        }
-      }
-      if (cartState.wp >= path.length) endDrive()
-      else cam.follow(cartState.pos, 0.08)
-      syncCartDepth()
-    }
-    if (cartRig) {
-      const bump = cartState.driving ? Math.sin(t * 7) * 1.2 : 0
-      cartRig.position.set(cartState.pos.x, cartState.pos.y + bump)
-    }
-    interact.update(t)
-    if (t - lastCull > 0.1) {
-      lastCull = t
-      cullTiles()
-    }
+    const population=new Text({text:`${community.role} × 3 · ${community.game}`,style:{fontFamily:'Arial, Microsoft YaHei',fontSize:9,fill:0x7faaa1}});population.anchor.set(.5);population.y=226;group.addChild(population)
+    const tag=new Text({ text:island.sub, style:{fontFamily:'monospace',fontSize:10,letterSpacing:2,fill:island.color} });tag.anchor.set(.5);tag.y=175;group.addChild(tag)
+    const label=new Text({ text:island.name, style:{fontFamily:'Arial, Microsoft YaHei',fontSize:22,fontWeight:'600',fill:0xe3eee9,letterSpacing:1} });label.anchor.set(.5);label.y=198;group.addChild(label)
+    group.eventMode='static';group.cursor='pointer';sprite.eventMode='static'
+    group.on('pointertap',()=>opts.onIslandClick?.(island.id))
+    group.on('pointerover',()=>{halo.alpha=3;label.style.fill=island.color})
+    group.on('pointerout',()=>{halo.alpha=1;label.style.fill=0xe3eee9})
+    layers.addChild(group);refs.set(island.id,group)
   })
-
-  const stats = {
-    tiles: GRID_W * GRID_H,
-    props: worldData.decos.filter((d) => d.prop !== '__panel__' && d.prop !== 'cart').length + 1,
-    placeholders,
-    warnings
-  }
-
-  const handle: MapSceneHandle = {
-    app,
-    world,
-    camera: cam,
-    anchors,
-    islandOf: worldData.islandOf,
-    stats,
-    driveTo,
-    getCart,
-    anchorScreen,
-    centerOn,
-    get lastPathCrossedWater() {
-      return crossedWater
-    },
-    destroy() {
-      app.ticker.stop()
-      ro.disconnect()
-      detachInput()
-      interact.destroy()
-      if (panel) gsap.killTweensOf(panel)
-      app.destroy(true, { children: true, texture: true, textureSource: true })
-      delete (window as unknown as { __harbor?: unknown }).__harbor
-    }
-  }
-  ;(window as unknown as { __harbor?: unknown }).__harbor = {
-    driveTo: (id: string) => handle.driveTo(id),
-    getCart: () => handle.getCart(),
-    anchorScreen: (id: string) => handle.anchorScreen(id),
-    centerOn: (id: string) => handle.centerOn(id),
-    get lastPathCrossedWater() {
-      return handle.lastPathCrossedWater
-    },
-    diag: () => ({
-      view: [cam.viewW, cam.viewH],
-      pos: { ...cam.pos },
-      zoom: cam.zoom,
-      world: [world.x, world.y, world.scale.x],
-      canvas: [app.canvas.clientWidth, app.canvas.clientHeight]
-    }),
-    tileClass: (gx: number, gy: number) => (inGrid(gx, gy) ? worldData.cls[idx(gx, gy)] : -1)
-  }
+  const boat=new Graphics().poly([-8,0,5,-4,9,0,5,4]).fill(0xf6d89c);world.addChild(boat)
+  const cam=new MapCamera(world,{minX:-1550,minY:-1100,maxX:1550,maxY:1100});cam.minZoom=.28;cam.maxZoom=1.65
+  let focused=false
+  const overview=()=>{focused=false;cam.stopFollow();cam.pos={x:0,y:45};cam.zoom=Math.max(.28,Math.min(container.clientWidth/1900,container.clientHeight/1120,1));cam.apply()}
+  cam.setViewSize(container.clientWidth,container.clientHeight);overview()
+  const detach=attachCameraInput(app.canvas,cam)
+  const ro=new ResizeObserver(()=>{cam.setViewSize(container.clientWidth,container.clientHeight);if(!focused)overview()});ro.observe(container)
+  const held=new Set<string>()
+  let keyboardEnabled=true
+  let paused=false
+  const applyPause=()=>{if(paused||document.hidden){held.clear();app.ticker.stop()}else app.ticker.start()}
+  const setPaused=(value:boolean)=>{paused=value;applyPause()}
+  document.addEventListener('visibilitychange',applyPause)
+  const setKeyboardEnabled=(enabled:boolean)=>{keyboardEnabled=enabled;held.clear()}
+  const keydown=(e:KeyboardEvent)=>{if(!keyboardEnabled||(e.target as HTMLElement)?.closest('input,textarea,button,select,[role="dialog"]'))return;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(e.key)){e.preventDefault();held.add(e.key);cam.stopFollow()};if(e.key==='0')overview()}
+  const keyup=(e:KeyboardEvent)=>held.delete(e.key)
+  window.addEventListener('keydown',keydown);window.addEventListener('keyup',keyup)
+  let elapsed=0
+  app.ticker.add(t=>{
+    elapsed+=t.deltaTime*.0167;cam.update(t.deltaTime)
+    const speed=6*t.deltaTime
+    if(held.has('ArrowLeft')||held.has('a'))cam.pan(speed,0)
+    if(held.has('ArrowRight')||held.has('d'))cam.pan(-speed,0)
+    if(held.has('ArrowUp')||held.has('w'))cam.pan(0,speed)
+    if(held.has('ArrowDown')||held.has('s'))cam.pan(0,-speed)
+    sparkles.forEach(({g,phase})=>g.alpha=.16+.5*(.5+.5*Math.sin(elapsed*.6+phase)))
+    rings.forEach(({g,phase})=>{g.alpha=.65+.35*Math.sin(elapsed+phase);g.scale.set(1+.02*Math.sin(elapsed*.5+phase))})
+    residents.forEach(({body,feet,phase,island,label})=>{
+      const travel=(elapsed*.023+phase)%1,t3=travel<.5?travel*2:2-travel*2
+      body.position.set(-107+199*t3,43+35*Math.sin(t3*Math.PI));feet.rotation=Math.sin(elapsed*9+phase*6)*.16
+      const s=progress.islands[island];label.alpha=focused?.85:.45;body.scale.x=travel<.5?1:-1;label.scale.x=body.scale.x
+      if(s.rounds>0&&Math.floor(elapsed/5)%3===0)label.text=`补给 +${s.supplies}`;else label.text=COMMUNITY[island].residents[Math.floor(phase*3)%3]!
+    })
+    const t2=(elapsed*.03)%1;boat.position.set(-550+1100*t2,147+Math.sin(t2*Math.PI)*60);boat.alpha=.7
+  })
+  const centerOn=(id:string)=>{const i=islands.find(x=>x.id===id);if(!i)return;focused=true;cam.follow({x:i.x+(container.clientWidth>900?150:0),y:i.y},.065);cam.setZoom(.65,Math.min(1.35,container.clientWidth/850))}
+  const handle:MapSceneHandle={app,world,camera:cam,overview,centerOn,setKeyboardEnabled,setPaused,async driveTo(id){if(!refs.has(id))return false;centerOn(id);opts.onArrive?.(id);return true},destroy(){detach();ro.disconnect();held.clear();document.removeEventListener('visibilitychange',applyPause);window.removeEventListener('keydown',keydown);window.removeEventListener('keyup',keyup);app.destroy(true,{children:true,texture:false})}}
+  ;(window as unknown as {__starharbor:MapSceneHandle}).__starharbor=handle
   return handle
 }

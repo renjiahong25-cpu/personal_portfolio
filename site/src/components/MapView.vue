@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { initMapScene, type MapSceneHandle } from '../scene/mapScene'
+const props = withDefaults(defineProps<{ keyboardEnabled?: boolean; paused?: boolean }>(), { keyboardEnabled: true, paused: false })
 
 const emit = defineEmits<{
   (e: 'island-click', id: string): void
@@ -30,6 +31,8 @@ async function boot(): Promise<void> {
       s.destroy()
       return
     }
+    s.setKeyboardEnabled(props.keyboardEnabled)
+    s.setPaused(props.paused)
     scene = s
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e)
@@ -40,7 +43,10 @@ function driveTo(id: string): void {
   void scene?.driveTo(id)
 }
 
-defineExpose({ driveTo })
+function overview(): void { scene?.overview() }
+defineExpose({ driveTo, overview })
+watch(() => props.keyboardEnabled, (enabled) => scene?.setKeyboardEnabled(enabled), { flush: 'sync' })
+watch(() => props.paused, (paused) => scene?.setPaused(paused), { flush: 'sync' })
 
 onMounted(() => {
   void boot()
@@ -72,7 +78,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 .map-view :deep(canvas) {
-  filter: saturate(0.86) contrast(1.04);
+  touch-action: none;
 }
 .map-err {
   position: absolute;

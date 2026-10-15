@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "tracks": [
+    {
+      "island": "HOME",
+      "title": "盲选",
+      "artist": "黄霄雲",
+      "provider": "file",
+      "src": "audio/blind-choice-master.mp3",
+      "cover": "audio/cover/blind-choice-master.cover.jpg",
+      "authorized": true,
+      "officialSongId": "2615119020",
+      "officialUrl": "https://music.163.com/#/song?id=2615119020",
+      "officialPlayerUrl": "https://music.163.com/outchain/player?type=2&id=2615119020&auto=0&height=66"
+    },
+    {
+      "island": "PIANO",
+      "title": "弦上生花",
+      "artist": "黄霄雲",
+      "provider": "file",
+      "src": "audio/xian-shang-sheng-hua-master.mp3",
+      "cover": "audio/cover/xian-shang-sheng-hua-master.cover.jpg",
+      "authorized": true,
+      "officialSongId": "2630034682",
+      "officialUrl": "https://music.163.com/#/song?id=2630034682",
+      "officialPlayerUrl": "https://music.163.com/outchain/player?type=2&id=2630034682&auto=0&height=66"
+    },
+    {
+      "island": "HUB",
+      "title": "打开2.0",
+      "artist": "黄霄雲",
+      "provider": "file",
+      "src": "audio/open-2-0-official.mp3",
+      "cover": "audio/cover/open-2-0-official.cover.jpg",
+      "authorized": true,
+      "officialSongId": "3426677747",
+      "officialUrl": "https://music.163.com/#/song?id=3426677747",
+      "officialPlayerUrl": "https://music.163.com/outchain/player?type=2&id=3426677747&auto=0&height=66"
+    },
+    {
+      "island": "JOURNEY",
+      "title": "带我去很远地方",
+      "artist": "黄霄雲",
+      "provider": "file",
+      "src": "audio/dai-wo-qu-hen-yuan-chu-fang-master.mp3",
+      "cover": "audio/cover/dai-wo-qu-hen-yuan-chu-fang-master.cover.jpg",
+      "authorized": true,
+      "officialSongId": "1866185395",
+      "officialUrl": "https://music.163.com/#/song?id=1866185395",
+      "officialPlayerUrl": "https://music.163.com/outchain/player?type=2&id=1866185395&auto=0&height=66"
+    },
+    {
+      "island": "TARIFF",
+      "title": "重返地球",
+      "artist": "黄霄雲",
+      "provider": "file",
+      "src": "audio/chong-fan-di-qiu-master.mp3",
+      "cover": "audio/cover/chong-fan-di-qiu-master.cover.jpg",
+      "authorized": true,
+      "officialSongId": "1915274713",
+      "officialUrl": "https://music.163.com/#/song?id=1915274713",
+      "officialPlayerUrl": "https://music.163.com/outchain/player?type=2&id=1915274713&auto=0&height=66"
+    },
+    {
+      "island": "BUILD",
+      "title": "星辰大海",
+      "artist": "黄霄雲",
+      "provider": "file",
+      "src": "audio/xing-chen-da-hai.mp3",
+      "cover": "audio/cover/xing-chen-da-hai.cover.jpg",
+      "authorized": true,
+      "officialSongId": "1811921555",
+      "officialUrl": "https://music.163.com/#/song?id=1811921555",
+      "officialPlayerUrl": "https://music.163.com/outchain/player?type=2&id=1811921555&auto=0&height=66"
+    },
+    {
+      "island": "DOCK",
+      "title": "梦影",
+      "artist": "黄霄雲",
+      "provider": "file",
+      "src": "audio/meng-ying.mp3",
+      "cover": "audio/cover/meng-ying.cover.jpg",
+      "authorized": true,
+      "officialSongId": "3426677739",
+      "officialUrl": "https://music.163.com/#/song?id=3426677739",
+      "officialPlayerUrl": "https://music.163.com/outchain/player?type=2&id=3426677739&auto=0&height=66"
+    }
+  ]
+}
