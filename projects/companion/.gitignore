@@ -1,0 +1,16 @@
+# Companion desktop pet
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.test-temp/
+runtime/
+
+# C03: front-end build inputs and outputs (rebuild with npm.cmd ci && npm.cmd run build)
+packages/companion-pet-web/node_modules/
+packages/companion-pet-web/dist/
+
+# C03: VRM model binaries are NOT stored in git. The default model is licence-cleared
+# (see assets/models/LICENSE-NOTE.md) but stays out of the repo; obtain it with
+# app/pet3d/vrm_loader.py REGISTRY["VRM1_Constraint_Twist_Sample.vrm"].source_url
+# and verify the sha256 recorded in the same registry entry.
+assets/models/

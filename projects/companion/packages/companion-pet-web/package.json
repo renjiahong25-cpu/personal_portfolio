@@ -1,0 +1,19 @@
+{
+  "name": "companion-pet-web",
+  "private": true,
+  "version": "0.3.0",
+  "description": "three.js + @pixiv/three-vrm renderer embedded in the PySide6 desktop pet (C03).",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@pixiv/three-vrm": "3.5.5",
+    "three": "0.180.0"
+  },
+  "devDependencies": {
+    "vite": "^7.1.0"
+  }
+}

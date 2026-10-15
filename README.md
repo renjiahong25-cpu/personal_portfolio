@@ -23,6 +23,7 @@ STARHARBOR is a personal portfolio: an isometric archipelago map ties five works
 | [venue-scout](projects/venue-scout/) | 团建场地智能规划（场地采集 + 攻略级行程规划）/ Team-building venue scouting & itinerary planning |
 | [web-agent](projects/web-agent/) | 多 AI 网页会话协作工作台 / Multi-AI web session collaboration workbench |
 | pianoflow | 本地 AI 音乐工作台（待同步入库 / pending sync）/ Local AI music workbench |
+| [companion](projects/companion/) | VRM 桌宠（pet3d 渲染；VRM 模型二进制不入 git，按 loader registry 的 URL+sha256 获取）/ VRM desktop pet (model binaries stay out of git, fetched via loader registry URL+sha256) |
 
 ## 约定 / Conventions
 

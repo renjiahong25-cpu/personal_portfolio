@@ -1,0 +1,1 @@
+"""Game Companion application package."""
