@@ -17,8 +17,7 @@ node_modules/
 # ============================================
 /site/node_modules/
 /site/dist/
-# 音频资源不入库
-/site/public/audio/*.mp3
+# WAV 母版（~550MB，含饭录/转载版）不入库；发布音频为本目录 192k MP3
 /site/public/audio/*.wav
 
 # ============================================

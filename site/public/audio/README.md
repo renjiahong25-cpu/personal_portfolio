@@ -22,4 +22,4 @@
 
 ## 发布版音频说明
 
-本目录（GitHub 发布版）内 7 首曲目为 **192 kbps MP3**（libmp3lame 转码），非原始 WAV。源文件为开发工作区 `D:\qi-workspace\site\public\audio` 下的本地 WAV；其中母版（*-master）部分本身即为有损来源转码而来，源信息见 `D:\qi-workspace\work\m02-SOURCES.md`。发布版 `manifest.json` 与本地版字段完全一致，仅 `src` 由 `.wav` 改为 `.mp3`。每曲的网易云官方链接（`officialSongId` / `officialUrl` / `officialPlayerUrl`）仍保留在 manifest 中。WAV 母版不随本仓库发布。
+本目录（GitHub 发布版）内 7 首曲目为 **192 kbps MP3**（libmp3lame 转码），非原始 WAV。源文件为开发工作区 `D:\qi-workspace\site\public\audio` 下的本地 WAV；其中母版（*-master）部分本身即为有损来源转码而来，逐曲溯源见开发工作区 `D:\qi-workspace\sources\provenance.json`（含下载日志 `D:\qi-workspace\work\logs\m02-*.log`；部分转载来源未获授权，风险留痕见 `D:\qi-workspace\docs\HANDOVER-2026-10-15.md` §6 B4/B5）。发布版 `manifest.json` 与本地版字段完全一致，仅 `src` 由 `.wav` 改为 `.mp3`。每曲的网易云官方链接（`officialSongId` / `officialUrl` / `officialPlayerUrl`）仍保留在 manifest 中。WAV 母版不随本仓库发布。
